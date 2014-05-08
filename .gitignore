@@ -5,6 +5,7 @@ cabal-dev
 *.chi
 *.chs.h
 .virthualenv
+config
 lines.txt
 *.log
 *.png

@@ -17,4 +17,4 @@ cabal-version:       >=1.8
 executable ircdb
   main-is:             Main.hs
   hs-source-dirs:      src
-  build-depends:       base ==4.6.*, HDBC, HDBC-odbc
+  build-depends:       base ==4.6.*, HDBC, HDBC-odbc, directory
