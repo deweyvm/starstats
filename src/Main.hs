@@ -1,9 +1,10 @@
 {-# LANGUAGE DoAndIfThenElse #-}
-import Database.HDBC
-import Database.HDBC.ODBC
+--import Database.HDBC
+--import Database.HDBC.ODBC
 import Control.Applicative
+import Control.Arrow
 import System.Directory
-import System.IO
+import IRCDB.Parser
 
 configFile :: String
 configFile = "config"
@@ -20,11 +21,20 @@ readConfig = do
     where processConfig (c:_) = c
           processConfig     _ = error "file 'config' is empty"
 
+
+catEithers :: [Either a b] -> ([a], [b])
+catEithers [] = (,) [] []
+catEithers (Right x : xs) = second (x:) $ catEithers xs
+catEithers (Left  x : xs) = first (x:) $ catEithers xs
+
+
 main :: IO ()
 main = do
     logfile <- readConfig
-    contents <- lines <$> readFile logfile
-    print contents
+    contents <- readFile logfile
+    putStrLn contents
+    let thing = parseFile contents
+    print thing
     {-let connectionString =  "DSN=name32;Driver={MySQL ODBC 5.3 ANSI Driver};Server=localhost;Port=3306;Database=testdb;User=root;Password=password;Option=3;"
     let ioconn = connectODBC connectionString
     conn <- ioconn
