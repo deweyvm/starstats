@@ -22,19 +22,25 @@ readConfig = do
           processConfig     _ = error "file 'config' is empty"
 
 
-catEithers :: [Either a b] -> ([a], [b])
-catEithers [] = (,) [] []
-catEithers (Right x : xs) = second (x:) $ catEithers xs
-catEithers (Left  x : xs) = first (x:) $ catEithers xs
+catEithers :: [Either a b] -> Either a [b]
+catEithers [] = Right []
+catEithers (Right x : xs) = do
+    case (catEithers xs) of
+        Left a -> Left a
+        Right xs -> Right (x : xs)
+catEithers (Left  x : xs) = Left x
 
 
 main :: IO ()
 main = do
     logfile <- readConfig
-    contents <- readFile logfile
-    putStrLn contents
-    let thing = parseFile contents
-    print thing
+    contents <- lines <$> readFile logfile
+    --putStrLn contents
+    case catEithers $ parseFile <$> contents of
+        Left err -> print err
+        Right ls -> print $ logLength  $ Log $ ls
+
+
     {-let connectionString =  "DSN=name32;Driver={MySQL ODBC 5.3 ANSI Driver};Server=localhost;Port=3306;Database=testdb;User=root;Password=password;Option=3;"
     let ioconn = connectODBC connectionString
     conn <- ioconn

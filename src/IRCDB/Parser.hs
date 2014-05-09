@@ -7,18 +7,26 @@ import qualified Text.Parsec.Token as P
 import Text.Parsec.Language (emptyDef)
 import Data.Functor.Identity
 import Debug.Trace
+
 type Name = String
 type Contents = String
 type Time = (Int, Int)
 type Date = String
 
-data DataLine = Message Date Time Bool Name Contents
-              | Status Date String
+data DataLine = Message Time Bool Name Contents
+              | Action Time Name Contents
+              | Status Time String
+              | Notice Time String
+              | Invite Time String
+              | Day Date
+              | Close Date
+              | Open Date
     deriving (Show)
 
-data Day = Day [DataLine] deriving (Show)
+data Log = Log [DataLine] deriving (Show)
 
-data Log = Log [Day] deriving (Show)
+logLength :: Log -> Int
+logLength (Log ls) = length ls
 
 lexer :: P.GenTokenParser String a Identity
 lexer = P.makeTokenParser $ emptyDef
@@ -36,63 +44,86 @@ identifier :: Parser String
 identifier = P.identifier lexer
 
 symbol :: String -> Parser String
-symbol  = P.symbol lexer
+symbol = P.symbol lexer
 
-parseDataLine :: Date -> Parser DataLine
-parseDataLine date = (parseStatus date) <|> parseMessage date
+parseDataLine :: Parser DataLine
+parseDataLine = try (parseTimeChange) <|> parseChatLine
 
-parseMessage :: Date -> Parser DataLine
-parseMessage date = Message <$> (return date)
-                            <*> parseTime
-                            <*> (symbol "<" *> parseOp)
-                            <*> (parseName <* symbol ">")
-                            <*> parseContents
+parseChatLine :: Parser DataLine
+parseChatLine = try parseStatus
+            <|> try parseNotice
+            <|> try parseAction
+            <|> try parseInvite
+            <|> parseMessage
 
-parseStatus :: Date -> Parser DataLine
-parseStatus date = Status <$> (return date)
-                          <*> (symbol "-!-" *> eatLine)
+
+parseTimeChange :: Parser DataLine
+parseTimeChange = try (Day <$> (symbol "--- Day changed" *> parseDateString))
+              <|> try (Close <$> (symbol "--- Log closed" *> parseDateString))
+              <|> (Open <$> (symbol "--- Log opened" *> parseDateString))
+
+parseInvite :: Parser DataLine
+parseInvite = Invite <$> parseTime
+                     <*> ((symbol "!") *> eatLine)
+
+parseNotice :: Parser DataLine
+parseNotice = Notice <$> parseTime
+                     <*> ((symbol "-") *> eatLine)
+
+parseStatus :: Parser DataLine
+parseStatus = Status <$> parseTime
+                     <*> (symbol "-!-" *> eatLine)
+                     <?> "status"
+
+parseAction :: Parser DataLine
+parseAction = Status <$> parseTime
+                     <*> (symbol "*" *> eatLine)
+                     <?> "action"
+
+parseMessage :: Parser DataLine
+parseMessage = Message <$> parseTime
+                       <*> (symbol "<" *> parseOp)
+                       <*> (parseName <* symbol ">")
+                       <*> parseContents
+                       <?> "message"
 
 parseInt :: Parser Int
 parseInt = fromInteger <$> integer
+                       <?> "integer"
 
 parseTime :: Parser Time
-parseTime = (,) <$> (parseInt <* symbol ":") <*> parseInt
+parseTime = (,) <$> (parseInt <* symbol ":")
+                <*> parseInt
+                <?> "time"
 
 parseOp :: Parser Bool
-parseOp = (try (symbol "+") *> return True) <|> (whiteSpace *> return False)
+parseOp = (try (symbol "+") *> return True)
+      <|> (whiteSpace *> return False)
 
 parseName :: Parser Name
-parseName = identifier
+parseName = manyTill anyChar (lookAhead (symbol ">"))
 
 eatLine :: Parser String
-eatLine = many $ noneOf "\n"
+eatLine = many (noneOf "\n") <* symbol "\n" <?> "whole line"
 
 parseContents :: Parser Contents
-parseContents = do
-    line <- eatLine
-    return $ traceShow ("LINE: " ++ line) line
+parseContents = eatLine
+
 
 parseDateString :: Parser Date
-parseDateString = eatLine
+parseDateString = eatLine <?> "date string"
 
-parseDate :: Parser Date
-parseDate = symbol "--- Day changed" *> parseDateString
+--parseLog :: Parser Log
+--parseLog =  Log <$> manyTill parseDataLine eof
 
-parseWholeDay :: Parser Day
-parseWholeDay = do
-    date <- parseDate
-    parseDay date
+data Thing = Thing [Either ParseError DataLine]
 
-parseDay :: Date -> Parser Day
-parseDay date = Day <$> manyTill (parseDataLine date) (lookAhead (symbol "---"))
-
-parseLog :: Parser Log
-parseLog = do
-    date <- symbol "--- Log opened" *> parseDateString
-    first <- parseDay date
-    rest <- manyTill parseWholeDay eof
-    return $ Log (traceShow date first:rest)
+thingLength :: Thing -> Int
+thingLength (Thing ls) = length ls
 
 
-parseFile :: String -> Either ParseError Log
-parseFile = parse parseLog ""
+parseFile :: String -> Either (String, ParseError) DataLine
+parseFile line =
+    case parse parseDataLine "" line of
+        Left err -> Left(line, err)
+        Right success -> Right success
