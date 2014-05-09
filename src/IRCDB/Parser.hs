@@ -6,7 +6,6 @@ import Text.Parsec.String
 import qualified Text.Parsec.Token as P
 import Text.Parsec.Language (emptyDef)
 import Data.Functor.Identity
-import Debug.Trace
 
 type Name = String
 type Contents = String
@@ -97,14 +96,14 @@ parseTime = (,) <$> (parseInt <* symbol ":")
                 <?> "time"
 
 parseOp :: Parser Bool
-parseOp = (try (symbol "+") *> return True)
+parseOp = (try (oneOf "@+%~") *> return True)
       <|> (whiteSpace *> return False)
 
 parseName :: Parser Name
 parseName = manyTill anyChar (lookAhead (symbol ">"))
 
 eatLine :: Parser String
-eatLine = many (noneOf "\n") <* symbol "\n" <?> "whole line"
+eatLine = manyTill anyChar eof <?> "whole line"
 
 parseContents :: Parser Contents
 parseContents = eatLine
@@ -113,17 +112,10 @@ parseContents = eatLine
 parseDateString :: Parser Date
 parseDateString = eatLine <?> "date string"
 
---parseLog :: Parser Log
---parseLog =  Log <$> manyTill parseDataLine eof
-
-data Thing = Thing [Either ParseError DataLine]
-
-thingLength :: Thing -> Int
-thingLength (Thing ls) = length ls
 
 
-parseFile :: String -> Either (String, ParseError) DataLine
-parseFile line =
-    case parse parseDataLine "" line of
-        Left err -> Left(line, err)
+parseLine :: (Int, String) -> Either (Int, String, String) DataLine
+parseLine (ln, s) =
+    case parse parseDataLine "" s of
+        Left err -> Left (ln, s, show err)
         Right success -> Right success
