@@ -31,7 +31,13 @@ processOne con (Right l) = insert l con
 insert :: IConnection con => DataLine -> con -> IO ()
 insert (Message time op name msg) con = do
     prepared <- prepare con "INSERT INTO text (name, flags, text, time) VALUES (?,?,?,?);"
+    let sqlName = toSql name
+    let sqlOp = toSql op
+    let sqlMsg = toSql msg
+    let sqlTime = (toSql.fst) time
+    rows <- execute prepared [sqlName, sqlOp, sqlMsg, sqlTime]
     return ()
+
 insert _ _ = return ()
 main :: IO ()
 main = do
@@ -47,5 +53,6 @@ main = do
     let ioconn = connectODBC connectionString
     conn <- ioconn
     sequence_ $ processOne conn <$> parsed
+    commit conn
 
 
