@@ -1,6 +1,7 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 import Database.HDBC
 import Database.HDBC.ODBC
+import Data.Foldable
 import Control.Applicative
 import System.Directory
 import IRCDB.Parser
@@ -21,38 +22,51 @@ readConfig = do
           processConfig     _ = error "file 'config' is empty"
 
 
-processOne :: IConnection con => con -> Either (Int, String, String) DataLine -> IO ()
-processOne _ (Left (ln, s, err)) = do
+data TimeKeeper = TimeKeeper Date
+
+processOne :: IConnection con
+           => con
+           -> TimeKeeper
+           -> Either (Int, String, String) DataLine
+           -> IO TimeKeeper
+processOne _ t (Left (ln, s, err)) = do
     putStrLn ("Line " ++ show ln)
     print s
     print err
-processOne con (Right l) = insert l con
+    return t
+processOne con t (Right l) = insert t l con
 
-insert :: IConnection con => DataLine -> con -> IO ()
-insert (Message time op name msg) con = do
+
+insert :: IConnection con => TimeKeeper -> DataLine -> con -> IO TimeKeeper
+insert t (Message time op name msg) con = do
     prepared <- prepare con "INSERT INTO text (name, flags, text, time) VALUES (?,?,?,?);"
     let sqlName = toSql name
     let sqlOp = toSql op
     let sqlMsg = toSql msg
     let sqlTime = (toSql.fst) time
-    rows <- execute prepared [sqlName, sqlOp, sqlMsg, sqlTime]
-    return ()
+    execute prepared [sqlName, sqlOp, sqlMsg, sqlTime]
+    return t
+insert _ (Day date) _ = return $ TimeKeeper date
+insert _ (Open date) _ = return $ TimeKeeper date
+insert t _ _ = return t
 
-insert _ _ = return ()
+
 main :: IO ()
 main = do
     logfile <- readConfig
     contents <- lines <$> readFile logfile
-    --putStrLn contents
-    --print $ length $
     let parsed = parseLine <$> zip [1..] contents
-
-
-
-    let connectionString =  "DSN=name32;Driver={MySQL ODBC 5.3 ANSI Driver};Server=localhost;Port=3306;Database=testdb;User=root;Password=password;Option=3;"
-    let ioconn = connectODBC connectionString
-    conn <- ioconn
-    sequence_ $ processOne conn <$> parsed
+    let connectionString = "DSN=name32;\
+                           \Driver={MySQL ODBC 5.3 ANSI Driver};\
+                           \Server=localhost;\
+                           \Port=3306;\
+                           \Database=testdb;\
+                           \User=root;\
+                           \Password=password;\
+                           \Option=3;"
+    conn <- connectODBC connectionString
+    foldlM (processOne conn) (TimeKeeper "") parsed
     commit conn
+    disconnect conn
 
 
