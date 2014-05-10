@@ -4,7 +4,10 @@ import Database.HDBC.ODBC
 import Data.Foldable
 import Control.Applicative
 import System.Directory
+import Data.Time.Clock
 import IRCDB.Parser
+import IRCDB.Time
+
 
 configFile :: String
 configFile = "config"
@@ -22,13 +25,11 @@ readConfig = do
           processConfig     _ = error "file 'config' is empty"
 
 
-data TimeKeeper = TimeKeeper Date
-
 processOne :: IConnection con
            => con
-           -> TimeKeeper
+           -> UTCTime
            -> Either (Int, String, String) DataLine
-           -> IO TimeKeeper
+           -> IO UTCTime
 processOne _ t (Left (ln, s, err)) = do
     putStrLn ("Line " ++ show ln)
     print s
@@ -37,17 +38,18 @@ processOne _ t (Left (ln, s, err)) = do
 processOne con t (Right l) = insert t l con
 
 
-insert :: IConnection con => TimeKeeper -> DataLine -> con -> IO TimeKeeper
+insert :: IConnection con => UTCTime -> DataLine -> con -> IO UTCTime
 insert t (Message time op name msg) con = do
+    let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO text (name, flags, text, time) VALUES (?,?,?,?);"
     let sqlName = toSql name
     let sqlOp = toSql op
     let sqlMsg = toSql msg
-    let sqlTime = (toSql.fst) time
+    let sqlTime = toSql newT
     execute prepared [sqlName, sqlOp, sqlMsg, sqlTime]
-    return t
-insert _ (Day date) _ = return $ TimeKeeper date
-insert _ (Open date) _ = return $ TimeKeeper date
+    return newT
+insert _ (Day date) _ = return date
+insert _ (Open date) _ = return date
 insert t _ _ = return t
 
 
@@ -65,7 +67,8 @@ main = do
                            \Password=password;\
                            \Option=3;"
     conn <- connectODBC connectionString
-    foldlM (processOne conn) (TimeKeeper "") parsed
+    time <- getCurrentTime
+    foldlM (processOne conn) time parsed
     commit conn
     disconnect conn
 
