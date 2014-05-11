@@ -94,7 +94,10 @@ parseTime :: Parser Time
 parseTime = (,) <$> (parseInt <* symbol ":")
                 <*> parseInt
                 <?> "time"
-
+-- ~ channel owner
+-- @ op
+-- + voice
+-- % half op
 parseOp :: Parser Bool
 parseOp = (try (oneOf "@+%~") *> return True)
       <|> (whiteSpace *> return False)
