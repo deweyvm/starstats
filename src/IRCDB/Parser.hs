@@ -6,7 +6,7 @@ import Text.Parsec.String
 import qualified Text.Parsec.Token as P
 import Text.Parsec.Language (emptyDef)
 import Data.Functor.Identity
-import Data.Time.Clock
+import Data.Time.LocalTime
 import IRCDB.Time
 
 type Name = String
@@ -17,9 +17,9 @@ data DataLine = Message Time Bool Name Contents
               | Status Time String
               | Notice Time String
               | Invite Time String
-              | Day UTCTime
-              | Close UTCTime
-              | Open UTCTime
+              | Day LocalTime
+              | Close LocalTime
+              | Open LocalTime
     deriving (Show)
 
 data Log = Log [DataLine] deriving (Show)
@@ -109,11 +109,11 @@ parseContents :: Parser Contents
 parseContents = eatLine
 
 
-get :: Maybe UTCTime -> UTCTime
+get :: Maybe LocalTime -> LocalTime
 get = maybe (anyTime) id
 
-parseDateString :: Parser UTCTime
-parseDateString = (get . stringToUTCTime) <$> eatLine <?> "date string"
+parseDateString :: Parser LocalTime
+parseDateString = (get . stringToLocalTime) <$> eatLine <?> "date string"
 
 parseLine :: (Int, String) -> Either (Int, String, String) DataLine
 parseLine (ln, s) =

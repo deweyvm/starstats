@@ -4,7 +4,7 @@ import Database.HDBC.ODBC
 import Data.Foldable
 import Control.Applicative
 import System.Directory
-import Data.Time.Clock
+import Data.Time.LocalTime
 import IRCDB.Parser
 import IRCDB.Time
 
@@ -25,11 +25,11 @@ readConfig = do
           processConfig     _ = error "file 'config' is empty"
 
 
-processOne :: IConnection con
-           => con
-           -> UTCTime
+processOne :: IConnection c
+           => c
+           -> LocalTime
            -> Either (Int, String, String) DataLine
-           -> IO UTCTime
+           -> IO LocalTime
 processOne _ t (Left (ln, s, err)) = do
     putStrLn ("Line " ++ show ln)
     print s
@@ -38,7 +38,7 @@ processOne _ t (Left (ln, s, err)) = do
 processOne con t (Right l) = insert t l con
 
 
-insert :: IConnection con => UTCTime -> DataLine -> con -> IO UTCTime
+insert :: IConnection c => LocalTime -> DataLine -> c -> IO LocalTime
 insert t (Message time op name msg) con = do
     let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO text (name, flags, text, time) VALUES (?,?,?,?);"
@@ -52,12 +52,15 @@ insert _ (Day date) _ = return date
 insert _ (Open date) _ = return date
 insert t _ _ = return t
 
+getUsers :: IConnection c => c -> IO ()
+getUsers con = do
+    --users <- quickQuery con "SELECT DISTINCT(name) FROM text ORDER BY name" []
+    users <- quickQuery con "SELECT name, COUNT(*) FROM text GROUP BY name ORDER BY COUNT(*);" []
+    print users
+    return ()
 
-main :: IO ()
-main = do
-    logfile <- readConfig
-    contents <- lines <$> readFile logfile
-    let parsed = parseLine <$> zip [1..] contents
+connect :: IO Connection
+connect = do
     let connectionString = "DSN=name32;\
                            \Driver={MySQL ODBC 5.3 ANSI Driver};\
                            \Server=localhost;\
@@ -67,9 +70,24 @@ main = do
                            \Password=password;\
                            \Option=3;"
     conn <- connectODBC connectionString
-    time <- getCurrentTime
-    foldlM (processOne conn) time parsed
-    commit conn
-    disconnect conn
+    return conn
+
+populateDb :: IConnection c => c -> IO ()
+populateDb con = do
+    logfile <- readConfig
+    contents <- lines <$> readFile logfile
+    let parsed = parseLine <$> zip [1..] contents
+    let time = undefined
+    foldlM (processOne con) time parsed
+    commit con
+
+main :: IO ()
+main = do
+    con <- connect
+
+    --populateDb con
+    getUsers con
+    disconnect con
+
 
 
