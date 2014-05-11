@@ -11,3 +11,5 @@ lines.txt
 *.png
 docs/
 temp
+*.config
+.cabal-sandbox
