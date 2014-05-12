@@ -1,0 +1,11 @@
+﻿#!/usr/bin/env links
+<html>
+<head></head>
+<body>
+<ul>
+    <li>
+$stuff; separator="</li><li>"$
+    </li>
+</ul>
+</body>
+</html>

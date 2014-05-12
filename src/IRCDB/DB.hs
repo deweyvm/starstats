@@ -1,15 +1,17 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 module IRCDB.DB where
 
+import Prelude hiding (foldl, concat, sequence_)
 import Control.Applicative
 import Database.HDBC
 import Database.HDBC.ODBC
 import Data.Foldable
 import Data.Time.LocalTime
+import Text.StringTemplate
 import System.Directory
 import IRCDB.Parser
 import IRCDB.Time
-
+import IRCDB.Renderer
 
 data Action = Repopulate | Generate
 
@@ -18,10 +20,10 @@ configFile = "config"
 
 readConfig :: IO String
 readConfig = do
-    exists <- not <$> doesFileExist configFile
-    if exists
+    exists <- doesFileExist configFile
+    if not exists
     then
-        error "file 'config' not found"
+        error $ "file \"" ++ configFile ++ "\" not found"
     else do
         config <- lines <$> readFile configFile
         return $ processConfig config
@@ -56,12 +58,11 @@ insert _ (Day date) _ = return date
 insert _ (Open date) _ = return date
 insert t _ _ = return t
 
-getUsers :: IConnection c => c -> IO ()
+getUsers :: IConnection c => c -> IO [String]
 getUsers con = do
-    --users <- quickQuery con "SELECT DISTINCT(name) FROM text ORDER BY name" []
     users <- quickQuery con "SELECT name, COUNT(*) FROM text GROUP BY name ORDER BY COUNT(*);" []
-    print users
-    return ()
+    return $ show <$> users
+
 
 connect :: IO Connection
 connect = do
@@ -112,5 +113,13 @@ doAction action = do
     con <- connect
     case action of
         Repopulate -> repopulateDb con
-        Generate -> getUsers con
+        Generate -> do
+            template <- readTemplate
+            users <- getUsers con
+            print $ length users
+            sequence_ $ print <$> users
+            let fill = (newSTMP template :: StringTemplate String)
+            let thing = render $ setManyAttrib (zip (repeat "stuff") users) fill
+
+            writeFile "generated.html" thing
     disconnect con

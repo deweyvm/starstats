@@ -15,6 +15,5 @@ stringToLocalTime s = Time.parseTime defaultTimeLocale  "%a %b %e %H:%M:%S %Y" s
 setHoursMinutes :: LocalTime -> Time -> LocalTime
 setHoursMinutes t (h, m) = setL hours h $ setL minutes m t
 
-
 anyTime :: LocalTime
 anyTime = (LocalTime (fromGregorian 0 0 0) (TimeOfDay 0 0 0))
