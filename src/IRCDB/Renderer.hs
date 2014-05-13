@@ -1,13 +1,12 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 module IRCDB.Renderer where
+import Data.List
 import System.Directory
 
-templateFile :: String
-templateFile = "template"
 
-readTemplate :: IO String
-readTemplate = do
-    exists <- doesFileExist templateFile
-    if not exists
-    then error $ "file \"" ++ templateFile ++ "\" not found"
-    else readFile templateFile
+makeList :: [String] -> String
+makeList xs = "<ul><li>" ++ (intercalate "</li><li>" xs) ++ "</li></ul>"
+
+
+makeFile :: String -> String
+makeFile x = "<html><head></head><body>" ++ x ++ "</body></html>"

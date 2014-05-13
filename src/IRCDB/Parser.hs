@@ -12,9 +12,11 @@ import IRCDB.Time
 type Name = String
 type Contents = String
 
-data DataLine = Message Time Bool Name Contents
-              | Action Time Name Contents
+
+
+data DataLine = Message Time Int Name Contents
               | Status Time String
+              | Nick Time Name Name
               | Notice Time String
               | Invite Time String
               | Day LocalTime
@@ -70,43 +72,45 @@ parseNotice = Notice <$> parseTime
                      <*> ((symbol "-") *> eatLine)
 
 parseStatus :: Parser DataLine
-parseStatus = Status <$> parseTime
-                     <*> (symbol "-!-" *> eatLine)
-                     <?> "status"
+parseStatus = try parseNickChange <|> parseGenStatus
+
+parseGenStatus :: Parser DataLine
+parseGenStatus = Status <$> parseTime
+                        <*> (symbol "-!-" *> eatLine)
+
+parseNick :: Parser Name
+parseNick = many (noneOf " ") <* whiteSpace
+
+parseNickChange :: Parser DataLine
+parseNickChange = Nick <$> parseTime
+                       <*> (symbol "-!-" *> parseNick)
+                       <*> (symbol "is now known as" *> parseNick)
+
 
 parseAction :: Parser DataLine
-parseAction = Status <$> parseTime
-                     <*> (symbol "*" *> eatLine)
-                     <?> "action"
+parseAction = Message <$> parseTime
+                      <*> return 1
+                      <*> (symbol "*" *> parseNick)
+                      <*> eatLine
 
 parseMessage :: Parser DataLine
 parseMessage = Message <$> parseTime
-                       <*> (symbol "<" *> parseOp)
-                       <*> (parseName <* symbol ">")
+                       <*> return 0
+                       <*> (string "<" *> oneOf " +~@%&" *> parseName <* symbol ">")
                        <*> parseContents
-                       <?> "message"
 
 parseInt :: Parser Int
 parseInt = fromInteger <$> integer
-                       <?> "integer"
 
 parseTime :: Parser Time
 parseTime = (,) <$> (parseInt <* symbol ":")
                 <*> parseInt
-                <?> "time"
--- ~ channel owner
--- @ op
--- + voice
--- % half op
-parseOp :: Parser Bool
-parseOp = (try (oneOf "@+%~") *> return True)
-      <|> (whiteSpace *> return False)
 
 parseName :: Parser Name
 parseName = manyTill anyChar (lookAhead (symbol ">"))
 
 eatLine :: Parser String
-eatLine = manyTill anyChar eof <?> "whole line"
+eatLine = manyTill anyChar eof
 
 parseContents :: Parser Contents
 parseContents = eatLine
@@ -116,7 +120,7 @@ get :: Maybe LocalTime -> LocalTime
 get = maybe (anyTime) id
 
 parseDateString :: Parser LocalTime
-parseDateString = (get . stringToLocalTime) <$> eatLine <?> "date string"
+parseDateString = (get . stringToLocalTime) <$> eatLine
 
 parseLine :: (Int, String) -> Either (Int, String, String) DataLine
 parseLine (ln, s) =

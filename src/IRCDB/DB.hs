@@ -7,7 +7,6 @@ import Database.HDBC
 import Database.HDBC.ODBC
 import Data.Foldable
 import Data.Time.LocalTime
-import Text.StringTemplate
 import System.Directory
 import IRCDB.Parser
 import IRCDB.Time
@@ -45,24 +44,42 @@ processOne con t (Right l) = insert t l con
 
 
 insert :: IConnection c => LocalTime -> DataLine -> c -> IO LocalTime
-insert t (Message time op name msg) con = do
+insert t (Message time typ name msg) con = do
     let newT = setHoursMinutes t time
-    prepared <- prepare con "INSERT INTO text (name, flags, text, time) VALUES (?,?,?,?);"
+    prepared <- prepare con "INSERT INTO messages (name, type, text, time) VALUES (?,?,?,?);"
     let sqlName = toSql name
-    let sqlOp = toSql op
+    let sqlType = toSql typ
     let sqlMsg = toSql msg
     let sqlTime = toSql newT
-    execute prepared [sqlName, sqlOp, sqlMsg, sqlTime]
+    execute prepared [sqlName, sqlType, sqlMsg, sqlTime]
+    return newT
+insert t (Nick time old new) con = do
+    let newT = setHoursMinutes t time
+    prepared <- prepare con "INSERT INTO nickchanges (oldname, newname, time) VALUES (?,?,?);"
+    let sqlOld = toSql old
+    let sqlMsg = toSql new
+    let sqlTime = toSql newT
+    execute prepared [sqlOld, sqlMsg, sqlTime]
     return newT
 insert _ (Day date) _ = return date
 insert _ (Open date) _ = return date
 insert t _ _ = return t
 
+getRand :: IConnection c => c -> IO [String]
+getRand con = do
+    quickQuery con "SET @max = (SELECT MAX(id) FROM messages); " []
+    x <- quickQuery con "SELECT * FROM messages AS v JOIN (SELECT ROUND(RAND() * @max) as v2 FROM messages LIMIT 10) as dummy ON v.id = v2" []
+    return $ show <$> x
+
 getUsers :: IConnection c => c -> IO [String]
 getUsers con = do
-    users <- quickQuery con "SELECT name, COUNT(*) FROM text GROUP BY name ORDER BY COUNT(*);" []
+    users <- quickQuery con "SELECT * FROM (SELECT name, COUNT(*) as count FROM messages GROUP BY name ORDER BY count DESC LIMIT 10) AS dummy ORDER BY count" []
     return $ show <$> users
 
+getNicks :: IConnection c => c -> IO [String]
+getNicks con = do
+    nicks <- quickQuery con "SELECT oldname, COUNT(*) as count FROM nickchanges GROUP BY oldname ORDER BY count DESC LIMIT 10" []
+    return $ show <$> nicks
 
 connect :: IO Connection
 connect = do
@@ -77,24 +94,40 @@ connect = do
     conn <- connectODBC connectionString
     return conn
 
-deleteDb :: IConnection c => c -> IO ()
-deleteDb con = do
-    quickQuery con "DROP TABLE IF EXISTS text;" []
+deleteDbs :: IConnection c => c -> IO ()
+deleteDbs con = do
+    quickQuery con "DROP TABLE IF EXISTS messages;" []
+    quickQuery con "DROP TABLE IF EXISTS statuses;" []
+    quickQuery con "DROP TABLE IF EXISTS nickchanges;" []
+
     return ()
 
-createDb :: IConnection c => c -> IO ()
-createDb con = do
-    let query = "CREATE TABLE text(id BIGINT NOT NULL AUTO_INCREMENT,\
-                                  \text VARCHAR(1000),\
-                                  \flags VARCHAR(2),\
-                                  \name VARCHAR(36),\
-                                  \time DATETIME,\
-                                  \PRIMARY KEY (id)"
-    quickQuery con query []
+createDbs :: IConnection c => c -> IO ()
+createDbs con = do
+    let messages = "CREATE TABLE messages(id BIGINT NOT NULL AUTO_INCREMENT,\
+                                        \ text VARCHAR(4000),\
+                                        \ type INT,\
+                                        \ name VARCHAR(36),\
+                                        \ time DATETIME,\
+                                        \ PRIMARY KEY (id))\
+                  \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    let statuses = "CREATE TABLE statuses(id BIGINT NOT NULL AUTO_INCREMENT,\
+                                        \ text VARCHAR(4000),\
+                                        \ name VARCHAR(36),\
+                                        \ time DATETIME,\
+                                        \ PRIMARY KEY (id))"
+    let nickchanges = "CREATE TABLE nickchanges(id BIGINT NOT NULL AUTO_INCREMENT,\
+                                              \ oldname VARCHAR(36),\
+                                              \ newname VARCHAR(36),\
+                                              \ time DATETIME,\
+                                              \ PRIMARY KEY (id))"
+    quickQuery con messages []
+    quickQuery con statuses []
+    quickQuery con nickchanges []
     return ()
 
-populateDb :: IConnection c => c -> IO ()
-populateDb con = do
+populateDbs :: IConnection c => c -> IO ()
+populateDbs con = do
     logfile <- readConfig
     contents <- lines <$> readFile logfile
     let parsed = parseLine <$> zip [1..] contents
@@ -104,9 +137,9 @@ populateDb con = do
 
 repopulateDb :: IConnection c => c -> IO ()
 repopulateDb con = do
-    deleteDb con
-    createDb con
-    populateDb con
+    deleteDbs con
+    createDbs con
+    populateDbs con
 
 doAction :: Action -> IO ()
 doAction action = do
@@ -114,12 +147,9 @@ doAction action = do
     case action of
         Repopulate -> repopulateDb con
         Generate -> do
-            template <- readTemplate
             users <- getUsers con
-            print $ length users
-            sequence_ $ print <$> users
-            let fill = (newSTMP template :: StringTemplate String)
-            let thing = render $ setManyAttrib (zip (repeat "stuff") users) fill
-
-            writeFile "generated.html" thing
+            rand <- getRand con
+            nicks <- getNicks con
+            let rendered = makeFile (makeList users ++ makeList rand ++ makeList nicks)
+            writeFile "generated.html" rendered
     disconnect con
