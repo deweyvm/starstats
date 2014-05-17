@@ -1,4 +1,4 @@
-{-# LANGUAGE DoAndIfThenElse #-}
+{-# LANGUAGE DoAndIfThenElse, NoMonomorphismRestriction #-}
 module IRCDB.DB where
 
 import Prelude hiding (foldl, concat, sequence_)
@@ -65,21 +65,29 @@ insert _ (Day date) _ = return date
 insert _ (Open date) _ = return date
 insert t _ _ = return t
 
-getRand :: IConnection c => c -> IO [String]
+extractPair :: [SqlValue] -> (String, Int)
+extractPair (x:y:_) = (fromSql x, fromSql y)
+extractPair       _ = undefined
+
+extractMessage :: [SqlValue] -> (String, String)
+extractMessage (_:msg:_:name:_) = (fromSql name, fromSql msg)
+extractMessage                _ = undefined
+
+getRand :: IConnection c => c -> IO [(String,String)]
 getRand con = do
     quickQuery con "SET @max = (SELECT MAX(id) FROM messages); " []
     x <- quickQuery con "SELECT * FROM messages AS v JOIN (SELECT ROUND(RAND() * @max) as v2 FROM messages LIMIT 10) as dummy ON v.id = v2" []
-    return $ show <$> x
+    return $ extractMessage <$> x
 
-getUsers :: IConnection c => c -> IO [String]
+getUsers :: IConnection c => c -> IO [(String,Int)]
 getUsers con = do
     users <- quickQuery con "SELECT * FROM (SELECT name, COUNT(*) as count FROM messages GROUP BY name ORDER BY count DESC LIMIT 10) AS dummy ORDER BY count" []
-    return $ show <$> users
+    return $ extractPair <$> users
 
-getNicks :: IConnection c => c -> IO [String]
+getNicks :: IConnection c => c -> IO [(String,Int)]
 getNicks con = do
     nicks <- quickQuery con "SELECT oldname, COUNT(*) as count FROM nickchanges GROUP BY oldname ORDER BY count DESC LIMIT 10" []
-    return $ show <$> nicks
+    return $ extractPair <$> nicks
 
 connect :: IO Connection
 connect = do
@@ -141,15 +149,25 @@ repopulateDb con = do
     createDbs con
     populateDbs con
 
+
+generate :: IConnection con => con -> IO ()
+generate con = do
+    let format (user, num) = user ++ ": " ++ show num
+    let lFormat = liftA format
+    let headerList s xs = withHeading s $ makeList xs
+    rand <- lFormat <$> getRand con
+    users <- lFormat <$> getUsers con
+    nicks <- lFormat <$> getNicks con
+    let rendered = unlines $ (uncurry headerList) <$> [ ("Top Users", users)
+                                                      , ("Random Messages", rand)
+                                                      , ("Most Changed Nicks", nicks)
+                                                      ]
+    writeFile "generated.html" $ makeFile rendered
 doAction :: Action -> IO ()
 doAction action = do
     con <- connect
     case action of
         Repopulate -> repopulateDb con
-        Generate -> do
-            users <- getUsers con
-            rand <- getRand con
-            nicks <- getNicks con
-            let rendered = makeFile (makeList users ++ makeList rand ++ makeList nicks)
-            writeFile "generated.html" rendered
+        Generate -> generate con
+
     disconnect con
