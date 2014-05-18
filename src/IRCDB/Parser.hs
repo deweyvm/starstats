@@ -12,11 +12,14 @@ import IRCDB.Time
 type Name = String
 type Contents = String
 
-
-
 data DataLine = Message Time Int Name Contents
-              | Status Time String
               | Nick Time Name Name
+              | Kick Time Name Name Contents
+              | Topic Time Name Contents
+              | Join Time Name
+              | Part Time Name Contents
+              | Quit Time Name Contents
+              | Mode Time Contents
               | Notice Time String
               | Invite Time String
               | Day LocalTime
@@ -72,11 +75,51 @@ parseNotice = Notice <$> parseTime
                      <*> ((symbol "-") *> eatLine)
 
 parseStatus :: Parser DataLine
-parseStatus = try parseNickChange <|> parseGenStatus
+parseStatus = try parseQuit
+          <|> try parsePart
+          <|> try parseJoin
+          <|> try parseMode
+          <|> try parseNickChange
+          <|> try parseKick
+          <|> parseTopic
 
-parseGenStatus :: Parser DataLine
-parseGenStatus = Status <$> parseTime
-                        <*> (symbol "-!-" *> eatLine)
+parseJoin :: Parser DataLine
+parseJoin =
+    Join <$> parseTime
+         <*> (symbol "-!-" *> parseNick <* symbol "["
+                                        <* many (noneOf "]")
+                                        <* symbol "] has joined"
+                                        <* eatLine)
+
+parseLeave :: (Time -> Name -> Contents -> DataLine) -> Parser DataLine
+parseLeave ctor =
+    ctor <$> parseTime
+         <*> (symbol "-!-" *> parseNick <* many (noneOf "]") <* symbol "] has quit")
+         <*> eatLine
+
+parseQuit :: Parser DataLine
+parseQuit = parseLeave Quit
+
+parsePart :: Parser DataLine
+parsePart = parseLeave Part
+
+parseMode :: Parser DataLine
+parseMode = Mode <$> parseTime
+                 <*> (symbol "-!- mode/#" *> word *> eatLine)
+
+word :: Parser String
+word = many (noneOf " ")
+
+parseTopic :: Parser DataLine
+parseTopic = Topic <$> parseTime
+                   <*> (symbol "-!-" *> parseNick)
+                   <*> (many (noneOf ":") *> whiteSpace *> eatLine)
+
+parseKick :: Parser DataLine
+parseKick = Kick <$> parseTime
+                 <*> (symbol "-!-" *> parseNick)
+                 <*> (symbol "was kicked from" *> word *> word *> parseNick <* whiteSpace)
+                 <*> eatLine
 
 parseNick :: Parser Name
 parseNick = many (noneOf " ") <* whiteSpace
@@ -85,7 +128,6 @@ parseNickChange :: Parser DataLine
 parseNickChange = Nick <$> parseTime
                        <*> (symbol "-!-" *> parseNick)
                        <*> (symbol "is now known as" *> parseNick)
-
 
 parseAction :: Parser DataLine
 parseAction = Message <$> parseTime

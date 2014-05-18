@@ -1,13 +1,19 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 module IRCDB.Renderer where
-import Data.List
+
+import Control.Applicative
+
 
 
 makeList :: [String] -> String
-makeList xs = "<ul><li>" ++ (intercalate "</li><li>" xs) ++ "</li></ul>"
+makeList xs = tag "ul" $ concat $ tag "li" <$> xs
 
 withHeading :: String -> (String -> String)
-withHeading h = (++) ("<h1>" ++ h ++ "</h1>")
+withHeading h = (++) (tag "h2" h)
 
 makeFile :: String -> String
-makeFile x = "<html><head></head><body>" ++ x ++ "</body></html>"
+makeFile x = tag "html" $ tag "head" "" ++ tag "body" x
+
+
+tag :: String -> String -> String
+tag s c = concat ["<", s, ">\n", c, "\n</", s, ">"]

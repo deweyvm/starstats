@@ -61,6 +61,23 @@ insert t (Nick time old new) con = do
     let sqlTime = toSql newT
     execute prepared [sqlOld, sqlMsg, sqlTime]
     return newT
+insert t (Kick time kickee kicker reason) con = do
+    let newT = setHoursMinutes t time
+    prepared <- prepare con "INSERT INTO kicks (kicker, kickee, reason, time) VALUES (?,?,?, ?);"
+    let sqlKicker = toSql kicker
+    let sqlKickee = toSql kickee
+    let sqlReason = toSql reason
+    let sqlTime = toSql newT
+    execute prepared [sqlKicker, sqlKickee, sqlReason, sqlTime]
+    return newT
+insert t (Topic time setter topic) con = do
+    let newT = setHoursMinutes t time
+    prepared <- prepare con "INSERT INTO topics (name, topic, time) VALUES (?,?,?);"
+    let sqlName = toSql setter
+    let sqlTopic = toSql topic
+    let sqlTime = toSql newT
+    execute prepared [sqlName, sqlTopic, sqlTime]
+    return newT
 insert _ (Day date) _ = return date
 insert _ (Open date) _ = return date
 insert t _ _ = return t
@@ -73,21 +90,54 @@ extractMessage :: [SqlValue] -> (String, String)
 extractMessage (_:msg:_:name:_) = (fromSql name, fromSql msg)
 extractMessage                _ = undefined
 
-getRand :: IConnection c => c -> IO [(String,String)]
-getRand con = do
-    quickQuery con "SET @max = (SELECT MAX(id) FROM messages); " []
-    x <- quickQuery con "SELECT * FROM messages AS v JOIN (SELECT ROUND(RAND() * @max) as v2 FROM messages LIMIT 10) as dummy ON v.id = v2" []
-    return $ extractMessage <$> x
+
+type Extract a = [SqlValue] -> a
+
+runQuery :: IConnection c => c -> String -> IO [[SqlValue]]
+runQuery con q = quickQuery con q []
+
+getAndExtract :: IConnection c => c -> [String] -> Extract a -> String -> IO [a]
+getAndExtract con qs f query = do
+    sequence_ $ runQuery con <$> qs
+    res <- runQuery con query
+    return $ f <$> res
+
+getRandMessages :: IConnection c => c -> IO [(String,String)]
+getRandMessages con =
+    let qs = ["SET @max = (SELECT MAX(id) FROM messages); "] in
+    let q = "SELECT * FROM messages AS v JOIN (SELECT ROUND(RAND() * @max) as v2 FROM messages LIMIT 10) as dummy ON v.id = v2" in
+    getAndExtract con qs extractMessage q
+
+getKickers :: IConnection c => c -> IO [(String,Int)]
+getKickers con =
+    let q = "SELECT kicker, COUNT(*) as count FROM kicks GROUP BY kicker ORDER BY count DESC LIMIT 10" in
+    getAndExtract con [] extractPair q
+
+getKickees :: IConnection c => c -> IO [(String,Int)]
+getKickees con =
+    let q = "SELECT kickee, COUNT(*) as count FROM kicks GROUP BY kickee ORDER BY count DESC LIMIT 10" in
+    getAndExtract con [] extractPair q
 
 getUsers :: IConnection c => c -> IO [(String,Int)]
-getUsers con = do
-    users <- quickQuery con "SELECT * FROM (SELECT name, COUNT(*) as count FROM messages GROUP BY name ORDER BY count DESC LIMIT 10) AS dummy ORDER BY count" []
-    return $ extractPair <$> users
+getUsers con =
+    let q = "SELECT name, COUNT(*) as count FROM messages GROUP BY name ORDER BY count DESC LIMIT 10" in
+    getAndExtract con [] extractPair q
 
 getNicks :: IConnection c => c -> IO [(String,Int)]
-getNicks con = do
-    nicks <- quickQuery con "SELECT oldname, COUNT(*) as count FROM nickchanges GROUP BY oldname ORDER BY count DESC LIMIT 10" []
-    return $ extractPair <$> nicks
+getNicks con =
+    let q = "SELECT oldname, COUNT(*) as count FROM nickchanges GROUP BY oldname ORDER BY count DESC LIMIT 10" in
+    getAndExtract con [] extractPair q
+
+getMorning :: IConnection c => c -> IO [(String,Int)]
+getMorning con =
+    let q = "SELECT name, COUNT(*) as count, time FROM messages WHERE HOUR(time) < 6 GROUP BY name ORDER BY count DESC LIMIT 10" in
+    getAndExtract con [] extractPair q
+
+getRandTopics :: IConnection c => c -> IO [(String,String)]
+getRandTopics con =
+    let qs = ["SET @max = (SELECT MAX(id) FROM topics); "] in
+    let q = "SELECT * FROM topics AS v JOIN (SELECT ROUND(RAND() * @max) as v2 FROM topics LIMIT 10) as dummy ON v.id = v2" in
+    getAndExtract con qs extractMessage q
 
 connect :: IO Connection
 connect = do
@@ -104,10 +154,12 @@ connect = do
 
 deleteDbs :: IConnection c => c -> IO ()
 deleteDbs con = do
-    quickQuery con "DROP TABLE IF EXISTS messages;" []
-    quickQuery con "DROP TABLE IF EXISTS statuses;" []
-    quickQuery con "DROP TABLE IF EXISTS nickchanges;" []
-
+    sequence_ $ runQuery con <$> [ "DROP TABLE IF EXISTS messages;"
+                                 , "DROP TABLE IF EXISTS statuses;"
+                                 , "DROP TABLE IF EXISTS nickchanges;"
+                                 , "DROP TABLE IF EXISTS topics;"
+                                 , "DROP TABLE IF EXISTS kicks;"
+                                 ]
     return ()
 
 createDbs :: IConnection c => c -> IO ()
@@ -123,15 +175,32 @@ createDbs con = do
                                         \ text VARCHAR(4000),\
                                         \ name VARCHAR(36),\
                                         \ time DATETIME,\
-                                        \ PRIMARY KEY (id))"
+                                        \ PRIMARY KEY (id))\
+                  \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let nickchanges = "CREATE TABLE nickchanges(id BIGINT NOT NULL AUTO_INCREMENT,\
                                               \ oldname VARCHAR(36),\
                                               \ newname VARCHAR(36),\
                                               \ time DATETIME,\
                                               \ PRIMARY KEY (id))"
-    quickQuery con messages []
-    quickQuery con statuses []
-    quickQuery con nickchanges []
+    let topics = "CREATE TABLE topics(id BIGINT NOT NULL AUTO_INCREMENT,\
+                                    \ name VARCHAR(36),\
+                                    \ topic VARCHAR(3000),\
+                                    \ time DATETIME,\
+                                    \ PRIMARY KEY (id))\
+                \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    let kicks = "CREATE TABLE kicks(id BIGINT NOT NULL AUTO_INCREMENT,\
+                                  \ kicker VARCHAR(36),\
+                                  \ kickee VARCHAR(36),\
+                                  \ reason VARCHAR(3000),\
+                                  \ time DATETIME,\
+                                  \ PRIMARY KEY (id))\
+               \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    sequence_ $ runQuery con <$> [ messages
+                                 , statuses
+                                 , nickchanges
+                                 , topics
+                                 , kicks
+                                 ]
     return ()
 
 populateDbs :: IConnection c => c -> IO ()
@@ -149,25 +218,32 @@ repopulateDb con = do
     createDbs con
     populateDbs con
 
-
-generate :: IConnection con => con -> IO ()
+generate :: IConnection c => c -> IO ()
 generate con = do
     let format (user, num) = user ++ ": " ++ show num
     let lFormat = liftA format
     let headerList s xs = withHeading s $ makeList xs
-    rand <- lFormat <$> getRand con
+    morning <- lFormat <$> getMorning con
+    rand <- lFormat <$> getRandMessages con
     users <- lFormat <$> getUsers con
     nicks <- lFormat <$> getNicks con
-    let rendered = unlines $ (uncurry headerList) <$> [ ("Top Users", users)
+    kickers <- lFormat <$> getKickers con
+    kickees <- lFormat <$> getKickees con
+    topics <- lFormat <$> getRandTopics con
+    let rendered = unlines $ (uncurry headerList) <$> [ ("Active in the Morning", morning)
+                                                      , ("Top Users", users)
                                                       , ("Random Messages", rand)
                                                       , ("Most Changed Nicks", nicks)
+                                                      , ("Prolific Kickers", kickers)
+                                                      , ("Trouble Makers", kickees)
+                                                      , ("Topics", topics)
                                                       ]
     writeFile "generated.html" $ makeFile rendered
+
 doAction :: Action -> IO ()
 doAction action = do
     con <- connect
     case action of
         Repopulate -> repopulateDb con
         Generate -> generate con
-
     disconnect con
