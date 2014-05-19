@@ -108,10 +108,10 @@ runQuery con q = quickQuery con q []
 populateTop :: IConnection c => c -> IO ()
 populateTop con = do
     runQuery con "INSERT INTO top (name, msgs)\
-               \ (SELECT name, COUNT(*) as count FROM messages\
-                    \ GROUP BY name\
-                    \ ORDER BY count DESC\
-                    \ LIMIT 10);"
+                \ (SELECT name, COUNT(*) as count FROM messages\
+                     \ GROUP BY name\
+                     \ ORDER BY count DESC\
+                     \ LIMIT 10);"
     return ()
 
 getAndExtract :: IConnection c
@@ -193,10 +193,11 @@ getMorning con =
                                     \ AND n = messages.name\
              \ GROUP BY messages.name\
              \ ORDER BY count DESC;" in
-    (,,,) <$> getAndExtract con [] extractPair late
-          <*> getAndExtract con [] extractPair morn
-          <*> getAndExtract con [] extractPair aftr
-          <*> getAndExtract con [] extractPair eve
+    let get = getAndExtract con [] extractPair in
+    (,,,) <$> get late
+          <*> get morn
+          <*> get aftr
+          <*> get eve
 
 getRandTopics :: IConnection c => c -> IO [(String,String)]
 getRandTopics con =
@@ -207,6 +208,8 @@ getRandTopics con =
     getAndExtract con qs extractTopic q
 
 
+--getRandTopTen :: IConnection c => c -> IO [(String,String)]
+--getRandTopTen con =
 
 connect :: IO Connection
 connect = do
