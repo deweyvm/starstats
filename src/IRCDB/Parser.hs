@@ -91,17 +91,17 @@ parseJoin =
                                         <* symbol "] has joined"
                                         <* eatLine)
 
-parseLeave :: (Time -> Name -> Contents -> DataLine) -> Parser DataLine
-parseLeave ctor =
+parseLeave :: (Time -> Name -> Contents -> DataLine) -> String -> Parser DataLine
+parseLeave ctor s =
     ctor <$> parseTime
-         <*> (symbol "-!-" *> parseNick <* many (noneOf "]") <* symbol "] has quit")
+         <*> (symbol "-!-" *> parseNick <* many (noneOf "]") <* symbol ("] " ++ s))
          <*> eatLine
 
 parseQuit :: Parser DataLine
-parseQuit = parseLeave Quit
+parseQuit = parseLeave Quit "has quit"
 
 parsePart :: Parser DataLine
-parsePart = parseLeave Part
+parsePart = parseLeave Part "has left"
 
 parseMode :: Parser DataLine
 parseMode = Mode <$> parseTime
@@ -113,12 +113,15 @@ word = many (noneOf " ")
 parseTopic :: Parser DataLine
 parseTopic = Topic <$> parseTime
                    <*> (symbol "-!-" *> parseNick)
-                   <*> (many (noneOf ":") *> whiteSpace *> eatLine)
+                   <*> (symbol "changed the topic of #"
+                           *> parseNick
+                           *> symbol "to: "
+                           *> eatLine)
 
 parseKick :: Parser DataLine
 parseKick = Kick <$> parseTime
                  <*> (symbol "-!-" *> parseNick)
-                 <*> (symbol "was kicked from" *> word *> word *> parseNick <* whiteSpace)
+                 <*> (symbol "was kicked from #" *> word *> symbol " by " *> parseNick <* whiteSpace)
                  <*> eatLine
 
 parseNick :: Parser Name
