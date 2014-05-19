@@ -305,7 +305,8 @@ combineUsage late morn aftr evening users =
                x = look morn
                y = look aftr
                z = look evening in
-           let ddiv = (/) `on` fromIntegral in
+           let ddiv :: Int -> Int -> Float
+               ddiv = (/) `on` fromIntegral in
            let total = (w + x + y + z) in
            let percent t = truncate $ ddiv (t * 100) total in
            (user, percent w, percent x, percent y, percent z, msgs)
