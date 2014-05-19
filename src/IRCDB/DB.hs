@@ -47,7 +47,8 @@ processOne con t (Right l) = insert t l con
 insert :: IConnection c => LocalTime -> DataLine -> c -> IO LocalTime
 insert t (Message time typ name msg) con = do
     let newT = setHoursMinutes t time
-    prepared <- prepare con "INSERT INTO messages (name, type, text, time) VALUES (?,?,?,?);"
+    prepared <- prepare con "INSERT INTO messages (name, type, text, time)\
+                           \ VALUES (?,?,?,?);"
     let sqlName = toSql name
     let sqlType = toSql typ
     let sqlMsg = toSql msg
@@ -56,7 +57,8 @@ insert t (Message time typ name msg) con = do
     return newT
 insert t (Nick time old new) con = do
     let newT = setHoursMinutes t time
-    prepared <- prepare con "INSERT INTO nickchanges (oldname, newname, time) VALUES (?,?,?);"
+    prepared <- prepare con "INSERT INTO nickchanges (oldname, newname, time)\
+                           \ VALUES (?,?,?);"
     let sqlOld = toSql old
     let sqlMsg = toSql new
     let sqlTime = toSql newT
@@ -64,7 +66,8 @@ insert t (Nick time old new) con = do
     return newT
 insert t (Kick time kickee kicker reason) con = do
     let newT = setHoursMinutes t time
-    prepared <- prepare con "INSERT INTO kicks (kicker, kickee, reason, time) VALUES (?,?,?, ?);"
+    prepared <- prepare con "INSERT INTO kicks (kicker, kickee, reason, time)\
+                           \ VALUES (?,?,?, ?);"
     let sqlKicker = toSql kicker
     let sqlKickee = toSql kickee
     let sqlReason = toSql reason
@@ -73,7 +76,8 @@ insert t (Kick time kickee kicker reason) con = do
     return newT
 insert t (Topic time setter topic) con = do
     let newT = setHoursMinutes t time
-    prepared <- prepare con "INSERT INTO topics (name, topic, time) VALUES (?,?,?);"
+    prepared <- prepare con "INSERT INTO topics (name, topic, time)\
+                           \ VALUES (?,?,?);"
     let sqlName = toSql setter
     let sqlTopic = toSql topic
     let sqlTime = toSql newT
@@ -110,7 +114,12 @@ populateTop con = do
                     \ LIMIT 10);"
     return ()
 
-getAndExtract :: IConnection c => c -> [String] -> Extract a -> String -> IO [a]
+getAndExtract :: IConnection c
+              => c
+              -> [String]
+              -> Extract a
+              -> String
+              -> IO [a]
 getAndExtract con qs f query = do
     sequence_ $ runQuery con <$> qs
     res <- runQuery con query
@@ -120,7 +129,9 @@ getRandMessages :: IConnection c => c -> IO [(String,String)]
 getRandMessages con =
     let qs = ["SET @max = (SELECT MAX(id) FROM messages); "] in
     let q = "SELECT * FROM messages AS v\
-           \ JOIN (SELECT ROUND(RAND() * @max) as v2 FROM messages LIMIT 10) as dummy\
+           \ JOIN (SELECT ROUND(RAND() * @max) as v2\
+                 \ FROM messages\
+                 \ LIMIT 10) as dummy\
            \ ON v.id = v2;" in
     getAndExtract con qs extractMessage q
 
@@ -194,7 +205,6 @@ getRandTopics con =
            \ JOIN (SELECT ROUND(RAND() * @max) as v2 FROM topics LIMIT 10) as dummy\
            \ ON v.id = v2;" in
     getAndExtract con qs extractTopic q
-
 
 
 
