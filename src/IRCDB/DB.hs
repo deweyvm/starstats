@@ -312,35 +312,19 @@ combineUsage late morn aftr evening users =
            (user, percent w, percent x, percent y, percent z, msgs)
 
 
-formatTimes :: (String, Int, Int, Int, Int, Int) -> String
-formatTimes (user, w, x, y, z, total) =
-    concat [ user
-           , ": "
-           , show w
-           , " "
-           , show x
-           , " "
-           , show y
-           , " "
-           , show z
-           , " "
-           , show total
-           ]
 
 generate :: IConnection c => c -> IO ()
 generate con = do
     populateTop con
-    let format (user, num) = user ++ ": " ++ show num
-    let lFormat = liftA format
     let headerList s xs = withHeading s $ makeList xs
     users <- getUsers con
     (late, morning, evening, night) <- getMorning con
     let times = formatTimes <$> combineUsage late morning evening night users
-    rand <- lFormat <$> getRandMessages con
-    nicks <- lFormat <$> getNicks con
-    kickers <- lFormat <$> getKickers con
-    kickees <- lFormat <$> getKickees con
-    topics <- lFormat <$> getRandTopics con
+    rand <- formatList <$> getRandMessages con
+    nicks <- formatList <$> getNicks con
+    kickers <- formatList <$> getKickers con
+    kickees <- formatList <$> getKickees con
+    topics <- formatList <$> getRandTopics con
     let rendered = unlines $ (uncurry headerList) <$> [ ("Top Users", times)
                                                       , ("Random Messages", rand)
                                                       , ("Most Changed Nicks", nicks)

@@ -3,6 +3,27 @@ module IRCDB.Renderer where
 
 import Control.Applicative
 
+formatTimes :: (String, Int, Int, Int, Int, Int) -> String
+formatTimes (user, w, x, y, z, total) =
+    concat [ user
+           , ": "
+           , show w
+           , " "
+           , show x
+           , " "
+           , show y
+           , " "
+           , show z
+           , " "
+           , show total
+           ]
+
+simpleFormat :: Show a => (String, a) -> String
+simpleFormat (user, num) = user ++ ": " ++ show num
+
+formatList :: Show a => [(String, a)] -> [String]
+formatList = liftA simpleFormat
+
 
 
 makeList :: [String] -> String
