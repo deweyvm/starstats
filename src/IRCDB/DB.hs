@@ -105,9 +105,9 @@ populateTop :: IConnection c => c -> IO ()
 populateTop con = do
     runQuery con "INSERT INTO top (name, msgs)\
                \ (SELECT name, COUNT(*) as count FROM messages\
-                  \ GROUP BY name\
-                  \ ORDER BY count DESC\
-                  \ LIMIT 10);"
+                    \ GROUP BY name\
+                    \ ORDER BY count DESC\
+                    \ LIMIT 10);"
     return ()
 
 getAndExtract :: IConnection c => c -> [String] -> Extract a -> String -> IO [a]
