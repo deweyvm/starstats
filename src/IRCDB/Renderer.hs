@@ -24,8 +24,6 @@ simpleFormat (user, num) = user ++ ": " ++ show num
 formatList :: Show a => [(String, a)] -> [String]
 formatList = liftA simpleFormat
 
-
-
 makeList :: [String] -> String
 makeList xs = tag "ul" $ concat $ tag "li" <$> xs
 
