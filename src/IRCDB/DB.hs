@@ -8,8 +8,8 @@ import Database.HDBC.ODBC
 import Data.Foldable
 import Data.Function
 import Data.Time.LocalTime
-import qualified Data.MultiMap as MMap
 import System.Directory
+import qualified Text.Regex.Posix as RE
 import IRCDB.Parser
 import IRCDB.Time
 import IRCDB.Renderer
@@ -190,6 +190,24 @@ getNicks con =
            \ LIMIT 10;" in
     getAndExtract con [] extractPair q
 
+urlRegexp :: String
+urlRegexp = "http://[^ ]*"
+
+extractSqlUrl :: [SqlValue] -> String
+extractSqlUrl (x:_) = fromSql x
+
+extractUrl :: String -> String
+extractUrl s = case s RE.=~ urlRegexp :: [[String]] of
+    ((x:_) : _) -> x
+    _ -> undefined
+
+getUrls :: IConnection c => c -> IO [String]
+getUrls con = do
+    prepared <- prepare con "SELECT text FROM messages WHERE text REGEXP ? LIMIT 10"
+    execute prepared [toSql urlRegexp]
+    rows <- fetchAllRows prepared
+    return $ (extractUrl . extractSqlUrl) <$> rows
+
 getMorning :: IConnection c
            => c
            -> IO ([(String, Int)],[(String, Int)],[(String, Int)],[(String, Int)])
@@ -330,11 +348,6 @@ repopulateDb con = do
     createDbs con
     populateDbs con
 
-
-
-zipAssoc :: Ord a => [(a,b)] -> [(a, [b])]
-zipAssoc xs = MMap.assocs $ MMap.fromList xs
-
 combineUsage :: [(String, Int)]
              -> [(String, Int)]
              -> [(String, Int)]
@@ -375,7 +388,9 @@ generate con = do
     kickers <- formatList <$> getKickers con
     kickees <- formatList <$> getKickees con
     topics <- formatList <$> getRandTopics con
-    let rendered = unlines $ (uncurry headerList) <$> [ ("Top Users", times)
+    urls <- (id) <$> getUrls con
+    let rendered = unlines $ (uncurry headerList) <$> [ ("Some URLs", urls)
+                                                      , ("Top Users", times)
                                                       , ("Random Messages", rand)
                                                       , ("Most Changed Nicks", nicks)
                                                       , ("Prolific Kickers", kickers)
