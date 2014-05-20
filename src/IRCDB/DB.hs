@@ -194,27 +194,31 @@ getMorning :: IConnection c
            => c
            -> IO ([(String, Int)],[(String, Int)],[(String, Int)],[(String, Int)])
 getMorning con =
-    let late = "SELECT n, COUNT(*) AS count, time\
-              \ FROM messages JOIN (SELECT name AS n FROM top) AS dummy\
-              \ WHERE HOUR(time) < 6 AND n = messages.name\
+    let late = "SELECT messages.name, COUNT(*) AS count, time\
+              \ FROM messages\
+              \ JOIN top AS t\
+              \ WHERE HOUR(time) < 6 AND t.name = messages.name\
               \ GROUP BY messages.name\
               \ ORDER BY count DESC;" in
     let morn = "SELECT messages.name, COUNT(*) AS count, time\
-              \ FROM messages JOIN (SELECT name AS n FROM top) AS dummy\
+              \ FROM messages\
+              \ JOIN top AS t\
               \ WHERE HOUR(time) >= 6 AND HOUR(time) < 12\
-                                    \ AND n = messages.name\
+                                    \ AND t.name = messages.name\
               \ GROUP BY messages.name\
               \ ORDER BY count DESC;" in
     let aftr = "SELECT messages.name, COUNT(*) AS count, time\
-              \ FROM messages JOIN (SELECT name AS n FROM top) AS dummy\
+              \ FROM messages\
+              \ JOIN top AS t\
               \ WHERE HOUR(time) >= 12 AND HOUR(time) < 18\
-                                     \ AND n = messages.name\
+                                     \ AND t.name = messages.name\
               \ GROUP BY messages.name\
               \ ORDER BY count DESC;" in
     let eve = "SELECT messages.name, COUNT(*) AS count, time\
-             \ FROM messages JOIN (SELECT name AS n FROM top) AS dummy\
+             \ FROM messages\
+             \ JOIN top AS t\
              \ WHERE HOUR(time) >= 18 AND HOUR(time) < 24\
-                                    \ AND n = messages.name\
+                                    \ AND t.name = messages.name\
              \ GROUP BY messages.name\
              \ ORDER BY count DESC;" in
     let get' = getAndExtract con [] extractPair in
@@ -227,20 +231,20 @@ getRandTopics :: IConnection c => c -> IO [(String, String)]
 getRandTopics con =
     let qs = ["SET @max = (SELECT MAX(id) FROM topics);"] in
     let q = "SELECT * FROM topics AS v\
-           \ JOIN (SELECT ROUND(RAND() * @max) AS v2 FROM topics LIMIT 10) AS dummy\
-           \ ON v.id = v2;" in
+           \ JOIN (SELECT ROUND(RAND() * @max) AS r FROM topics LIMIT 10) AS dummy\
+           \ ON v.id = r;" in
     getAndExtract con qs extractTopic q
 
 connect :: IO Connection
 connect = do
     let connectionString = "DSN=name32;\
-                           \Driver={MySQL ODBC 5.3 ANSI Driver};\
-                           \Server=localhost;\
-                           \Port=3306;\
-                           \Database=testdb;\
-                           \User=root;\
-                           \Password=password;\
-                           \Option=3;"
+                          \ Driver={MySQL ODBC 5.3 ANSI Driver};\
+                          \ Server=localhost;\
+                          \ Port=3306;\
+                          \ Database=testdb;\
+                          \ User=root;\
+                          \ Password=password;\
+                          \ Option=3;"
     conn <- connectODBC connectionString
     return conn
 
@@ -336,22 +340,24 @@ combineUsage :: [(String, Int)]
              -> [(String, Int)]
              -> [(String, Int)]
              -> [(String, Int)]
-             -> [(String, Int, Int, Int, Int, Int)]
-combineUsage late morn aftr evening users =
+             -> [(String, String)]
+             -> [(String, Int, Int, Int, Int, Int, String)]
+combineUsage late morn aftr evening users messages =
     combine <$> users
-    where combine (user,msgs) =
-           let look s = case lookup user s of
+    where combine (user,ct) =
+           let look s d = case lookup user s of
                         Just x -> x
-                        Nothing -> 0 in
-           let w = look late
-               x = look morn
-               y = look aftr
-               z = look evening in
+                        Nothing -> d in
+           let w = look late 0
+               x = look morn 0
+               y = look aftr 0
+               z = look evening 0
+               o = look messages "ERROR" in
            let ddiv :: Int -> Int -> Float
                ddiv = (/) `on` fromIntegral in
            let total = (w + x + y + z) in
            let percent t = truncate $ ddiv (t * 100) total in
-           (user, percent w, percent x, percent y, percent z, msgs)
+           (user, percent w, percent x, percent y, percent z, ct, o)
 
 
 
@@ -361,15 +367,15 @@ generate con = do
     let headerList s xs = withHeading s $ makeList xs
     users <- getUsers con
     (late, morning, evening, night) <- getMorning con
-    let times = formatTimes <$> combineUsage late morning evening night users
-    randTop <- formatList <$> getRandTopTen con
+    randTop <- getRandTopTen con
+    let times = formatTimes <$> combineUsage late morning evening night users randTop
+
     rand <- formatList <$> getRandMessages con
     nicks <- formatList <$> getNicks con
     kickers <- formatList <$> getKickers con
     kickees <- formatList <$> getKickees con
     topics <- formatList <$> getRandTopics con
     let rendered = unlines $ (uncurry headerList) <$> [ ("Top Users", times)
-                                                      , ("Random Top", randTop)
                                                       , ("Random Messages", rand)
                                                       , ("Most Changed Nicks", nicks)
                                                       , ("Prolific Kickers", kickers)
