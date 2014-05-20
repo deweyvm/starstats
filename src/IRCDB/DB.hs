@@ -106,15 +106,15 @@ insert t _ _ = return t
 
 extractPair :: [SqlValue] -> (String, Int)
 extractPair (x:y:_) = (fromSql x, fromSql y)
-extractPair       _ = undefined
+extractPair       _ = ("Error extracting pair", 0)
 
 extractTopic :: [SqlValue] -> (String, String)
 extractTopic (_:name:msg:_) = (fromSql name, fromSql msg)
-extractTopic              _ = undefined
+extractTopic              _ = ("Error extracting topic", "")
 
 extractMessage :: [SqlValue] -> (String, String)
 extractMessage (_:msg:_:_:name:_) = (fromSql name, fromSql msg)
-extractMessage                  _ = undefined
+extractMessage                  _ = ("Error extracting message", "")
 
 
 type Extract a = [SqlValue] -> a
@@ -199,11 +199,11 @@ extractSqlUrl (x:_) = fromSql x
 extractUrl :: String -> String
 extractUrl s = case s RE.=~ urlRegexp :: [[String]] of
     ((x:_) : _) -> x
-    _ -> undefined
+    _ -> "Error extracting url"
 
 getUrls :: IConnection c => c -> IO [String]
 getUrls con = do
-    prepared <- prepare con "SELECT text FROM messages WHERE text REGEXP ? LIMIT 10"
+    prepared <- prepare con "SELECT text FROM messages WHERE text REGEXP ? ORDER BY RAND() LIMIT 10"
     execute prepared [toSql urlRegexp]
     rows <- fetchAllRows prepared
     return $ (extractUrl . extractSqlUrl) <$> rows
@@ -359,8 +359,8 @@ combineUsage late morn aftr evening users messages =
     combine <$> users
     where combine (user,ct) =
            let look s d = case lookup user s of
-                        Just x -> x
-                        Nothing -> d in
+                              Just x -> x
+                              Nothing -> d in
            let w = look late 0
                x = look morn 0
                y = look aftr 0
@@ -371,8 +371,6 @@ combineUsage late morn aftr evening users messages =
            let total = (w + x + y + z) in
            let percent t = truncate $ ddiv (t * 100) total in
            (user, percent w, percent x, percent y, percent z, ct, o)
-
-
 
 generate :: IConnection c => c -> IO ()
 generate con = do
