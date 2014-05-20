@@ -1,4 +1,4 @@
-{-# LANGUAGE DoAndIfThenElse, NoMonomorphismRestriction #-}
+{-# LANGUAGE DoAndIfThenElse, NoMonomorphismRestriction, BangPatterns #-}
 module IRCDB.DB where
 
 import Prelude hiding (foldl, concat, sequence_)
@@ -10,6 +10,7 @@ import Data.Function
 import Data.Time.LocalTime
 import System.Directory
 import qualified Text.Regex.Posix as RE
+import Debug.Trace
 import IRCDB.Parser
 import IRCDB.Time
 import IRCDB.Renderer
@@ -376,17 +377,19 @@ generate :: IConnection c => c -> IO ()
 generate con = do
     populateTop con
     let headerList s xs = withHeading s $ makeList xs
-    users <- getUsers con
-    (late, morning, evening, night) <- getMorning con
+    !users <- getUsers con
+    (!late, !morning, !evening, !night) <- getMorning con
     randTop <- getRandTopTen con
+    print (late, morning, evening, night)
     let times = formatTimes <$> combineUsage late morning evening night users randTop
 
-    rand <- formatList <$> getRandMessages con
-    nicks <- formatList <$> getNicks con
-    kickers <- formatList <$> getKickers con
-    kickees <- formatList <$> getKickees con
-    topics <- formatList <$> getRandTopics con
-    urls <- (id) <$> getUrls con
+    !rand <- formatList <$> getRandMessages con
+    !nicks <- formatList <$> getNicks con
+    !kickers <- formatList <$> getKickers con
+    !kickees <- formatList <$> getKickees con
+    !topics <- formatList <$> getRandTopics con
+    !urls <- (id) <$> getUrls con
+    print "test"
     let rendered = unlines $ (uncurry headerList) <$> [ ("Some Random URLs", urls)
                                                       , ("Top Users", times)
                                                       , ("Random Messages", rand)

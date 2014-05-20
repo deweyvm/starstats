@@ -1,24 +1,34 @@
-{-# LANGUAGE DoAndIfThenElse #-}
+{-# LANGUAGE DoAndIfThenElse, BangPatterns #-}
 module IRCDB.Renderer where
 
 import Control.Applicative
-
+import Debug.Trace
 formatTimes :: (String, Int, Int, Int, Int, Int, String) -> String
 formatTimes (user, w, x, y, z, total, message) =
-    concat [ user
-           , ": "
-           , show w
-           , " "
-           , show x
-           , " "
-           , show y
-           , " "
-           , show z
-           , " "
-           , show total
-           , " : "
-           , message
-           ]
+    tag "table" $ tag "tr" $ (tag "td" user)
+                          ++ (tag "td" $ show w)
+                          ++ (tag "td" $ show x)
+                          ++ (tag "td" $ show y)
+                          ++ (tag "td" $ show z)
+                          ++ (tag "td" $ (makeCanvas user))
+                          ++ (tag "td" $ show total)
+                          ++ (tag "td" message)
+
+makeCanvas :: String -> String
+makeCanvas name = "<canvas id=\"" ++ name ++ "\" width=\"578\" height=\"200\"></canvas>"
+
+--makeRectScript :: String -> String
+--makeRectScript name = "<script>\
+--            \  var canvas = document.getElementById('" ++ name ++ "');\
+--            \  var context = canvas.getContext('2d');\
+--            \  context.beginPath();\
+--            \  context.rect(0, 0, 32, 16);\
+--            \  context.fillStyle = 'yellow';\
+--            \  context.fill();\
+--            \  context.lineWidth = 7;\
+--            \  context.strokeStyle = 'black';\
+--            \  context.stroke();\
+--            \</script>"
 
 simpleFormat :: Show a => (String, a) -> String
 simpleFormat (user, num) = user ++ ": " ++ show num
