@@ -13,6 +13,7 @@ import System.Directory
 import IRCDB.Parser
 import IRCDB.Time
 import IRCDB.Renderer
+
 data Action = Repopulate | Generate
 
 configFile :: String
@@ -43,18 +44,34 @@ processOne _ t (Left (ln, s, err)) = do
     return t
 processOne con t (Right l) = insert t l con
 
+getIndex :: IConnection c => c -> SqlValue -> IO SqlValue
+getIndex con s = do
+    m <- quickQuery con "SELECT count FROM counts WHERE name = ?;" [s]
+    case m of
+        [(x:_)] -> return x
+        _ -> return $ toSql (0 :: Int)
 
 insert :: IConnection c => LocalTime -> DataLine -> c -> IO LocalTime
 insert t (Message time typ name msg) con = do
     let newT = setHoursMinutes t time
-    prepared <- prepare con "INSERT INTO messages (name, type, text, time)\
-                           \ VALUES (?,?,?,?);"
     let sqlName = toSql name
     let sqlType = toSql typ
     let sqlMsg = toSql msg
     let sqlTime = toSql newT
-    execute prepared [sqlName, sqlType, sqlMsg, sqlTime]
-    return newT
+
+
+    index <- getIndex con sqlName
+    --print index
+    prepared <- prepare con "INSERT INTO messages (name, type, userindex, text, time)\
+                           \ VALUES (?,?,?,?,?);"
+
+    execute prepared [sqlName, sqlType, index, sqlMsg, sqlTime]
+    case fromSql index == (0 :: Int) of
+        True -> do quickQuery con "INSERT INTO counts (name, count) VALUES (?,?)" [sqlName, toSql (1 :: Int)]
+                   return newT
+        False -> do countQ <- prepare con "UPDATE counts SET count=?+1 WHERE name=?;"
+                    execute countQ [index, sqlName]
+                    return newT
 insert t (Nick time old new) con = do
     let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO nickchanges (oldname, newname, time)\
@@ -96,7 +113,7 @@ extractTopic (_:name:msg:_) = (fromSql name, fromSql msg)
 extractTopic                _ = undefined
 
 extractMessage :: [SqlValue] -> (String, String)
-extractMessage (_:msg:_:name:_) = (fromSql name, fromSql msg)
+extractMessage (_:msg:_:_:name:_) = (fromSql name, fromSql msg)
 extractMessage                _ = undefined
 
 
@@ -108,7 +125,7 @@ runQuery con q = quickQuery con q []
 populateTop :: IConnection c => c -> IO ()
 populateTop con = do
     runQuery con "INSERT INTO top (name, msgs)\
-                \ (SELECT name, COUNT(*) as count FROM messages\
+                \ (SELECT name, COUNT(*) AS count FROM messages\
                      \ GROUP BY name\
                      \ ORDER BY count DESC\
                      \ LIMIT 10);"
@@ -125,50 +142,56 @@ getAndExtract con qs f query = do
     res <- runQuery con query
     return $ f <$> res
 
-getRandMessages :: IConnection c => c -> IO [(String,String)]
+getRandMessages :: IConnection c => c -> IO [(String, String)]
 getRandMessages con =
     let qs = ["SET @max = (SELECT MAX(id) FROM messages); "] in
     let q = "SELECT * FROM messages AS v\
-           \ JOIN (SELECT ROUND(RAND() * @max) as v2\
+           \ JOIN (SELECT ROUND(RAND() * @max) AS v2\
                  \ FROM messages\
-                 \ LIMIT 10) as dummy\
+                 \ LIMIT 10) AS dummy\
            \ ON v.id = v2;" in
     getAndExtract con qs extractMessage q
 
-getKickers :: IConnection c => c -> IO [(String,Int)]
+getRandTopTen :: IConnection c => c -> IO [(String, String)]
+getRandTopTen con = do
+    let q = "SELECT * FROM messages AS v\
+           \ INNER JOIN (SELECT name AS n FROM top) AS dummy1 ON v.name = n AND v.userindex = (SELECT ROUND(RAND() * (SELECT count FROM counts WHERE name = n LIMIT 1)) AS dummy2 LIMIT 1)"
+
+    getAndExtract con [] extractMessage q
+
+getKickers :: IConnection c => c -> IO [(String, Int)]
 getKickers con =
-    let q = "SELECT kicker, COUNT(*) as count FROM kicks\
+    let q = "SELECT kicker, COUNT(*) AS count FROM kicks\
            \ GROUP BY kicker\
            \ ORDER BY count DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractPair q
 
-getKickees :: IConnection c => c -> IO [(String,Int)]
+getKickees :: IConnection c => c -> IO [(String, Int)]
 getKickees con =
-    let q = "SELECT kickee, COUNT(*) as count FROM kicks\
+    let q = "SELECT kickee, COUNT(*) AS count FROM kicks\
            \ GROUP BY kickee\
            \ ORDER BY count DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractPair q
 
-getUsers :: IConnection c => c -> IO [(String,Int)]
+getUsers :: IConnection c => c -> IO [(String, Int)]
 getUsers con =
     let q = "SELECT name, msgs FROM top;" in
     getAndExtract con [] extractPair q
 
-getNicks :: IConnection c => c -> IO [(String,Int)]
+getNicks :: IConnection c => c -> IO [(String, Int)]
 getNicks con =
-    let q = "SELECT oldname, COUNT(*) as count\
+    let q = "SELECT oldname, COUNT(*) AS count\
            \ FROM nickchanges\
            \ GROUP BY oldname\
            \ ORDER BY count DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractPair q
 
---SELECT * FROM messages AS v JOIN (SELECT ROUND(RAND() * @max) as v2 FROM messages LIMIT 10) as dummy ON v.id = v2
 getMorning :: IConnection c
            => c
-           -> IO ([(String,Int)],[(String,Int)],[(String,Int)],[(String,Int)])
+           -> IO ([(String, Int)],[(String, Int)],[(String, Int)],[(String, Int)])
 getMorning con =
     let late = "SELECT n, COUNT(*) AS count, time\
               \ FROM messages JOIN (SELECT name AS n FROM top) AS dummy\
@@ -193,23 +216,19 @@ getMorning con =
                                     \ AND n = messages.name\
              \ GROUP BY messages.name\
              \ ORDER BY count DESC;" in
-    let get = getAndExtract con [] extractPair in
-    (,,,) <$> get late
-          <*> get morn
-          <*> get aftr
-          <*> get eve
+    let get' = getAndExtract con [] extractPair in
+    (,,,) <$> get' late
+          <*> get' morn
+          <*> get' aftr
+          <*> get' eve
 
-getRandTopics :: IConnection c => c -> IO [(String,String)]
+getRandTopics :: IConnection c => c -> IO [(String, String)]
 getRandTopics con =
     let qs = ["SET @max = (SELECT MAX(id) FROM topics);"] in
     let q = "SELECT * FROM topics AS v\
-           \ JOIN (SELECT ROUND(RAND() * @max) as v2 FROM topics LIMIT 10) as dummy\
+           \ JOIN (SELECT ROUND(RAND() * @max) AS v2 FROM topics LIMIT 10) AS dummy\
            \ ON v.id = v2;" in
     getAndExtract con qs extractTopic q
-
-
---getRandTopTen :: IConnection c => c -> IO [(String,String)]
---getRandTopTen con =
 
 connect :: IO Connection
 connect = do
@@ -232,6 +251,7 @@ deleteDbs con = do
                                  , "DROP TABLE IF EXISTS topics;"
                                  , "DROP TABLE IF EXISTS kicks;"
                                  , "DROP TABLE IF EXISTS top;"
+                                 , "DROP TABLE IF EXISTS counts;"
                                  ]
     return ()
 
@@ -240,6 +260,7 @@ createDbs con = do
     let messages = "CREATE TABLE messages(id BIGINT NOT NULL AUTO_INCREMENT,\
                                         \ text VARCHAR(4000),\
                                         \ type INT,\
+                                        \ userindex INT,\
                                         \ name VARCHAR(36),\
                                         \ time DATETIME,\
                                         \ PRIMARY KEY (id))\
@@ -273,12 +294,19 @@ createDbs con = do
                               \ msgs INT,\
                               \ PRIMARY KEY (id))\
              \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    let count = "CREATE TABLE counts(id INT NOT NULL AUTO_INCREMENT,\
+                                   \ name VARCHAR(36),\
+                                   \ count INT,\
+                                   \ PRIMARY KEY (id));"
+
+
     sequence_ $ runQuery con <$> [ messages
                                  , statuses
                                  , nickchanges
                                  , topics
                                  , kicks
                                  , top
+                                 , count
                                  ]
     return ()
 
@@ -302,12 +330,12 @@ repopulateDb con = do
 zipAssoc :: Ord a => [(a,b)] -> [(a, [b])]
 zipAssoc xs = MMap.assocs $ MMap.fromList xs
 
-combineUsage :: [(String,Int)]
-             -> [(String,Int)]
-             -> [(String,Int)]
-             -> [(String,Int)]
-             -> [(String,Int)]
-             -> [(String,Int,Int,Int,Int,Int)]
+combineUsage :: [(String, Int)]
+             -> [(String, Int)]
+             -> [(String, Int)]
+             -> [(String, Int)]
+             -> [(String, Int)]
+             -> [(String, Int, Int, Int, Int, Int)]
 combineUsage late morn aftr evening users =
     combine <$> users
     where combine (user,msgs) =
@@ -333,12 +361,14 @@ generate con = do
     users <- getUsers con
     (late, morning, evening, night) <- getMorning con
     let times = formatTimes <$> combineUsage late morning evening night users
+    randTop <- formatList <$> getRandTopTen con
     rand <- formatList <$> getRandMessages con
     nicks <- formatList <$> getNicks con
     kickers <- formatList <$> getKickers con
     kickees <- formatList <$> getKickees con
     topics <- formatList <$> getRandTopics con
     let rendered = unlines $ (uncurry headerList) <$> [ ("Top Users", times)
+                                                      , ("Random Top", randTop)
                                                       , ("Random Messages", rand)
                                                       , ("Most Changed Nicks", nicks)
                                                       , ("Prolific Kickers", kickers)
