@@ -46,7 +46,7 @@ processOne con t (Right l) = insert t l con
 
 getIndex :: IConnection c => c -> SqlValue -> IO SqlValue
 getIndex con s = do
-    m <- quickQuery con "SELECT count FROM counts WHERE name = ?;" [s]
+    m <- quickQuery con "SELECT count FROM counts WHERE user = ?;" [s]
     case m of
         [(x:_)] -> return x
         _ -> return $ toSql (0 :: Int)
@@ -67,9 +67,9 @@ insert t (Message time typ name msg) con = do
 
     execute prepared [sqlName, sqlType, index, sqlMsg, sqlTime]
     case fromSql index == (0 :: Int) of
-        True -> do quickQuery con "INSERT INTO counts (name, count) VALUES (?,?)" [sqlName, toSql (1 :: Int)]
+        True -> do quickQuery con "INSERT INTO counts (user, count) VALUES (?,?)" [sqlName, toSql (1 :: Int)]
                    return newT
-        False -> do countQ <- prepare con "UPDATE counts SET count=?+1 WHERE name=?;"
+        False -> do countQ <- prepare con "UPDATE counts SET count=?+1 WHERE user=?;"
                     execute countQ [index, sqlName]
                     return newT
 insert t (Nick time old new) con = do
@@ -110,11 +110,11 @@ extractPair       _ = undefined
 
 extractTopic :: [SqlValue] -> (String, String)
 extractTopic (_:name:msg:_) = (fromSql name, fromSql msg)
-extractTopic                _ = undefined
+extractTopic              _ = undefined
 
 extractMessage :: [SqlValue] -> (String, String)
 extractMessage (_:msg:_:_:name:_) = (fromSql name, fromSql msg)
-extractMessage                _ = undefined
+extractMessage                  _ = undefined
 
 
 type Extract a = [SqlValue] -> a
@@ -156,7 +156,7 @@ getRandTopTen :: IConnection c => c -> IO [(String, String)]
 getRandTopTen con = do
     --try joining SELECT * from messages rather than top. use top as the root query
     let q = "SELECT * FROM messages AS v\
-           \ INNER JOIN (SELECT name AS n FROM top) AS dummy1 ON v.name = n AND v.userindex = (SELECT ROUND(RAND() * (SELECT count FROM counts WHERE name = n)) AS dummy2 LIMIT 1)"
+           \ INNER JOIN (SELECT name AS n FROM top) AS dummy1 ON v.name = n AND v.userindex = 1" -- (SELECT ROUND(RAND() * (SELECT count FROM counts WHERE count.user = n)) AS dummy2 LIMIT 1)"
 
     getAndExtract con [] extractMessage q
 
@@ -178,7 +178,7 @@ getKickees con =
 
 getUsers :: IConnection c => c -> IO [(String, Int)]
 getUsers con =
-    let q = "SELECT name, msgs FROM top;" in
+    let q = "SELECT name, msgs FROM top" in
     getAndExtract con [] extractPair q
 
 getNicks :: IConnection c => c -> IO [(String, Int)]
@@ -296,7 +296,7 @@ createDbs con = do
                               \ PRIMARY KEY (id))\
              \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let count = "CREATE TABLE counts(id INT NOT NULL AUTO_INCREMENT,\
-                                   \ name VARCHAR(36),\
+                                   \ user VARCHAR(36),\
                                    \ count INT,\
                                    \ PRIMARY KEY (id));"
 
