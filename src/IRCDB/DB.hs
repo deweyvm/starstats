@@ -154,9 +154,9 @@ getRandMessages con =
 
 getRandTopTen :: IConnection c => c -> IO [(String, String)]
 getRandTopTen con = do
-    --try joining SELECT * from messages rather than top. use top as the root query
     let q = "SELECT * FROM messages AS v\
-           \ INNER JOIN (SELECT name AS n FROM top) AS dummy1 ON v.name = n AND v.userindex = 1" -- (SELECT ROUND(RAND() * (SELECT count FROM counts WHERE count.user = n)) AS dummy2 LIMIT 1)"
+           \ INNER JOIN (SELECT ROUND(RAND() * msgs) as r, name, msgs FROM top) AS t\
+           \ ON v.name = t.name AND v.userindex = r"
 
     getAndExtract con [] extractMessage q
 
