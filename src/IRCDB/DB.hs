@@ -387,7 +387,7 @@ generate con = do
     kickees <- formatList <$> getKickees con
     topics <- formatList <$> getRandTopics con
     urls <- (id) <$> getUrls con
-    let rendered = unlines $ (uncurry headerList) <$> [ ("Some URLs", urls)
+    let rendered = unlines $ (uncurry headerList) <$> [ ("Some Random URLs", urls)
                                                       , ("Top Users", times)
                                                       , ("Random Messages", rand)
                                                       , ("Most Changed Nicks", nicks)
