@@ -63,7 +63,6 @@ insert t (Message time typ name msg) con = do
 
 
     index <- getIndex con sqlName
-    --print index
     prepared <- prepare con "INSERT INTO messages (name, type, userindex, text, time)\
                            \ VALUES (?,?,?,?,?);"
 
@@ -143,6 +142,16 @@ getAndExtract con qs f query = do
     sequence_ $ runQuery con <$> qs
     res <- runQuery con query
     return $ f <$> res
+
+getOverallActivity :: IConnection c => c -> IO [(Int,Int)]
+getOverallActivity con = do
+    let q = "SELECT HOUR(messages.time) AS h, COUNT(*)\
+           \ FROM messages\
+           \ GROUP BY h\
+           \ ORDER BY h;"
+    let extract (_:y:_) = fromSql y
+    times <- runQuery con q
+    return $ zip [0..] (extract <$> times)
 
 getRandMessages :: IConnection c => c -> IO [(String, String)]
 getRandMessages con =
@@ -395,23 +404,24 @@ generate con = do
     (late, morning, evening, night) <- getMorning con
     randTop <- getRandTopTen con
     (late, morning, evening, night) `deepseq` (return ())
-    let times = formatTimes $ combineUsage late morning evening night users randTop
+    let userTimes = formatUserTimes $ combineUsage late morning evening night users randTop
     !rand <- getRandMessages con
     !nicks <- getNicks con
     !kickers <- getKickers con
     !kickees <- getKickees con
     !topics <- getRandTopics con
     !urls <- getUrls con
-
+    thing <- getOverallActivity con
+    print thing
     let rendered = unlines $ [ headerTable "Some Random URLs" ("Name", "URL") urls
-                             , withHeading "Top Users" $ times
-                             , headerTable "Random Messages" ("Name", "Number of Messages") rand
+                             , withHeading "Top Users" $ userTimes
+                             , headerTable "Random Messages" ("Name", "Message") rand
                              , headerTable "Most Changed Nicks" ("Name", "Times Changed") nicks
                              , headerTable "Prolific Kickers" ("Name", "Times kicking") kickers
                              , headerTable "Trouble Makers" ("Name", "Times Kicked") kickees
                              , headerTable "Topics" ("Name", "Topic") topics
                              ]
-    writeFile "generated.html" $ makeFile rendered "css.css"
+    writeFile "generated.html" $ makeFile rendered "css.css" ["util.js"]
 
 doAction :: Action -> IO ()
 doAction action = do

@@ -1,7 +1,9 @@
 {-# LANGUAGE DoAndIfThenElse, BangPatterns, FlexibleInstances #-}
 module IRCDB.Renderer where
+
 import Control.Arrow
 import Control.Applicative
+import Data.List
 
 class Printable a where
     print' :: a -> String
@@ -13,22 +15,29 @@ instance Printable String where
     print' = id
 
 
-formatTimes :: [(String, Int, Int, Int, Int, Int, String)] -> String
-formatTimes times =
+formatUserTimes :: [(String, Int, Int, Int, Int, Int, String)] -> String
+formatUserTimes times =
     let formatted :: [String]
         formatted = formatTime <$> times in
     tag "table" $ concat formatted
     where formatTime :: (String, Int, Int, Int, Int, Int, String) -> String
           formatTime (user, w, x, y, z, total, message) =
-
             let rect = (makeRectScript user w x y z) in
             tag "tr" $ (td "20%" user)
-                    ++ (td "10%" $ (makeCanvas user) ++ rect)
+                    ++ (td "10%" $ (makeCanvas user 100 16) ++ rect)
                     ++ (td "10%" $ show total)
                     ++ (td "60%" message)
-makeCanvas :: String -> String
-makeCanvas name = "<canvas id=\"" ++ name ++ "\" width=\"100\" height=\"16\"></canvas>"
 
+makeCanvas :: String -> Int -> Int -> String
+makeCanvas name width height =
+    concat [ "<canvas id=\""
+           , name
+           , "\" width=\""
+           , show width
+           , "\" height=\""
+           , show height
+           , "\"></canvas>"
+           ]
 
 makeRectScript :: String
                -> Int
@@ -36,19 +45,14 @@ makeRectScript :: String
                -> Int
                -> Int
                -> String
-makeRectScript name w x y z = "<script>\
-            \  var canvas = document.getElementById('" ++ name ++ "');\
-            \  var context = canvas.getContext('2d');\
-            \  context.beginPath();\
-            \  context.fillStyle = '#FF0000';\
-            \  context.fillRect(0, 0, " ++ show w ++ ", 16);\
-            \  context.fillStyle = '#FF00FF';\
-            \  context.fillRect(" ++ show w ++ ", 0, " ++ show x ++ ", 16);\
-            \  context.fillStyle = '#0000FF';\
-            \  context.fillRect(" ++ show (w + x) ++ ", 0, " ++ show y ++ ", 16);\
-            \  context.fillStyle = '#00FFFF';\
-            \  context.fillRect(" ++ show (w + x + y) ++ ", 0, " ++ show z ++ ", 16);\
-            \</script>"
+makeRectScript name w x y z =
+    let vals = [show name] ++ (show <$> [w, x, y, z]) in
+    tag "script" $ makeCall "drawBar" vals
+
+makeCall :: String -> [String] -> String
+makeCall f args =
+    let fmt = (intercalate ", " args)  in
+    concat $ [f, "("] ++ [fmt] ++ [");"]
 
 simpleFormat :: Show a => (String, a) -> String
 simpleFormat (user, num) = user ++ ": " ++ show num
@@ -70,17 +74,18 @@ headerTable h s xs =
     let mapped = (second print') <$> xs in
     withHeading h $ simpleTable ((pairMap (tag "b") s):mapped)
 
-makeFile :: String -> String -> String
-makeFile x file =
-    let css = "<LINK href=\"" ++ file ++ "\" rel=\"stylesheet\" type=\"text/css\">" in
-    tag "html" $ tag "head" css ++ tag "body" x
+makeFile :: String -> String -> [String] -> String
+makeFile x file scripts =
+    let scriptSrc src = genTag "script" [("language", "javascript"), ("src", src)] "" in
+    let css = voidTag "link" [("href",file),("rel", "stylesheet"), ("type", "text/css")] in
+    let s :: [String]
+        s = scriptSrc <$> scripts in
+    tag "html" $ tag "head" (css ++ (concat $ s)) ++ tag "body" x
 
 simpleTable :: Printable a => [(String,a)] -> String
 simpleTable xs = tag "table" $ concat $ format <$> xs
     where format (s, y) = tag "tr" $ td "20%" s ++ td "80%" (print' y)
 
-tag :: String -> String -> String
-tag s c = genTag s [] c
 
 td :: String -> (String -> String)
 td width =  genTag "td" [("width", width)]
@@ -95,3 +100,12 @@ genTag :: String -> [(String,String)] -> String -> String
 genTag t props c =
     let props' = foldl(\acc kv -> acc ++ propToString kv) "" props in
     concat ["<", t, " ", props', ">\n", c, "\n</", t, ">"]
+
+voidTag :: String -> [(String,String)] -> String
+voidTag t props =
+    let props' = foldl(\acc kv -> acc ++ propToString kv) "" props in
+    concat ["<", t, " ", props', ">\n"]
+
+tag :: String -> String -> String
+tag s c = genTag s [] c
+
