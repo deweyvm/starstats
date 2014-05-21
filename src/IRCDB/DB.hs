@@ -1,8 +1,9 @@
-{-# LANGUAGE DoAndIfThenElse, NoMonomorphismRestriction, BangPatterns #-}
+{-# LANGUAGE DoAndIfThenElse, NoMonomorphismRestriction, BangPatterns, TypeSynonymInstances #-}
 module IRCDB.DB where
 
 import Prelude hiding (foldl, concat, sequence_)
 import Control.Applicative
+import Control.DeepSeq
 import Database.HDBC
 import Database.HDBC.ODBC
 import Data.Foldable
@@ -10,7 +11,6 @@ import Data.Function
 import Data.Time.LocalTime
 import System.Directory
 import qualified Text.Regex.Posix as RE
-import Debug.Trace
 import IRCDB.Parser
 import IRCDB.Time
 import IRCDB.Renderer
@@ -194,20 +194,25 @@ getNicks con =
 urlRegexp :: String
 urlRegexp = "http://[^ ]*"
 
-extractSqlUrl :: [SqlValue] -> String
-extractSqlUrl (x:_) = fromSql x
+extractSqlUrl :: [SqlValue] -> (String, String)
+extractSqlUrl (x:y:_) = (fromSql x, fromSql y)
 
 extractUrl :: String -> String
 extractUrl s = case s RE.=~ urlRegexp :: [[String]] of
     ((x:_) : _) -> x
     _ -> "Error extracting url"
 
-getUrls :: IConnection c => c -> IO [String]
+getUrls :: IConnection c => c -> IO [(String, String)]
 getUrls con = do
-    prepared <- prepare con "SELECT text FROM messages WHERE text REGEXP ? ORDER BY RAND() LIMIT 10"
+    prepared <- prepare con "SELECT name, text\
+                           \ FROM messages\
+                           \ WHERE text REGEXP ?\
+                           \ ORDER BY RAND()\
+                           \ LIMIT 10"
     execute prepared [toSql urlRegexp]
-    rows <- fetchAllRows prepared
-    return $ (extractUrl . extractSqlUrl) <$> rows
+    rows <- fetchAllRows' prepared
+    let r = extractSqlUrl <$> rows
+    return r
 
 getMorning :: IConnection c
            => c
@@ -373,32 +378,39 @@ combineUsage late morn aftr evening users messages =
            let percent t = truncate $ ddiv (t * 100) total in
            (user, percent w, percent x, percent y, percent z, ct, o)
 
+pairMap :: (a -> b) -> (a, a) -> (b, b)
+pairMap f (x, y) = (f x, f y)
+
 generate :: IConnection c => c -> IO ()
 generate con = do
     populateTop con
-    let headerList s xs = withHeading s $ makeList xs
-    !users <- getUsers con
-    (!late, !morning, !evening, !night) <- getMorning con
-    randTop <- getRandTopTen con
-    print (late, morning, evening, night)
-    let times = formatTimes <$> combineUsage late morning evening night users randTop
 
-    !rand <- formatList <$> getRandMessages con
-    !nicks <- formatList <$> getNicks con
-    !kickers <- formatList <$> getKickers con
-    !kickees <- formatList <$> getKickees con
-    !topics <- formatList <$> getRandTopics con
-    !urls <- (id) <$> getUrls con
-    print "test"
-    let rendered = unlines $ (uncurry headerList) <$> [ ("Some Random URLs", urls)
-                                                      , ("Top Users", times)
-                                                      , ("Random Messages", rand)
-                                                      , ("Most Changed Nicks", nicks)
-                                                      , ("Prolific Kickers", kickers)
-                                                      , ("Trouble Makers", kickees)
-                                                      , ("Topics", topics)
-                                                      ]
-    writeFile "generated.html" $ makeFile rendered
+    !users <- getUsers con
+    users `deepseq` (return ())
+    (late, morning, evening, night) <- getMorning con
+    randTop <- getRandTopTen con
+    (late, morning, evening, night) `deepseq` (return ())
+    let times = formatTimes $ combineUsage late morning evening night users randTop
+    !rand <- getRandMessages con
+    !nicks <- getNicks con
+    !kickers <- getKickers con
+    !kickees <- getKickees con
+    !topics <- getRandTopics con
+    !urls <- getUrls con
+    let headerTable :: Printable a => String -> (String, String) -> [(String, a)] -> String
+        headerTable h s xs =
+            let mapped = (\(x, y) -> (x, print' y)) <$> xs in
+            withHeading h $ simpleTable ((pairMap (tag "b") s):mapped)
+    let rendered = unlines $ [ headerTable "Some Random URLs" ("Name", "URL") urls
+                             , withHeading "Top Users" $ times
+                             , headerTable "Random Messages" ("Name", "Number of Messages") rand
+                             , headerTable "Most Changed Nicks" ("Name", "Times Changed") nicks
+                             , headerTable "Prolific Kickers" ("Name", "Times kicking") kickers
+                             , headerTable "Trouble Makers" ("Name", "Times Kicked") kickees
+                             , headerTable "Topics" ("Name", "Topic") topics
+                             ]
+    css <- readFile "css.css"
+    writeFile "generated.html" $ makeFile rendered css
 
 doAction :: Action -> IO ()
 doAction action = do
