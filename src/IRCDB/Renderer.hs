@@ -17,16 +17,19 @@ instance Printable String where
 
 formatUserTimes :: [(String, Int, Int, Int, Int, Int, String)] -> String
 formatUserTimes times =
+    let addRow w x y z = tag "tr" $ (td "20%" w)
+                                 ++ (td "10%" x)
+                                 ++ (td "10%" y)
+                                 ++ (td "60%" z) in
+    let formatTime :: (String, Int, Int, Int, Int, Int, String) -> String
+        formatTime (user, w, x, y, z, total, message) =
+            let rect = (makeRectScript user w x y z) in
+            addRow user ((makeCanvas user 100 16) ++ rect) (show total) message in
     let formatted :: [String]
         formatted = formatTime <$> times in
-    tag "table" $ concat formatted
-    where formatTime :: (String, Int, Int, Int, Int, Int, String) -> String
-          formatTime (user, w, x, y, z, total, message) =
-            let rect = (makeRectScript user w x y z) in
-            tag "tr" $ (td "20%" user)
-                    ++ (td "10%" $ (makeCanvas user 100 16) ++ rect)
-                    ++ (td "10%" $ show total)
-                    ++ (td "60%" message)
+    let heading = addRow "User" "Activity" "Total" "Random Message" in
+    tag "table" $ heading ++ (concat formatted)
+
 
 makeCanvas :: String -> Int -> Int -> String
 makeCanvas name width height =

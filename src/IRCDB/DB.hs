@@ -9,6 +9,7 @@ import Database.HDBC
 import Database.HDBC.ODBC
 import Data.Foldable
 import Data.Function
+import Data.List(intercalate)
 import Data.Time.LocalTime
 import System.Directory
 import qualified Text.Regex.Posix as RE
@@ -47,8 +48,8 @@ processOne _ t (Left (ln, s, err)) = do
 processOne con t (Right l) = insert t l con
 
 getIndex :: IConnection c => c -> SqlValue -> IO SqlValue
-getIndex con s = do
-    m <- quickQuery con "SELECT count FROM counts WHERE user = ?;" [s]
+getIndex con name = do
+    m <- quickQuery con "SELECT count FROM counts WHERE name=?;" [name]
     case m of
         [(x:_)] -> return x
         _ -> return $ toSql (0 :: Int)
@@ -60,7 +61,12 @@ insert t (Message time typ name msg) con = do
     let sqlType = toSql typ
     let sqlMsg = toSql msg
     let sqlTime = toSql newT
-
+    let qq = "UPDATE counts\
+            \ SET count=count+1, lastseen=?, firstseen=CASE\
+            \ WHEN TO_DAYS(DATEDIFF(lastseen, firstseen)) > 365\
+            \ THEN ?\
+            \ ELSE firstseen\
+            \ WHERE name=?;"
 
     index <- getIndex con sqlName
     prepared <- prepare con "INSERT INTO messages (name, type, userindex, text, time)\
@@ -68,10 +74,11 @@ insert t (Message time typ name msg) con = do
 
     execute prepared [sqlName, sqlType, index, sqlMsg, sqlTime]
     case fromSql index == (0 :: Int) of
-        True -> do quickQuery con "INSERT INTO counts (user, count) VALUES (?,?)" [sqlName, toSql (1 :: Int)]
+        True -> do quickQuery con "INSERT INTO counts (name, count, lastseen, firstseen)\
+                                 \ VALUES (?,?,?,?)" [sqlName, toSql (1 :: Int), sqlTime, sqlTime]
                    return newT
-        False -> do countQ <- prepare con "UPDATE counts SET count=?+1 WHERE user=?;"
-                    execute countQ [index, sqlName]
+        False -> do countQ <- prepare con qq
+                    execute countQ [sqlTime, sqlTime, sqlName]
                     return newT
 insert t (Nick time old new) con = do
     let newT = setHoursMinutes t time
@@ -126,10 +133,11 @@ runQuery con q = quickQuery con q []
 populateTop :: IConnection c => c -> IO ()
 populateTop con = do
     runQuery con "INSERT INTO top (name, msgs)\
-                \ (SELECT name, COUNT(*) AS count FROM messages\
-                     \ GROUP BY name\
-                     \ ORDER BY count DESC\
-                     \ LIMIT 10);"
+                \ (SELECT name, COUNT(*) AS count\
+                 \ FROM messages\
+                 \ GROUP BY name\
+                 \ ORDER BY count DESC\
+                 \ LIMIT 10);"
     return ()
 
 getAndExtract :: IConnection c
@@ -142,6 +150,27 @@ getAndExtract con qs f query = do
     sequence_ $ runQuery con <$> qs
     res <- runQuery con query
     return $ f <$> res
+
+-- a nick is "unique" if it has over 100 messages and doesnt have an oldnick such that
+-- numMessages(oldNick) => numMessages(nick)
+getUniqueNicks :: IConnection c => c -> IO [String]
+getUniqueNicks con =
+    let q = "SELECT DISTINCT newname, c.count\
+           \ FROM nickchanges AS v\
+           \ INNER JOIN counts as c\
+           \ ON c.count > 100 AND c.name = v.newname\
+           \ WHERE (ISNULL((SELECT newname\
+                          \ FROM nickchanges\
+                          \ WHERE newname = v.oldname\
+                          \ LIMIT 1))\
+               \ OR ISNULL((SELECT count AS cc\
+                          \ FROM counts\
+                          \ WHERE name = v.oldname\
+                          \ HAVING cc / 10 < c.count)))\
+           \ ORDER BY c.count" in
+    let extract (s:c:_) = fromSql s ++ " " ++ (show $ (fromSql c :: Int)) in
+    getAndExtract con [] extract q
+
 
 getOverallActivity :: IConnection c => c -> IO [(Int,Int)]
 getOverallActivity con = do
@@ -228,10 +257,10 @@ getUrls con = do
     let r = (second (linkify.extractUrl)) <$> extractSqlUrl <$> rows
     return r
 
-getMorning :: IConnection c
-           => c
-           -> IO ([(String, Int)],[(String, Int)],[(String, Int)],[(String, Int)])
-getMorning con =
+getTimes :: IConnection c
+         => c
+         -> IO ([(String, Int)],[(String, Int)],[(String, Int)],[(String, Int)])
+getTimes con =
     let late = "SELECT messages.name, COUNT(*) AS count, time\
               \ FROM messages\
               \ JOIN top AS t\
@@ -340,8 +369,10 @@ createDbs con = do
                               \ PRIMARY KEY (id))\
              \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let count = "CREATE TABLE counts(id INT NOT NULL AUTO_INCREMENT,\
-                                   \ user VARCHAR(36),\
+                                   \ name VARCHAR(36),\
                                    \ count INT,\
+                                   \ lastseen TIME,\
+                                   \ firstseen TIME,\
                                    \ PRIMARY KEY (id));"
 
 
@@ -400,7 +431,7 @@ generate con = do
 
     users <- force <$> getUsers con
 
-    (late, morning, evening, night) <- force <$> getMorning con
+    (late, morning, evening, night) <- force <$> getTimes con
     randTop <- getRandTopTen con
 
     let userTimes = formatUserTimes $ combineUsage late morning evening night users randTop
@@ -411,7 +442,9 @@ generate con = do
     !topics <- getRandTopics con
     !urls <- getUrls con
     !activity <- getOverallActivity con
+    !unique <- getUniqueNicks con
     let rendered = unlines $ [ makeTimeScript "Activity" activity
+                             , withHeading "Unique Nicks" $ (intercalate "<br />" unique)
                              , headerTable "Some Random URLs" ("Name", "URL") urls
                              , withHeading "Top Users" $ userTimes
                              , headerTable "Random Messages" ("Name", "Message") rand
