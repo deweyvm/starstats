@@ -4,6 +4,7 @@ module IRCDB.DB where
 import Prelude hiding (foldl, concat, sequence_)
 import Control.Applicative
 import Control.DeepSeq
+import Control.Arrow
 import Database.HDBC
 import Database.HDBC.ODBC
 import Data.Foldable
@@ -211,7 +212,7 @@ getUrls con = do
                            \ LIMIT 10"
     execute prepared [toSql urlRegexp]
     rows <- fetchAllRows' prepared
-    let r = extractSqlUrl <$> rows
+    let r = (second extractUrl) <$> extractSqlUrl <$> rows
     return r
 
 getMorning :: IConnection c
@@ -409,8 +410,7 @@ generate con = do
                              , headerTable "Trouble Makers" ("Name", "Times Kicked") kickees
                              , headerTable "Topics" ("Name", "Topic") topics
                              ]
-    css <- readFile "css.css"
-    writeFile "generated.html" $ makeFile rendered css
+    writeFile "generated.html" $ makeFile rendered "css.css"
 
 doAction :: Action -> IO ()
 doAction action = do

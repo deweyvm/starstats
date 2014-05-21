@@ -63,7 +63,9 @@ withHeading :: String -> (String -> String)
 withHeading h = (++) (tag "h2" h)
 
 makeFile :: String -> String -> String
-makeFile x css = tag "html" $ tag "head" css ++ tag "body" x
+makeFile x file =
+    let css = "<LINK href=\"" ++ file ++ "\" rel=\"stylesheet\" type=\"text/css\">" in
+    tag "html" $ tag "head" css ++ tag "body" x
 
 simpleTable :: Printable a => [(String,a)] -> String
 simpleTable xs = tag "table" $ concat $ format <$> xs
