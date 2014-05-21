@@ -1,6 +1,6 @@
 {-# LANGUAGE DoAndIfThenElse, BangPatterns, FlexibleInstances #-}
 module IRCDB.Renderer where
-
+import Control.Arrow
 import Control.Applicative
 
 class Printable a where
@@ -62,6 +62,14 @@ makeList xs = concat $ tag "p" <$> xs
 withHeading :: String -> (String -> String)
 withHeading h = (++) (tag "h2" h)
 
+pairMap :: (a -> b) -> (a, a) -> (b, b)
+pairMap f (x, y) = (f x, f y)
+
+headerTable :: Printable a => String -> (String, String) -> [(String, a)] -> String
+headerTable h s xs =
+    let mapped = (second print') <$> xs in
+    withHeading h $ simpleTable ((pairMap (tag "b") s):mapped)
+
 makeFile :: String -> String -> String
 makeFile x file =
     let css = "<LINK href=\"" ++ file ++ "\" rel=\"stylesheet\" type=\"text/css\">" in
@@ -72,10 +80,13 @@ simpleTable xs = tag "table" $ concat $ format <$> xs
     where format (s, y) = tag "tr" $ td "20%" s ++ td "80%" (print' y)
 
 tag :: String -> String -> String
-tag s c = concat ["<", s, ">\n", c, "\n</", s, ">"]
+tag s c = genTag s [] c
 
 td :: String -> (String -> String)
 td width =  genTag "td" [("width", width)]
+
+linkify :: String -> String
+linkify s = "<a href=\"" ++ s ++ "\">" ++ s ++ "</a>"
 
 propToString :: (String,String) -> String
 propToString (k, v) = k ++ "=\"" ++ v ++ "\" "

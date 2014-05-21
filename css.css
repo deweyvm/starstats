@@ -1,15 +1,19 @@
 body {
-  background-color:#270000;
+  background-color:#a6276a;
 }
 table {
   table-layout: fixed;
   width: 100%;
   padding: 15px;
-  color:#A9B7C6;
+  color:#ffb5cd
 
 }
+h2 {
+    color:#ffffff;
+}
 td {
-  background-color:#272822;
+  background-color:#5f8604;
+  color:#ffb5cd
   border-radius: 5px;
 }
 p {

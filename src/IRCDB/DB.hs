@@ -147,7 +147,8 @@ getAndExtract con qs f query = do
 getRandMessages :: IConnection c => c -> IO [(String, String)]
 getRandMessages con =
     let qs = ["SET @max = (SELECT MAX(id) FROM messages); "] in
-    let q = "SELECT * FROM messages AS v\
+    let q = "SELECT *\
+           \ FROM messages AS v\
            \ JOIN (SELECT ROUND(RAND() * @max) AS v2\
                  \ FROM messages\
                  \ LIMIT 10) AS dummy\
@@ -157,14 +158,16 @@ getRandMessages con =
 getRandTopTen :: IConnection c => c -> IO [(String, String)]
 getRandTopTen con = do
     let q = "SELECT * FROM messages AS v\
-           \ INNER JOIN (SELECT ROUND(RAND() * msgs) as r, name, msgs FROM top) AS t\
+           \ INNER JOIN (SELECT ROUND(RAND() * msgs) as r, name, msgs\
+                       \ FROM top) AS t\
            \ ON v.name = t.name AND v.userindex = r"
 
     getAndExtract con [] extractMessage q
 
 getKickers :: IConnection c => c -> IO [(String, Int)]
 getKickers con =
-    let q = "SELECT kicker, COUNT(*) AS count FROM kicks\
+    let q = "SELECT kicker, COUNT(*) AS count\
+           \ FROM kicks\
            \ GROUP BY kicker\
            \ ORDER BY count DESC\
            \ LIMIT 10;" in
@@ -172,7 +175,8 @@ getKickers con =
 
 getKickees :: IConnection c => c -> IO [(String, Int)]
 getKickees con =
-    let q = "SELECT kickee, COUNT(*) AS count FROM kicks\
+    let q = "SELECT kickee, COUNT(*) AS count\
+           \ FROM kicks\
            \ GROUP BY kickee\
            \ ORDER BY count DESC\
            \ LIMIT 10;" in
@@ -212,7 +216,7 @@ getUrls con = do
                            \ LIMIT 10"
     execute prepared [toSql urlRegexp]
     rows <- fetchAllRows' prepared
-    let r = (second extractUrl) <$> extractSqlUrl <$> rows
+    let r = (second (linkify.extractUrl)) <$> extractSqlUrl <$> rows
     return r
 
 getMorning :: IConnection c
@@ -255,8 +259,10 @@ getMorning con =
 getRandTopics :: IConnection c => c -> IO [(String, String)]
 getRandTopics con =
     let qs = ["SET @max = (SELECT MAX(id) FROM topics);"] in
-    let q = "SELECT * FROM topics AS v\
-           \ JOIN (SELECT ROUND(RAND() * @max) AS r FROM topics LIMIT 10) AS dummy\
+    let q = "SELECT DISTINCT * FROM topics AS v\
+           \ JOIN (SELECT ROUND(RAND() * @max) AS r\
+                 \ FROM topics\
+                 \ LIMIT 10) AS dummy\
            \ ON v.id = r;" in
     getAndExtract con qs extractTopic q
 
@@ -379,8 +385,6 @@ combineUsage late morn aftr evening users messages =
            let percent t = truncate $ ddiv (t * 100) total in
            (user, percent w, percent x, percent y, percent z, ct, o)
 
-pairMap :: (a -> b) -> (a, a) -> (b, b)
-pairMap f (x, y) = (f x, f y)
 
 generate :: IConnection c => c -> IO ()
 generate con = do
@@ -398,10 +402,7 @@ generate con = do
     !kickees <- getKickees con
     !topics <- getRandTopics con
     !urls <- getUrls con
-    let headerTable :: Printable a => String -> (String, String) -> [(String, a)] -> String
-        headerTable h s xs =
-            let mapped = (\(x, y) -> (x, print' y)) <$> xs in
-            withHeading h $ simpleTable ((pairMap (tag "b") s):mapped)
+
     let rendered = unlines $ [ headerTable "Some Random URLs" ("Name", "URL") urls
                              , withHeading "Top Users" $ times
                              , headerTable "Random Messages" ("Name", "Number of Messages") rand
