@@ -49,6 +49,16 @@ makeRectScript name w x y z =
     let vals = [show name] ++ (show <$> [w, x, y, z]) in
     tag "script" $ makeCall "drawBar" vals
 
+makeTimeScript :: String -> [(Int,Int)] -> String
+makeTimeScript h hours =
+    let canvas = makeCanvas "timegraph" (24*24) 100 in
+    let values :: [String]
+        values = (show . snd) <$> hours in
+    let fmt = (intercalate ", " values) in
+    let vals = [show "timegraph"] ++ [("[" ++ fmt ++ "]")] in
+    withHeading h $ canvas ++ (tag "script" $ (makeCall "drawGraph" vals))
+
+
 makeCall :: String -> [String] -> String
 makeCall f args =
     let fmt = (intercalate ", " args)  in

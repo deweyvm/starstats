@@ -394,16 +394,15 @@ combineUsage late morn aftr evening users messages =
            let percent t = truncate $ ddiv (t * 100) total in
            (user, percent w, percent x, percent y, percent z, ct, o)
 
-
 generate :: IConnection c => c -> IO ()
 generate con = do
     populateTop con
 
-    !users <- getUsers con
-    users `deepseq` (return ())
-    (late, morning, evening, night) <- getMorning con
+    users <- force <$> getUsers con
+
+    (late, morning, evening, night) <- force <$> getMorning con
     randTop <- getRandTopTen con
-    (late, morning, evening, night) `deepseq` (return ())
+
     let userTimes = formatUserTimes $ combineUsage late morning evening night users randTop
     !rand <- getRandMessages con
     !nicks <- getNicks con
@@ -411,9 +410,9 @@ generate con = do
     !kickees <- getKickees con
     !topics <- getRandTopics con
     !urls <- getUrls con
-    thing <- getOverallActivity con
-    print thing
-    let rendered = unlines $ [ headerTable "Some Random URLs" ("Name", "URL") urls
+    !activity <- getOverallActivity con
+    let rendered = unlines $ [ makeTimeScript "Activity" activity
+                             , headerTable "Some Random URLs" ("Name", "URL") urls
                              , withHeading "Top Users" $ userTimes
                              , headerTable "Random Messages" ("Name", "Message") rand
                              , headerTable "Most Changed Nicks" ("Name", "Times Changed") nicks
