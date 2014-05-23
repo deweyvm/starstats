@@ -7,13 +7,13 @@ function getContext(name) {
 function drawBar(canvasName, w, x, y, z) {
     var context = getContext(canvasName);
     context.beginPath();
-    context.fillStyle = '#FF0000';
+    context.fillStyle = '#757CB8';
     context.fillRect(0, 0,w, 16);
-    context.fillStyle = '#FF00FF';
+    context.fillStyle = '#B8759D';
     context.fillRect(w, 0, x, 16);
-    context.fillStyle = '#0000FF';
+    context.fillStyle = '#B8B175';
     context.fillRect(w + x, 0, y, 16);
-    context.fillStyle = '#00FFFF';
+    context.fillStyle = '#75B890';
     context.fillRect(w + x + y, 0, z, 16);
 }
 
@@ -39,9 +39,9 @@ function drawGraph(canvasName, xs) {
     for (var i = 0; i < xs.length; i += 1) {
         var x = i * (spacing + width);
         var y = 100 - xs[i];
-        context.fillStyle = '#FF0000';
+        context.fillStyle = '#4A4A4A';
         context.fillRect(x, y, width, xs[i]);
-        context.fillStyle = '#000000';
+        context.fillStyle = '#A2A4BA';
         context.fillText(i, x, 100);
     }
 }
