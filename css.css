@@ -4,19 +4,19 @@ body {
 table {
   table-layout: fixed;
   width: 100%;
-  padding: 15px;
-  color:#ffb5cd
-
+  color:#ffb5cd;
+  text-overflow: ellipsis;
 }
 h2 {
-    color:#ffffff;
+  color:#ffffff;
 }
 td {
   background-color:#5f8604;
   color:#ffb5cd
   border-radius: 5px;
+  overflow:hidden;
+  margin-right: 8px;
 }
-p {
-  margin-top: 0.0em;
-  margin-bottom: 0.0em;
+tr {
+    white-space: nowrap;
 }

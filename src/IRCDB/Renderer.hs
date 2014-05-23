@@ -17,10 +17,10 @@ instance Printable String where
 
 formatUserTimes :: [(String, Int, Int, Int, Int, Int, String)] -> String
 formatUserTimes times =
-    let addRow w x y z = tag "tr" $ (td "20%" w)
-                                 ++ (td "10%" x)
-                                 ++ (td "10%" y)
-                                 ++ (td "60%" z) in
+    let addRow w x y z = tr $ (td "20%" w)
+                           ++ (td "10%" x)
+                           ++ (td "10%" y)
+                           ++ (td "60%" z) in
     let formatTime :: (String, Int, Int, Int, Int, Int, String) -> String
         formatTime (user, w, x, y, z, total, message) =
             let rect = (makeRectScript user w x y z) in
@@ -97,14 +97,17 @@ makeFile x file scripts =
 
 simpleTable :: Printable a => [(String,a)] -> String
 simpleTable xs = tag "table" $ concat $ format <$> xs
-    where format (s, y) = tag "tr" $ td "20%" s ++ td "80%" (print' y)
+    where format (s, y) = tr $ td "20%" s ++ td "80%" (print' y)
 
 
 td :: String -> (String -> String)
 td width =  genTag "td" [("width", width)]
 
+tr :: String -> String
+tr = tag "tr"
+
 linkify :: String -> String
-linkify s = "<a href=\"" ++ s ++ "\">" ++ s ++ "</a>"
+linkify s = genTag "a" [("href", s)] s
 
 propToString :: (String,String) -> String
 propToString (k, v) = k ++ "=\"" ++ v ++ "\" "
