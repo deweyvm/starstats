@@ -1,22 +1,39 @@
 body {
-  background-color:#a6276a;
+  background-color:#595959;
 }
 table {
   table-layout: fixed;
   width: 100%;
-  color:#ffb5cd;
+  color:#A2A4BA;
   text-overflow: ellipsis;
+  font-family:"Consolas", monospace;
+  font-size: 0.95em;
 }
 h2 {
-  color:#ffffff;
+  color:#747BB8;
+  font-family:"Consolas", monospace;
+  font-size: 1.25em;
 }
 td {
-  background-color:#5f8604;
-  color:#ffb5cd
+  background-color:#4A4A4A;
+  color:#747BB8
   border-radius: 5px;
   overflow:hidden;
   margin-right: 8px;
+  font-family:"Consolas", monospace;
 }
 tr {
-    white-space: nowrap;
+  white-space: nowrap;
+}
+a:link {
+  font-family:"Consolas", monospace;
+  color:#757CB8;
+}
+a:visited {
+  font-family:"Consolas", monospace;
+  color:#B8759D;
+}
+a:active {
+  font-family:"Consolas", monospace;
+  color:#9DA2CD;
 }
