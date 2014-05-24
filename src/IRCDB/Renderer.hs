@@ -5,6 +5,10 @@ import Control.Arrow
 import Control.Applicative
 import Data.List
 import Text.Printf
+
+
+data TimeBar = TimeBar String Int Int Int Int
+
 class Printable a where
     print' :: a -> String
 
@@ -17,6 +21,9 @@ instance Printable Double where
 instance Printable String where
     print' = id
 
+instance Printable TimeBar where
+    print' (TimeBar user w x y z) =
+        (makeCanvas user 100 16) ++ (makeRectScript user w x y z)
 
 formatUserTimes :: [(String, Int, Int, Int, Int, Int, String)] -> String
 formatUserTimes times =
@@ -36,14 +43,10 @@ formatUserTimes times =
 
 makeCanvas :: String -> Int -> Int -> String
 makeCanvas name width height =
-    concat [ "<canvas id=\""
-           , name
-           , "\" width=\""
-           , show width
-           , "\" height=\""
-           , show height
-           , "\"></canvas>"
-           ]
+    genTag "canvas" [ ("id", name)
+                    , ("width", show width)
+                    , ("height", show height)
+                    ] ""
 
 makeRectScript :: String
                -> Int
