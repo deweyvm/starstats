@@ -300,21 +300,6 @@ getAverageWordLength con =
     let extract (x:y:_) = (fromSql x, fromSql y) in
     getAndExtract con [] extract q
 
---[ ("anomaly",0,4199)
---, ("anomaly",1,1640)
---, ("anomaly",3,2852)
---, ("Bartle",0,9534)
---, ("Bartle",1,2306)
---, ("Bartle",2,4383)
---, ("Bartle",3,11671)
---, ("Bwarch",0,1143)
---, ("Bwarch",1,247)
---, ("Bwarch",2,236)
---, ("Bwarch",3,1240)]
--- ->
--- [ ("anomaly", 4199, 1640,    0,  2852)
--- , ( "Bartle", 9534, 2306, 4383, 11671)
--- , ( "Bwarch", 1143,  247,  236,  1240)]
 assemble :: [(String, Int, Int)] -> [[(String, Int, Int)]]
 assemble xs = groupBy (\(n, _, _) (m, _, _) -> n == m) xs
 
@@ -323,10 +308,8 @@ thd3 (_, _, x) = x
 
 assemble2 :: [[(String, Int, Int)]] -> [(String, Int, Int, Int, Int)]
 assemble2 xs =
-    let grabAll :: [(String, Int, Int)] -> (String, Int, Int, Int, Int)
-        grabAll vs@((name,_,_):_) =
-            let getWhere :: Int -> Int
-                getWhere i = fromMaybe 0 (thd3 <$> (find (\(nn, ii, _) -> i == ii && name == nn) vs)) in
+    let grabAll vs@((name,_,_):_) =
+            let getWhere i = fromMaybe 0 (thd3 <$> (find (\(nn, ii, _) -> i == ii && name == nn) vs)) in
             let w = getWhere 0
                 x = getWhere 1
                 y = getWhere 2
@@ -362,6 +345,27 @@ getRandTopics con =
                  \ LIMIT 10) AS dummy\
            \ ON v.id = r;" in
     getAndExtract con qs extractTopic q
+
+getSelfTalk :: IConnection c => c -> IO [(String, Int)]
+getSelfTalk con =
+    let q = "SELECT\
+               \ name, c\
+           \ FROM (\
+               \ SELECT\
+                  \ name,\
+                  \ IF (@name = name,  @count := @count + 1, @count := 0) AS c,\
+                  \ @name := name\
+               \ FROM\
+                  \ messages\
+           \ JOIN (\
+               \ SELECT\
+                  \ @name:=\"\",\
+                  \ @count:=0\
+              \ ) AS r\
+           \ ) AS t\
+           \ WHERE c > 5" in
+    let extract (x:y:_) = (fromSql x, fromSql y) in
+    getAndExtract con [] extract q
 
 connect :: IO Connection
 connect = do
@@ -505,7 +509,9 @@ generate con = do
     !unique <- getUniqueNicks con
     !avgwc <- getAverageWordCount con
     !avgwl <- getAverageWordLength con
+    !self <- getSelfTalk con
     let rendered = unlines $ [ makeTimeScript "Activity" activity
+                             , headerTable "Talks To Themselves" ("Name", "Times") self
                              , headerTable "Word Count" ("Name", "Average Word Count") avgwc
                              , headerTable "Word Length" ("Name", "Average Word Length") avgwl
                              , headerTable "Unique Nicks" ("Name","Messages") unique
