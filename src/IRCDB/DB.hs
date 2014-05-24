@@ -10,9 +10,9 @@ import Database.HDBC.ODBC
 import Data.Foldable
 import Data.Function
 import Data.Time.LocalTime
-import Data.List (genericLength)
 import System.Directory
-import qualified Text.Regex.Posix as RE
+import qualified Text.Regex.Posix as REP
+import qualified Text.Regex as RE
 import IRCDB.Parser
 import IRCDB.Time
 import IRCDB.Renderer
@@ -54,13 +54,6 @@ getIndex con name = do
         [(x:_)] -> return x
         _ -> return $ toSql (0 :: Int)
 
-average :: (a -> Double) -> [a] -> Double
-average f xs =
-    let len = genericLength xs :: Double in
-    if len == 0
-    then 0
-    else sum (f <$> xs) / len :: Double
-
 insert :: IConnection c => LocalTime -> DataLine -> c -> IO LocalTime
 insert t (Message time typ name msg) con = do
     let newT = setHoursMinutes t time
@@ -81,12 +74,13 @@ insert t (Message time typ name msg) con = do
     index <- getIndex con sqlName
     let words' = words msg
     let wordcount = toSql $ length words'
-    let wordlength = toSql $ average genericLength words'
+    let stripped = words $ RE.subRegex (RE.mkRegex urlRegexp) msg ""
+    let charcount = toSql $ sum $ length <$> stripped -- fixme : this could be more precise
 
-    prepared <- prepare con "INSERT INTO messages (name, type, userindex, wordcount, wordlength, text, time)\
+    prepared <- prepare con "INSERT INTO messages (name, type, userindex, wordcount, charcount, text, time)\
                            \ VALUES (?,?,?,?,?,?,?);"
 
-    execute prepared [sqlName, sqlType, index, wordcount, wordlength, sqlMsg, sqlTime]
+    execute prepared [sqlName, sqlType, index, wordcount, charcount, sqlMsg, sqlTime]
     case fromSql index == (0 :: Int) of
         True -> do quickQuery con "INSERT INTO counts (name, count, lastseen, firstseen)\
                                  \ VALUES (?,?,?,?)" [sqlName, toSql (1 :: Int), sqlTime, sqlTime]
@@ -135,7 +129,7 @@ extractTopic (_:name:msg:_) = (fromSql name, fromSql msg)
 extractTopic              _ = ("Error extracting topic", "")
 
 extractMessage :: [SqlValue] -> (String, String)
-extractMessage (_:msg:_:_:_:name:_) = (fromSql name, fromSql msg)
+extractMessage (name:msg:_) = (fromSql name, fromSql msg)
 extractMessage                  _ = ("Error extracting message", "")
 
 
@@ -209,20 +203,21 @@ getOverallActivity con = do
 getRandMessages :: IConnection c => c -> IO [(String, String)]
 getRandMessages con =
     let qs = ["SET @max = (SELECT MAX(id) FROM messages); "] in
-    let q = "SELECT *\
-           \ FROM messages AS v\
-           \ JOIN (SELECT ROUND(RAND() * @max) AS v2\
+    let q = "SELECT name, text\
+           \ FROM messages AS m\
+           \ JOIN (SELECT ROUND(RAND() * @max) AS m2\
                  \ FROM messages\
                  \ LIMIT 10) AS dummy\
-           \ ON v.id = v2;" in
+           \ ON m.id = m2;" in
     getAndExtract con qs extractMessage q
 
 getRandTopTen :: IConnection c => c -> IO [(String, String)]
 getRandTopTen con = do
-    let q = "SELECT * FROM messages AS v\
+    let q = "SELECT m.name, text\
+           \ FROM messages AS m\
            \ INNER JOIN (SELECT ROUND(RAND() * msgs) as r, name, msgs\
                        \ FROM top) AS t\
-           \ ON v.name = t.name AND v.userindex = r"
+           \ ON m.name = t.name AND m.userindex = r"
 
     getAndExtract con [] extractMessage q
 
@@ -265,7 +260,7 @@ extractSqlUrl :: [SqlValue] -> (String, String)
 extractSqlUrl (x:y:_) = (fromSql x, fromSql y)
 
 extractUrl :: String -> String
-extractUrl s = case s RE.=~ urlRegexp :: [[String]] of
+extractUrl s = case s REP.=~ urlRegexp :: [[String]] of
     ((x:_) : _) -> x
     _ -> "Error extracting url"
 
@@ -281,13 +276,28 @@ getUrls con = do
     let r = (second (linkify.extractUrl)) <$> extractSqlUrl <$> rows
     return r
 
-getAverage :: IConnection c => c -> IO [(String,Int)]
-getAverage con =
-    let q = "SELECT messages.name, CAST(AVG(wordcount) AS UNSIGNED)\
-           \ FROM messages\
-           \ JOIN top as t\
-           \ ON t.name = messages.name" in
-    getAndExtract con [] extractPair q
+getAverageWordCount :: IConnection c => c -> IO [(String, Double)]
+getAverageWordCount con =
+    let q = "SELECT m.name, AVG(m.wordcount) as avg\
+           \ FROM top as t\
+           \ INNER JOIN messages as m\
+           \ ON t.name = m.name\
+           \ GROUP BY m.name\
+           \ ORDER BY avg DESC" in
+    let extract (x:y:_) = (fromSql x, fromSql y) in
+    getAndExtract con [] extract q
+
+getAverageWordLength :: IConnection c => c -> IO [(String, Double)]
+getAverageWordLength con =
+    let q = "SELECT m.name, IFNULL(SUM(m.charcount)/SUM(m.wordcount), 0) as avg\
+           \ FROM top as t\
+           \ INNER JOIN messages as m\
+           \ ON t.name = m.name\
+           \ GROUP BY m.name\
+           \ ORDER BY avg DESC" in
+    let extract (x:y:_) = (fromSql x, fromSql y) in
+    getAndExtract con [] extract q
+
 
 getTimes :: IConnection c
          => c
@@ -369,7 +379,7 @@ createDbs con = do
                                         \ type INT,\
                                         \ userindex INT,\
                                         \ wordcount INT,\
-                                        \ wordlength DOUBLE,\
+                                        \ charcount INT,\
                                         \ name VARCHAR(36),\
                                         \ time DATETIME,\
                                         \ PRIMARY KEY (id))\
@@ -482,9 +492,11 @@ generate con = do
     !urls <- getUrls con
     !activity <- getOverallActivity con
     !unique <- getUniqueNicks con
-    !avg <- getAverage con
+    !avgwc <- getAverageWordCount con
+    !avgwl <- getAverageWordLength con
     let rendered = unlines $ [ makeTimeScript "Activity" activity
-                             , headerTable "Average Words" ("Name", "Average") avg
+                             , headerTable "Word Count" ("Name", "Average Word Count") avgwc
+                             , headerTable "Word Length" ("Name", "Average Word Length") avgwl
                              , headerTable "Unique Nicks" ("Name","Messages") unique
                              , headerTable "Some Random URLs" ("Name", "URL") urls
                              , withHeading "Top Users" $ userTimes

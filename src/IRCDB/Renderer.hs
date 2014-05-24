@@ -4,12 +4,15 @@ module IRCDB.Renderer where
 import Control.Arrow
 import Control.Applicative
 import Data.List
-
+import Text.Printf
 class Printable a where
     print' :: a -> String
 
 instance Printable Int where
     print' = show
+
+instance Printable Double where
+    print' = printf "%.2f"
 
 instance Printable String where
     print' = id
