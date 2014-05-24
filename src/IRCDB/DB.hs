@@ -1,7 +1,7 @@
 {-# LANGUAGE DoAndIfThenElse, NoMonomorphismRestriction, BangPatterns, TypeSynonymInstances #-}
 module IRCDB.DB where
 
-import Prelude hiding (foldl, concat, sequence_)
+import Prelude hiding (foldl, concat, sequence_, sum)
 import Control.Applicative
 import Control.DeepSeq
 import Control.Arrow
@@ -10,6 +10,7 @@ import Database.HDBC.ODBC
 import Data.Foldable
 import Data.Function
 import Data.Time.LocalTime
+import Data.List (genericLength)
 import System.Directory
 import qualified Text.Regex.Posix as RE
 import IRCDB.Parser
@@ -53,6 +54,13 @@ getIndex con name = do
         [(x:_)] -> return x
         _ -> return $ toSql (0 :: Int)
 
+average :: (a -> Double) -> [a] -> Double
+average f xs =
+    let len = genericLength xs :: Double in
+    if len == 0
+    then 0
+    else sum (f <$> xs) / len :: Double
+
 insert :: IConnection c => LocalTime -> DataLine -> c -> IO LocalTime
 insert t (Message time typ name msg) con = do
     let newT = setHoursMinutes t time
@@ -69,11 +77,16 @@ insert t (Message time typ name msg) con = do
               \ END), lastseen=?\
             \ WHERE name=?;"
 
-    index <- getIndex con sqlName
-    prepared <- prepare con "INSERT INTO messages (name, type, userindex, text, time)\
-                           \ VALUES (?,?,?,?,?);"
 
-    execute prepared [sqlName, sqlType, index, sqlMsg, sqlTime]
+    index <- getIndex con sqlName
+    let words' = words msg
+    let wordcount = toSql $ length words'
+    let wordlength = toSql $ average genericLength words'
+
+    prepared <- prepare con "INSERT INTO messages (name, type, userindex, wordcount, wordlength, text, time)\
+                           \ VALUES (?,?,?,?,?,?,?);"
+
+    execute prepared [sqlName, sqlType, index, wordcount, wordlength, sqlMsg, sqlTime]
     case fromSql index == (0 :: Int) of
         True -> do quickQuery con "INSERT INTO counts (name, count, lastseen, firstseen)\
                                  \ VALUES (?,?,?,?)" [sqlName, toSql (1 :: Int), sqlTime, sqlTime]
@@ -122,7 +135,7 @@ extractTopic (_:name:msg:_) = (fromSql name, fromSql msg)
 extractTopic              _ = ("Error extracting topic", "")
 
 extractMessage :: [SqlValue] -> (String, String)
-extractMessage (_:msg:_:_:name:_) = (fromSql name, fromSql msg)
+extractMessage (_:msg:_:_:_:name:_) = (fromSql name, fromSql msg)
 extractMessage                  _ = ("Error extracting message", "")
 
 
@@ -268,6 +281,14 @@ getUrls con = do
     let r = (second (linkify.extractUrl)) <$> extractSqlUrl <$> rows
     return r
 
+getAverage :: IConnection c => c -> IO [(String,Int)]
+getAverage con =
+    let q = "SELECT messages.name, CAST(AVG(wordcount) AS UNSIGNED)\
+           \ FROM messages\
+           \ JOIN top as t\
+           \ ON t.name = messages.name" in
+    getAndExtract con [] extractPair q
+
 getTimes :: IConnection c
          => c
          -> IO ([(String, Int)],[(String, Int)],[(String, Int)],[(String, Int)])
@@ -347,6 +368,8 @@ createDbs con = do
                                         \ text VARCHAR(4000),\
                                         \ type INT,\
                                         \ userindex INT,\
+                                        \ wordcount INT,\
+                                        \ wordlength DOUBLE,\
                                         \ name VARCHAR(36),\
                                         \ time DATETIME,\
                                         \ PRIMARY KEY (id))\
@@ -459,7 +482,9 @@ generate con = do
     !urls <- getUrls con
     !activity <- getOverallActivity con
     !unique <- getUniqueNicks con
+    !avg <- getAverage con
     let rendered = unlines $ [ makeTimeScript "Activity" activity
+                             , headerTable "Average Words" ("Name", "Average") avg
                              , headerTable "Unique Nicks" ("Name","Messages") unique
                              , headerTable "Some Random URLs" ("Name", "URL") urls
                              , withHeading "Top Users" $ userTimes

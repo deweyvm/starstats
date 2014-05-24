@@ -54,7 +54,7 @@ makeRectScript name w x y z =
 
 makeTimeScript :: String -> [(Int,Int)] -> String
 makeTimeScript h hours =
-    let canvas = makeCanvas "timegraph" (24*24) 100 in
+    let canvas = makeCanvas "timegraph" (24*24) 140 in
     let values :: [String]
         values = (show . snd) <$> hours in
     let fmt = (intercalate ", " values) in
