@@ -25,16 +25,15 @@ instance Printable TimeBar where
     print' (TimeBar user w x y z) =
         (makeCanvas user 100 16) ++ (makeRectScript user w x y z)
 
-formatUserTimes :: [(String, Int, Int, Int, Int, Int, String)] -> String
+formatUserTimes :: [(String, TimeBar, Int, String)] -> String
 formatUserTimes times =
     let addRow w x y z = tr $ (td "20%" w)
                            ++ (td "10%" x)
                            ++ (td "10%" y)
                            ++ (td "60%" z) in
-    let formatTime :: (String, Int, Int, Int, Int, Int, String) -> String
-        formatTime (user, w, x, y, z, total, message) =
-            let rect = (makeRectScript user w x y z) in
-            addRow user ((makeCanvas user 100 16) ++ rect) (show total) message in
+    let formatTime :: (String, TimeBar, Int, String) -> String
+        formatTime (user, bar, total, message) =
+            addRow user (print' bar) (show total) message in
     let formatted :: [String]
         formatted = formatTime <$> times in
     let heading = addRow "User" "Activity" "Total" "Random Message" in

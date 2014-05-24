@@ -301,7 +301,7 @@ getAverageWordLength con =
 
 getTimes :: IConnection c
          => c
-         -> IO ([(String, Int)],[(String, Int)],[(String, Int)],[(String, Int)])
+         -> IO [(String,Int,Int,Int,Int)]
 getTimes con = do
     let late = "SELECT messages.name, COUNT(*) AS count, time\
               \ FROM messages\
@@ -331,10 +331,17 @@ getTimes con = do
              \ GROUP BY messages.name\
              \ ORDER BY count DESC;"
     let get' = getAndExtract con [] extractPair
-    (,,,) <$> get' late
-          <*> get' morn
-          <*> get' aftr
-          <*> get' eve
+    l <- get' late
+    m <- get' morn
+    a <- get' aftr
+    e <- get' eve
+    return $ assemble [l, m, a, e]
+
+assemble :: [[(String, Int)]] -> [(String, Int, Int, Int, Int)]
+assemble xs = []
+
+toTimeBars :: [(String, Int, Int, Int, Int)] -> [(String, TimeBar)]
+toTimeBars = ((\(user, w, x, y, z) -> (user, TimeBar user w x y z)) <$>)
 
 getRandTopics :: IConnection c => c -> IO [(String, String)]
 getRandTopics con =
@@ -451,28 +458,22 @@ repopulateDb con = do
     populateDbs con
 
 combineUsage :: [(String, Int)]
-             -> [(String, Int)]
-             -> [(String, Int)]
-             -> [(String, Int)]
-             -> [(String, Int)]
+             -> [(String, TimeBar)]
              -> [(String, String)]
-             -> [(String, Int, Int, Int, Int, Int, String)]
-combineUsage late morn aftr evening users messages =
+             -> [(String, TimeBar, Int, String)]
+combineUsage users bars messages =
     combine <$> users
     where combine (user,ct) =
            let look s d = case lookup user s of
                               Just x -> x
                               Nothing -> d in
-           let w = look late 0
-               x = look morn 0
-               y = look aftr 0
-               z = look evening 0
+           let (TimeBar _ w x y z) = look bars (TimeBar "ERROR" (-1) (-1) (-1) (-1))
                o = look messages "ERROR" in
            let ddiv :: Int -> Int -> Float
                ddiv = (/) `on` fromIntegral in
            let total = (w + x + y + z) in
            let percent t = truncate $ ddiv (t * 100) total in
-           (user, percent w, percent x, percent y, percent z, ct, o)
+           (user, TimeBar user (percent w) (percent x) (percent y) (percent z), ct, o)
 
 generate :: IConnection c => c -> IO ()
 generate con = do
@@ -480,10 +481,10 @@ generate con = do
     populateUnique con
     users <- force <$> getUsers con
 
-    (late, morning, evening, night) <- force <$> getTimes con
-    randTop <- getRandTopTen con
-
-    let userTimes = formatUserTimes $ combineUsage late morning evening night users randTop
+    tups <- force <$> getTimes con
+    randTop <- force <$> getRandTopTen con
+    let bars = (toTimeBars tups)
+    let userTimes = formatUserTimes $ combineUsage users bars randTop
     !rand <- getRandMessages con
     !nicks <- getNicks con
     !kickers <- getKickers con
