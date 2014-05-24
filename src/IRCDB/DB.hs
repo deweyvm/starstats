@@ -9,7 +9,9 @@ import Database.HDBC
 import Database.HDBC.ODBC
 import Data.Foldable
 import Data.Function
+import Data.Maybe
 import Data.Time.LocalTime
+import Data.List (groupBy)
 import System.Directory
 import qualified Text.Regex.Posix as REP
 import qualified Text.Regex as RE
@@ -298,47 +300,55 @@ getAverageWordLength con =
     let extract (x:y:_) = (fromSql x, fromSql y) in
     getAndExtract con [] extract q
 
+--[ ("anomaly",0,4199)
+--, ("anomaly",1,1640)
+--, ("anomaly",3,2852)
+--, ("Bartle",0,9534)
+--, ("Bartle",1,2306)
+--, ("Bartle",2,4383)
+--, ("Bartle",3,11671)
+--, ("Bwarch",0,1143)
+--, ("Bwarch",1,247)
+--, ("Bwarch",2,236)
+--, ("Bwarch",3,1240)]
+-- ->
+-- [ ("anomaly", 4199, 1640,    0,  2852)
+-- , ( "Bartle", 9534, 2306, 4383, 11671)
+-- , ( "Bwarch", 1143,  247,  236,  1240)]
+assemble :: [(String, Int, Int)] -> [[(String, Int, Int)]]
+assemble xs = groupBy (\(n, _, _) (m, _, _) -> n == m) xs
+
+thd3 :: (a, b, c) -> c
+thd3 (_, _, x) = x
+
+assemble2 :: [[(String, Int, Int)]] -> [(String, Int, Int, Int, Int)]
+assemble2 xs =
+    let grabAll :: [(String, Int, Int)] -> (String, Int, Int, Int, Int)
+        grabAll vs@((name,_,_):_) =
+            let getWhere :: Int -> Int
+                getWhere i = fromMaybe 0 (thd3 <$> (find (\(nn, ii, _) -> i == ii && name == nn) vs)) in
+            let w = getWhere 0
+                x = getWhere 1
+                y = getWhere 2
+                z = getWhere 3 in
+            (name, w, x, y, z) in
+    grabAll <$> xs
+
 
 getTimes :: IConnection c
          => c
-         -> IO [(String,Int,Int,Int,Int)]
+         -> IO [(String, Int, Int, Int, Int)]
 getTimes con = do
-    let late = "SELECT messages.name, COUNT(*) AS count, time\
+    let all' = "SELECT messages.name, FLOOR(HOUR(time)/6) as h, COUNT(*) AS count\
               \ FROM messages\
               \ JOIN top AS t\
-              \ WHERE HOUR(time) < 6 AND t.name = messages.name\
-              \ GROUP BY messages.name\
-              \ ORDER BY count DESC;"
-    let morn = "SELECT messages.name, COUNT(*) AS count, time\
-              \ FROM messages\
-              \ JOIN top AS t\
-              \ WHERE HOUR(time) >= 6 AND HOUR(time) < 12\
-                                    \ AND t.name = messages.name\
-              \ GROUP BY messages.name\
-              \ ORDER BY count DESC;"
-    let aftr = "SELECT messages.name, COUNT(*) AS count, time\
-              \ FROM messages\
-              \ JOIN top AS t\
-              \ WHERE HOUR(time) >= 12 AND HOUR(time) < 18\
-                                     \ AND t.name = messages.name\
-              \ GROUP BY messages.name\
-              \ ORDER BY count DESC;"
-    let eve = "SELECT messages.name, COUNT(*) AS count, time\
-             \ FROM messages\
-             \ JOIN top AS t\
-             \ WHERE HOUR(time) >= 18 AND HOUR(time) < 24\
-                                    \ AND t.name = messages.name\
-             \ GROUP BY messages.name\
-             \ ORDER BY count DESC;"
-    let get' = getAndExtract con [] extractPair
-    l <- get' late
-    m <- get' morn
-    a <- get' aftr
-    e <- get' eve
-    return $ assemble [l, m, a, e]
+              \ ON t.name = messages.name\
+              \ GROUP BY h, messages.name\
+              \ ORDER BY messages.name, h, count DESC;"
+    let extract (x:y:z:_) = (fromSql x, fromSql y, fromSql z) :: (String, Int, Int)
+    xs <- getAndExtract con [] extract all'
+    return $ (assemble2 . assemble) xs
 
-assemble :: [[(String, Int)]] -> [(String, Int, Int, Int, Int)]
-assemble xs = []
 
 toTimeBars :: [(String, Int, Int, Int, Int)] -> [(String, TimeBar)]
 toTimeBars = ((\(user, w, x, y, z) -> (user, TimeBar user w x y z)) <$>)
