@@ -128,8 +128,8 @@ insert t _ _ = return t
 
 extractTup :: (Convertible SqlValue a
               , Convertible SqlValue b
-              , Defaultable a
-              , Defaultable b)
+              , Default a
+              , Default b)
            => [SqlValue]
            -> (a, b)
 extractTup (x:y:_) = (fromSql x, fromSql y)
@@ -348,7 +348,7 @@ getSelfTalk con =
            \ FROM (\
                \ SELECT\
                   \ name,\
-                  \ IF (@name = name,  @count := @count + 1, @count := 0) AS c,\
+                  \ IF (@name = name,  @count := @count + 1, @count := 1) AS c,\
                   \ @name := name\
                \ FROM\
                   \ messages\
@@ -510,6 +510,9 @@ combineUsage users bars messages =
            let percent t = truncate $ ddiv (t * 100) total in
            (user, TimeBar user (percent w) (percent x) (percent y) (percent z), ct, o)
 
+mapSnd :: (a -> b) -> (c, a) -> (c, b)
+mapSnd f (x, y) = (x, f y)
+
 generate :: IConnection c => c -> IO ()
 generate con = do
     populateTop con
@@ -519,7 +522,6 @@ generate con = do
     tups <- force <$> getTimes con
     randTop <- force <$> getRandTopTen con
     let bars = (toTimeBars tups)
-    let userTimes = formatUserTimes $ combineUsage users bars randTop
     !rand <- getRandMessages con
     !nicks <- getNicks con
     !kickers <- getKickers con
@@ -533,7 +535,14 @@ generate con = do
     !self <- getSelfTalk con
     !mentions <- mostMentions con
     !needy <- mostNeedy con
+    let printify = (mapSnd print' <$> )
+    let col1 = toColumn (printify users) "Messages" 45
+    let col2 = toColumn (printify bars) "bars" 45
+    let col3 = toColumn randTop "Random" 45
+    let us = fst <$> randTop
+    let rows = formatTable us "Users" 10 [col1, col2, col3]
     let rendered = unlines $ [ makeTimeScript "Activity" activity
+                             , withHeading "Top Users" $ rows
                              , headerTable "Clingy" ("Name", "Times Mentioning Someone") needy
                              , headerTable "Popular" ("Name", "Times Mentioned") mentions
                              , headerTable "Lonely Chatters" ("Name", "Times In A Row") self
@@ -541,14 +550,14 @@ generate con = do
                              , headerTable "Word Length" ("Name", "Average Word Length") avgwl
                              , headerTable "Unique Nicks" ("Name","Messages") unique
                              , headerTable "Some Random URLs" ("Name", "URL") urls
-                             , withHeading "Top Users" $ userTimes
                              , headerTable "Random Messages" ("Name", "Message") rand
                              , headerTable "Most Changed Nicks" ("Name", "Times Changed") nicks
                              , headerTable "Prolific Kickers" ("Name", "Times kicking") kickers
                              , headerTable "Trouble Makers" ("Name", "Times Kicked") kickees
                              , headerTable "Topics" ("Name", "Topic") topics
                              ]
-    writeFile "generated.html" $ makeFile rendered "css.css" ["util.js"]
+    let r2 = rendered
+    writeFile "generated.html" $ makeFile r2 "css.css" ["util.js"]
 
 doAction :: Action -> IO ()
 doAction action = do
