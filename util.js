@@ -1,26 +1,38 @@
-var util__color1 = '#757CB8';
-var util__color2 = '#B8759D';
-var util__color3 = '#B8B175';
-var util__color4 = '#75B890';
 
-var util__colors = [util__color1,util__color2,util__color3,util__color4];
+var util__colors = [
+    '#757CB8',
+    '#B8759D',
+    '#B8B175',
+    '#75B890'
+];
 function getContext(name) {
     var canvas = document.getElementById(name);
     var context = canvas.getContext('2d');
     return context;
 }
 
+function sum(arr) {
+    return arr.reduce(function(x, y) { return x + y; }, 0);
+}
+
 function drawBar(canvasName, w, x, y, z) {
     var context = getContext(canvasName);
+    var total = w + x + y + z;
+    var w_ = 100*w/total;
+    var x_ = 100*x/total;
+    var y_ = 100*y/total;
+    var z_ = 100*z/total;
+    var vars = [w_, x_, y_, z_]
     context.beginPath();
-    context.fillStyle = util__color1;
-    context.fillRect(0, 0,w, 16);
-    context.fillStyle = util__color2;
-    context.fillRect(w, 0, x, 16);
-    context.fillStyle = util__color3;
-    context.fillRect(w + x, 0, y, 16);
-    context.fillStyle = util__color4;
-    context.fillRect(w + x + y, 0, z, 16);
+    var colors = util__colors;
+    var numColors = Math.min(colors.length, vars.length);
+    for (var i = 0; i < numColors; i += 1) {
+        context.fillStyle = colors[i];
+        var x = sum(vars.slice(0, i));
+        var width = vars[i];
+        console.log(x + " " + width);
+        context.fillRect(x, 0, width, 16);
+    }
 }
 
 function drawGraph(canvasName, xs) {
