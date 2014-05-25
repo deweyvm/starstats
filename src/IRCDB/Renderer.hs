@@ -58,12 +58,8 @@ toColumn :: [(String, String)] -> Heading -> Width -> Column
 toColumn xs h w = Column (M.fromList xs) h w
 
 --may be possible to pass width directly
-getHeadingWidth :: [Column] -> ([Heading], Width)
-getHeadingWidth cs =
-    let width = case cs of
-                    ((Column _ _ w):_) -> w
-                    _ -> error "bad" in
-    ((\(Column _ h _) -> h) <$> cs, width)
+getHeadingWidth :: Column -> (Heading, Width)
+getHeadingWidth = (,) <$> getHeading <*> getWidth
 
 toRow :: [(Name, [String], Width)] -> [Row]
 toRow xs = (Row . doMap) <$> xs
@@ -71,8 +67,7 @@ toRow xs = (Row . doMap) <$> xs
 
 makeHeadingRow :: [Column] -> Row
 makeHeadingRow cs =
-    let (hs, w) = getHeadingWidth cs in
-    Row $ zip hs (repeat w)
+    Row $ getHeadingWidth <$> cs
 
 getMap :: Column -> M.Map String String
 getMap (Column m _ _) = m
@@ -80,6 +75,8 @@ getMap (Column m _ _) = m
 getWidth :: Column -> Width
 getWidth (Column _ _ w) = w
 
+getHeading :: Column -> Heading
+getHeading (Column _ h _) = h
 rowify :: [Name]
        -> [Column]
        -> [Row]

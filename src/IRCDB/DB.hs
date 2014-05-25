@@ -65,7 +65,7 @@ insert t (Message time typ name msg) con = do
     let sqlName = toSql name
     let sqlType = toSql typ
     let sqlMsg = toSql msg
-    let sqlTime = toSql newT
+    let sqlTime = toSql (subHours newT (subtract 3))
 
     let qq = "UPDATE counts\
             \ SET count=count+1, firstseen=(\
@@ -182,6 +182,7 @@ populateUnique con = do
                           \ HAVING cc / 10 < c.count))))"
     runQuery con q
     return ()
+
 
 getUniqueNicks :: IConnection c => c -> IO [(String,Int)]
 getUniqueNicks con =
@@ -376,6 +377,15 @@ mostMentions con =
            \ LIMIT 10"  in
     getAndExtract con [] extractTup q
 
+
+getBffs :: IConnection c => c -> IO [(String, String)]
+getBffs con =
+    let q = "SELECT u.name, v.name\
+           \ FROM uniquenicks as v\
+           \ INNER JOIN uniquenicks as u\
+           \ LIMIT 10;" in
+    getAndExtract con [] extractTup q
+
 mostNeedy :: IConnection c => c -> IO [(String, String)]
 mostNeedy con =
     let q = "SELECT messages.name, COUNT(*) as c\
@@ -492,23 +502,6 @@ repopulateDb con = do
     createDbs con
     populateDbs con
 
-combineUsage :: [(String, Int)]
-             -> [(String, TimeBar)]
-             -> [(String, String)]
-             -> [(String, TimeBar, Int, String)]
-combineUsage users bars messages =
-    combine <$> users
-    where combine (user,ct) =
-           let look s d = case lookup user s of
-                              Just x -> x
-                              Nothing -> d in
-           let (TimeBar _ w x y z) = look bars (TimeBar "ERROR" (-1) (-1) (-1) (-1))
-               o = look messages "ERROR" in
-           let ddiv :: Int -> Int -> Float
-               ddiv = (/) `on` fromIntegral in
-           let total = (w + x + y + z) in
-           let percent t = truncate $ ddiv (t * 100) total in
-           (user, TimeBar user (percent w) (percent x) (percent y) (percent z), ct, o)
 
 mapSnd :: (a -> b) -> (c, a) -> (c, b)
 mapSnd f (x, y) = (x, f y)
@@ -535,19 +528,23 @@ generate con = do
     !self <- getSelfTalk con
     !mentions <- mostMentions con
     !needy <- mostNeedy con
+    !bffs <- getBffs con
     let printify = (mapSnd print' <$> )
-    let col1 = toColumn (printify users) "Messages" 45
-    let col2 = toColumn (printify bars) "bars" 45
-    let col3 = toColumn randTop "Random" 45
-    let us = fst <$> randTop
-    let rows = formatTable us "Users" 10 [col1, col2, col3]
+    let col1 = toColumn (printify users) "Messages" 10
+    let col2 = toColumn (printify bars) "Active" 10
+    let col3 = toColumn (printify avgwl) "AWL" 6
+    let col4 = toColumn (printify avgwc) "AWC" 6
+
+    let col5 = toColumn randTop "Random Message" 68
+
+    let us = fst <$> users
+    let rows = formatTable us "Users" 10 [col1, col2, col3, col4, col5]
     let rendered = unlines $ [ makeTimeScript "Activity" activity
                              , withHeading "Top Users" $ rows
+                             , headerTable "Bffs" ("Lover1", "Lover2") bffs
                              , headerTable "Clingy" ("Name", "Times Mentioning Someone") needy
                              , headerTable "Popular" ("Name", "Times Mentioned") mentions
                              , headerTable "Lonely Chatters" ("Name", "Times In A Row") self
-                             , headerTable "Word Count" ("Name", "Average Word Count") avgwc
-                             , headerTable "Word Length" ("Name", "Average Word Length") avgwl
                              , headerTable "Unique Nicks" ("Name","Messages") unique
                              , headerTable "Some Random URLs" ("Name", "URL") urls
                              , headerTable "Random Messages" ("Name", "Message") rand
