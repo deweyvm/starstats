@@ -1,4 +1,4 @@
-{-# LANGUAGE DoAndIfThenElse, NoMonomorphismRestriction, BangPatterns, TypeSynonymInstances #-}
+{-# LANGUAGE DoAndIfThenElse, NoMonomorphismRestriction, BangPatterns, TypeSynonymInstances, FlexibleContexts, FlexibleInstances #-}
 module IRCDB.DB where
 
 import Prelude hiding (foldl, concat, sequence_, sum)
@@ -7,6 +7,7 @@ import Control.DeepSeq
 import Control.Arrow
 import Database.HDBC
 import Database.HDBC.ODBC
+import Data.Convertible
 import Data.Foldable
 import Data.Function
 import Data.Maybe
@@ -19,7 +20,20 @@ import IRCDB.Parser
 import IRCDB.Time
 import IRCDB.Renderer
 
+
 data Action = Repopulate | Generate
+
+class Defaultable a where
+    default' :: a
+
+instance Defaultable Double where
+    default' = 0
+
+instance Defaultable Int where
+    default' = 0
+
+instance Defaultable [Char] where
+    default' = ""
 
 configFile :: String
 configFile = "config"
@@ -130,11 +144,6 @@ extractTopic :: [SqlValue] -> (String, String)
 extractTopic (_:name:msg:_) = (fromSql name, fromSql msg)
 extractTopic              _ = ("Error extracting topic", "")
 
-extractMessage :: [SqlValue] -> (String, String)
-extractMessage (name:msg:_) = (fromSql name, fromSql msg)
-extractMessage                  _ = ("Error extracting message", "")
-
-
 type Extract a = [SqlValue] -> a
 
 runQuery :: IConnection c => c -> String -> IO [[SqlValue]]
@@ -211,7 +220,7 @@ getRandMessages con =
                  \ FROM messages\
                  \ LIMIT 10) AS dummy\
            \ ON m.id = m2;" in
-    getAndExtract con qs extractMessage q
+    getAndExtract con qs extractTup q
 
 getRandTopTen :: IConnection c => c -> IO [(String, String)]
 getRandTopTen con = do
@@ -221,7 +230,7 @@ getRandTopTen con = do
                        \ FROM top) AS t\
            \ ON m.name = t.name AND m.userindex = r"
 
-    getAndExtract con [] extractMessage q
+    getAndExtract con [] extractTup q
 
 getKickers :: IConnection c => c -> IO [(String, Int)]
 getKickers con =
@@ -230,7 +239,7 @@ getKickers con =
            \ GROUP BY kicker\
            \ ORDER BY count DESC\
            \ LIMIT 10;" in
-    getAndExtract con [] extractPair q
+    getAndExtract con [] extractTup q
 
 getKickees :: IConnection c => c -> IO [(String, Int)]
 getKickees con =
@@ -239,12 +248,12 @@ getKickees con =
            \ GROUP BY kickee\
            \ ORDER BY count DESC\
            \ LIMIT 10;" in
-    getAndExtract con [] extractPair q
+    getAndExtract con [] extractTup q
 
 getUsers :: IConnection c => c -> IO [(String, Int)]
 getUsers con =
     let q = "SELECT name, msgs FROM top" in
-    getAndExtract con [] extractPair q
+    getAndExtract con [] extractTup q
 
 getNicks :: IConnection c => c -> IO [(String, Int)]
 getNicks con =
@@ -253,13 +262,10 @@ getNicks con =
            \ GROUP BY oldname\
            \ ORDER BY count DESC\
            \ LIMIT 10;" in
-    getAndExtract con [] extractPair q
+    getAndExtract con [] extractTup q
 
 urlRegexp :: String
 urlRegexp = "http://[^ ]*"
-
-extractSqlUrl :: [SqlValue] -> (String, String)
-extractSqlUrl (x:y:_) = (fromSql x, fromSql y)
 
 extractUrl :: String -> String
 extractUrl s = case s REP.=~ urlRegexp :: [[String]] of
@@ -275,8 +281,17 @@ getUrls con = do
                            \ LIMIT 10"
     execute prepared [toSql urlRegexp]
     rows <- fetchAllRows' prepared
-    let r = (second (linkify.extractUrl)) <$> extractSqlUrl <$> rows
+    let r = (second (linkify.extractUrl)) <$> extractTup <$> rows
     return r
+
+extractTup :: (Convertible SqlValue a
+              , Convertible SqlValue b
+              , Defaultable a
+              , Defaultable b)
+           => [SqlValue]
+           -> (a, b)
+extractTup (x:y:_) = (fromSql x, fromSql y)
+extractTup       _ = (default', default')
 
 getAverageWordCount :: IConnection c => c -> IO [(String, Double)]
 getAverageWordCount con =
@@ -286,8 +301,7 @@ getAverageWordCount con =
            \ ON t.name = m.name\
            \ GROUP BY m.name\
            \ ORDER BY avg DESC" in
-    let extract (x:y:_) = (fromSql x, fromSql y) in
-    getAndExtract con [] extract q
+    getAndExtract con [] extractTup q
 
 getAverageWordLength :: IConnection c => c -> IO [(String, Double)]
 getAverageWordLength con =
@@ -297,8 +311,7 @@ getAverageWordLength con =
            \ ON t.name = m.name\
            \ GROUP BY m.name\
            \ ORDER BY avg DESC" in
-    let extract (x:y:_) = (fromSql x, fromSql y) in
-    getAndExtract con [] extract q
+    getAndExtract con [] extractTup q
 
 assemble :: [(String, Int, Int)] -> [[(String, Int, Int)]]
 assemble xs = groupBy (\(n, _, _) (m, _, _) -> n == m) xs
@@ -349,7 +362,7 @@ getRandTopics con =
 getSelfTalk :: IConnection c => c -> IO [(String, Int)]
 getSelfTalk con =
     let q = "SELECT\
-               \ name, c\
+               \ name, MAX(c) AS maxc\
            \ FROM (\
                \ SELECT\
                   \ name,\
@@ -363,9 +376,35 @@ getSelfTalk con =
                   \ @count:=0\
               \ ) AS r\
            \ ) AS t\
-           \ WHERE c > 5" in
-    let extract (x:y:_) = (fromSql x, fromSql y) in
-    getAndExtract con [] extract q
+           \ WHERE c > 5\
+           \ GROUP BY name\
+           \ ORDER BY maxc DESC\
+           \ LIMIT 10" in
+    getAndExtract con [] extractTup q
+
+mostMentions :: IConnection c => c -> IO [(String, String)]
+mostMentions con =
+    let q = "SELECT u.name, COUNT(*) as c\
+           \ FROM messages\
+           \ INNER JOIN (SELECT uniquenicks.name, CONCAT(\"%\", uniquenicks.name, \"%\") as nn\
+                       \ FROM uniquenicks) AS u\
+           \ WHERE messages.text LIKE nn\
+           \ GROUP BY u.name\
+           \ ORDER BY c DESC\
+           \ LIMIT 10"  in
+    getAndExtract con [] extractTup q
+
+mostNeedy :: IConnection c => c -> IO [(String, String)]
+mostNeedy con =
+    let q = "SELECT messages.name, COUNT(*) as c\
+           \ FROM messages\
+           \ INNER JOIN (SELECT uniquenicks.name, CONCAT(\"%\", uniquenicks.name, \"%\") as nn\
+                       \ FROM uniquenicks) AS u\
+           \ WHERE messages.text LIKE nn\
+           \ GROUP BY messages.name\
+           \ ORDER BY c DESC\
+           \ LIMIT 10"  in
+    getAndExtract con [] extractTup q
 
 connect :: IO Connection
 connect = do
@@ -510,8 +549,12 @@ generate con = do
     !avgwc <- getAverageWordCount con
     !avgwl <- getAverageWordLength con
     !self <- getSelfTalk con
+    !mentions <- mostMentions con
+    !needy <- mostNeedy con
     let rendered = unlines $ [ makeTimeScript "Activity" activity
-                             , headerTable "Talks To Themselves" ("Name", "Times") self
+                             , headerTable "Clingy" ("Name", "Times Mentioning Someone") needy
+                             , headerTable "Popular" ("Name", "Times Mentioned") mentions
+                             , headerTable "Lonely Chatters" ("Name", "Times In A Row") self
                              , headerTable "Word Count" ("Name", "Average Word Count") avgwc
                              , headerTable "Word Length" ("Name", "Average Word Length") avgwl
                              , headerTable "Unique Nicks" ("Name","Messages") unique
