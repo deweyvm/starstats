@@ -23,17 +23,6 @@ import IRCDB.Renderer
 
 data Action = Repopulate | Generate
 
-class Defaultable a where
-    default' :: a
-
-instance Defaultable Double where
-    default' = 0
-
-instance Defaultable Int where
-    default' = 0
-
-instance Defaultable [Char] where
-    default' = ""
 
 configFile :: String
 configFile = "config"

@@ -4,8 +4,22 @@ module IRCDB.Renderer where
 import Control.Arrow
 import Control.Applicative
 import Data.List
+import Data.Maybe
+import qualified Data.Map as M
 import Text.Printf
 
+
+class Defaultable a where
+    default' :: a
+
+instance Defaultable Double where
+    default' = 0
+
+instance Defaultable Int where
+    default' = 0
+
+instance Defaultable [Char] where
+    default' = ""
 
 data TimeBar = TimeBar String Int Int Int Int
 
@@ -24,6 +38,62 @@ instance Printable String where
 instance Printable TimeBar where
     print' (TimeBar user w x y z) =
         (makeCanvas user 100 16) ++ (makeRectScript user w x y z)
+
+type Heading = String
+type Name = String
+type Width = Int
+data Column a = Column (M.Map Name a) Heading Width
+data Row a = Row [(String, Width)]
+
+toColumn :: Ord a => [(String, a)] -> Heading -> Width -> Column a
+toColumn xs h w = Column (M.fromList xs) h w
+
+--may be possible to pass width directly
+getHeadingWidth :: [Column a] -> ([Heading], Width)
+getHeadingWidth cs =
+    let width = case cs of
+                    ((Column _ _ w):_) -> w
+                    _ -> error "bad" in
+    ((\(Column _ h _) -> h) <$> cs, width)
+
+toRow :: Printable a => [(Name, [a], Width)] -> [Row a]
+toRow xs = (Row . doMap) <$> xs
+    where doMap (name, elts, width) = zip (name : (print' <$> elts)) (repeat width)
+
+makeHeadingRow :: [Column a] -> Row a
+makeHeadingRow cs =
+    let (hs, w) = getHeadingWidth cs in
+    Row $ zip hs (repeat w)
+
+getMap :: Column a -> M.Map String a
+getMap (Column m _ _) = m
+
+getWidth :: Column a -> Width
+getWidth (Column _ _ w) = w
+
+rowify :: (Ord a, Defaultable a, Printable a)
+       => [Name]
+       -> [Column a]
+       -> [Row a]
+rowify us cs =
+    let hr = makeHeadingRow cs in
+    let maps = getMap <$> cs in
+    let ws = getWidth <$> cs in
+    let find' u m = print' $ fromMaybe default' (M.lookup u m) in
+    let assemble :: Name -> [(String, Width)]
+        assemble u = zip (find' u <$> maps) ws in
+    let rows = Row . assemble <$> us in
+    hr : rows
+
+formatTable :: (Ord a, Defaultable a, Printable a)
+            => [Name]
+            -> [Column a]
+            -> String
+formatTable ns cs =
+    let rows = rowify ns cs in
+    let formatCell (s, w) = td (printf "%d%%" w) s in
+    let formatRow (Row xs) = tr $ concat $ formatCell <$> xs in
+    concat $ formatRow <$> rows
 
 formatUserTimes :: [(String, TimeBar, Int, String)] -> String
 formatUserTimes times =
@@ -119,12 +189,12 @@ propToString (k, v) = k ++ "=\"" ++ v ++ "\" "
 
 genTag :: String -> [(String,String)] -> String -> String
 genTag t props c =
-    let props' = foldl(\acc kv -> acc ++ propToString kv) "" props in
+    let props' = foldl (\acc kv -> acc ++ propToString kv) "" props in
     concat ["<", t, " ", props', ">\n", c, "\n</", t, ">"]
 
 voidTag :: String -> [(String,String)] -> String
 voidTag t props =
-    let props' = foldl(\acc kv -> acc ++ propToString kv) "" props in
+    let props' = foldl (\acc kv -> acc ++ propToString kv) "" props in
     concat ["<", t, " ", props', ">\n"]
 
 tag :: String -> String -> String
