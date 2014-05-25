@@ -9,7 +9,6 @@ import Database.HDBC
 import Database.HDBC.ODBC
 import Data.Convertible
 import Data.Foldable
-import Data.Function
 import Data.Maybe
 import Data.Time.LocalTime
 import Data.List (groupBy)
@@ -379,12 +378,31 @@ mostMentions con =
 
 
 getBffs :: IConnection c => c -> IO [(String, String)]
-getBffs con =
-    let q = "SELECT u.name, v.name\
-           \ FROM uniquenicks as v\
-           \ INNER JOIN uniquenicks as u\
-           \ LIMIT 10;" in
-    getAndExtract con [] extractTup q
+getBffs con = do
+    let qs = "DROP FUNCTION IF EXISTS countmentions;\
+            \ DELIMITER $$\
+            \ CREATE FUNCTION countmentions (n1 VARCHAR(36), n2 VARCHAR(36))\
+            \ RETURNS INT\
+            \ BEGIN\
+            \ RETURN (SELECT COUNT(*) as c\
+                    \ FROM messages\
+                    \ INNER JOIN (SELECT CONCAT(\"%\", n2, \"%\") as nn) AS k\
+                    \ WHERE messages.name = n1 AND messages.text LIKE nn);\
+            \ END$$"
+    let q = "SELECT \
+               \ u.name, \
+               \ v.name, \
+               \ countmentions(u.name, v.name) as c1, \
+               \ countmentions(v.name, u.name) as c2\
+           \ FROM uniquenicks as u\
+           \ INNER JOIN uniquenicks as v\
+           \ ON u.id < v.id\
+           \ HAVING c1 > 100 OR c2 > 100;"
+    executeRaw <$> (prepare con qs)
+    let extract :: [SqlValue] -> [(String, String)]
+        extract (w:x:y:z:_) = [ (fromSql w ++ " mentioned " ++ fromSql x, fromSql y)
+                              , (fromSql x ++ " mentioned " ++ fromSql w, fromSql z)]
+    concat <$> getAndExtract con [] extract q
 
 mostNeedy :: IConnection c => c -> IO [(String, String)]
 mostNeedy con =
@@ -471,9 +489,10 @@ createDbs con = do
                                    \ lastseen TIME,\
                                    \ firstseen TIME,\
                                    \ PRIMARY KEY (id));"
-    let unique = "CREATE TABLE uniquenicks(name VARCHAR(36),\
+    let unique = "CREATE TABLE uniquenicks(id INT NOT NULL AUTO_INCREMENT,\
+                                         \ name VARCHAR(36),\
                                          \ count INT,\
-                                         \ PRIMARY KEY (name));"
+                                         \ PRIMARY KEY (id));"
 
 
     sequence_ $ runQuery con <$> [ messages
@@ -510,6 +529,7 @@ generate :: IConnection c => c -> IO ()
 generate con = do
     populateTop con
     populateUnique con
+    commit con
     users <- force <$> getUsers con
 
     tups <- force <$> getTimes con
@@ -528,7 +548,7 @@ generate con = do
     !self <- getSelfTalk con
     !mentions <- mostMentions con
     !needy <- mostNeedy con
-    !bffs <- getBffs con
+    -- !bffs <- getBffs con
     let printify = (mapSnd print' <$> )
     let col1 = toColumn (printify users) "Messages" 10
     let col2 = toColumn (printify bars) "Active" 10
@@ -538,10 +558,10 @@ generate con = do
     let col5 = toColumn randTop "Random Message" 68
 
     let us = fst <$> users
-    let rows = formatTable us "Users" 10 [col1, col2, col3, col4, col5]
-    let rendered = unlines $ [ makeTimeScript "Activity" activity
+    let rows = formatTable us "User" 10 [col1, col2, col3, col4, col5]
+    let rendered = unlines $ [ makeTimeScript "Activity (UTC)" activity
                              , withHeading "Top Users" $ rows
-                             , headerTable "Bffs" ("Lover1", "Lover2") bffs
+                             --, headerTable "Bffs" ("Mention", "Times") bffs
                              , headerTable "Clingy" ("Name", "Times Mentioning Someone") needy
                              , headerTable "Popular" ("Name", "Times Mentioned") mentions
                              , headerTable "Lonely Chatters" ("Name", "Times In A Row") self

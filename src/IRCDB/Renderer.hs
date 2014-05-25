@@ -166,7 +166,7 @@ makeFile x file scripts =
 
 simpleTable :: Print a => [(String,a)] -> String
 simpleTable xs = tag "table" $ concat $ format <$> xs
-    where format (s, y) = tr $ td "20%" s ++ td "80%" (print' y)
+    where format (s, y) = tr $ td "30%" s ++ td "70%" (print' y)
 
 
 td :: String -> (String -> String)
