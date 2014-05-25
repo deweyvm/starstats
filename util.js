@@ -30,7 +30,6 @@ function drawBar(canvasName, w, x, y, z) {
         context.fillStyle = colors[i];
         var x = sum(vars.slice(0, i));
         var width = vars[i];
-        console.log(x + " " + width);
         context.fillRect(x, 0, width, 16);
     }
 }
