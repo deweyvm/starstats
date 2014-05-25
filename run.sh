@@ -2,7 +2,7 @@
 EXE=./dist/build/ircdb/ircdb.exe
 
 pushd src &> /dev/null && \
-echo "Generating documentation..." &&\
+#echo "Generating documentation..." &&\
 #out=`haddock -h -o ../docs Main.hs`
 #if [[ $? -ne 0 ]] ; then
 #    echo WARNING: haddock failure
