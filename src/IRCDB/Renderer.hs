@@ -106,20 +106,6 @@ formatTable ns nh nw cs =
     let formatRow (Row xs) = tr $ concat $ formatCell <$> xs in
     tag "table" $ concat $ formatRow <$> rows
 
-formatUserTimes :: [(String, TimeBar, Int, String)] -> String
-formatUserTimes times =
-    let addRow w x y z = tr $ (td "20%" w)
-                           ++ (td "10%" x)
-                           ++ (td "10%" y)
-                           ++ (td "60%" z) in
-    let formatTime :: (String, TimeBar, Int, String) -> String
-        formatTime (user, bar, total, message) =
-            addRow user (print' bar) (show total) message in
-    let formatted :: [String]
-        formatted = formatTime <$> times in
-    let heading = addRow "User" "Activity" "Total" "Random Message" in
-    tag "table" $ heading ++ (concat formatted)
-
 
 makeCanvas :: String -> Int -> Int -> String
 makeCanvas name width height =
