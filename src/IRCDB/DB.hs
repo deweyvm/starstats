@@ -136,13 +136,15 @@ insert _ (Day date) _ = return date
 insert _ (Open date) _ = return date
 insert t _ _ = return t
 
-extractPair :: [SqlValue] -> (String, Int)
-extractPair (x:y:_) = (fromSql x, fromSql y)
-extractPair       _ = ("Error extracting pair", 0)
 
-extractTopic :: [SqlValue] -> (String, String)
-extractTopic (_:name:msg:_) = (fromSql name, fromSql msg)
-extractTopic              _ = ("Error extracting topic", "")
+extractTup :: (Convertible SqlValue a
+              , Convertible SqlValue b
+              , Defaultable a
+              , Defaultable b)
+           => [SqlValue]
+           -> (a, b)
+extractTup (x:y:_) = (fromSql x, fromSql y)
+extractTup       _ = (default', default')
 
 type Extract a = [SqlValue] -> a
 
@@ -197,8 +199,7 @@ getUniqueNicks con =
     let q = "SELECT name, count\
            \ FROM uniquenicks\
            \ ORDER BY count DESC" in
-    let extract (s:c:_) = (fromSql s, fromSql c) in
-    getAndExtract con [] extract q
+    getAndExtract con [] extractTup q
 
 
 getOverallActivity :: IConnection c => c -> IO [(Int,Int)]
@@ -284,14 +285,6 @@ getUrls con = do
     let r = (second (linkify.extractUrl)) <$> extractTup <$> rows
     return r
 
-extractTup :: (Convertible SqlValue a
-              , Convertible SqlValue b
-              , Defaultable a
-              , Defaultable b)
-           => [SqlValue]
-           -> (a, b)
-extractTup (x:y:_) = (fromSql x, fromSql y)
-extractTup       _ = (default', default')
 
 getAverageWordCount :: IConnection c => c -> IO [(String, Double)]
 getAverageWordCount con =
@@ -352,12 +345,12 @@ toTimeBars = ((\(user, w, x, y, z) -> (user, TimeBar user w x y z)) <$>)
 getRandTopics :: IConnection c => c -> IO [(String, String)]
 getRandTopics con =
     let qs = ["SET @max = (SELECT MAX(id) FROM topics);"] in
-    let q = "SELECT DISTINCT * FROM topics AS v\
+    let q = "SELECT DISTINCT name, topic FROM topics AS v\
            \ JOIN (SELECT ROUND(RAND() * @max) AS r\
                  \ FROM topics\
                  \ LIMIT 10) AS dummy\
            \ ON v.id = r;" in
-    getAndExtract con qs extractTopic q
+    getAndExtract con qs extractTup q
 
 getSelfTalk :: IConnection c => c -> IO [(String, Int)]
 getSelfTalk con =
