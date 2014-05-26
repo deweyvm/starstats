@@ -18,20 +18,6 @@ replace x y z = RE.subRegex (RE.mkRegex x) z y
 escapeHtml :: String -> String
 escapeHtml = replace ">" "&gt;" . replace "<" "&lt;"
 
-data TimeBar = TimeBar String Int Int Int Int
-
-toTimeBars :: [(String, Int, Int, Int, Int)] -> [(String, TimeBar)]
-toTimeBars = ((\(user, w, x, y, z) -> (user, TimeBar user w x y z)) <$>)
-
-
-instance Ord TimeBar where
-    (TimeBar x _ _ _ _) `compare` (TimeBar y _ _ _ _) = x `compare` y
-
-instance Eq TimeBar where
-    (TimeBar x _ _ _ _) == (TimeBar y _ _ _ _) = x == y
-
-
-
 class Print a where
     print' :: a -> String
 

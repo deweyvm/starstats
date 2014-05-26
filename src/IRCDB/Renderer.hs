@@ -1,5 +1,4 @@
-{-# LANGUAGE DoAndIfThenElse, BangPatterns, FlexibleInstances, ExistentialQuantification, ImpredicativeTypes
- #-}
+{-# LANGUAGE DoAndIfThenElse, BangPatterns, FlexibleInstances, ExistentialQuantification, ImpredicativeTypes #-}
 module IRCDB.Renderer where
 
 import Control.Arrow
@@ -10,6 +9,19 @@ import qualified Data.Map as M
 import Text.Printf
 
 import IRCDB.DB.Utils
+
+data TimeBar = TimeBar String Int Int Int Int
+
+toTimeBars :: [(String, Int, Int, Int, Int)] -> [(String, TimeBar)]
+toTimeBars = ((\(user, w, x, y, z) -> (user, TimeBar user w x y z)) <$>)
+
+
+instance Ord TimeBar where
+    (TimeBar x _ _ _ _) `compare` (TimeBar y _ _ _ _) = x `compare` y
+
+instance Eq TimeBar where
+    (TimeBar x _ _ _ _) == (TimeBar y _ _ _ _) = x == y
+
 
 instance Print TimeBar where
     print' (TimeBar user w x y z) =
@@ -54,9 +66,9 @@ rowify us cs =
     let maps = getMap <$> cs in
     let ws = getWidth <$> cs in
     let find' u m = print' $ fromMaybe default' (M.lookup u m) in
-    let assemble :: Name -> [(String, Width)]
-        assemble u = zip (find' u <$> maps) ws in
-    let rows = Row . assemble <$> us in
+    let assemble' :: Name -> [(String, Width)]
+        assemble' u = zip (find' u <$> maps) ws in
+    let rows = Row . assemble' <$> us in
     hr : rows
 
 formatTable :: [Name]
