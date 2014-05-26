@@ -8,53 +8,13 @@ import Data.List
 import Data.Maybe
 import qualified Data.Map as M
 import Text.Printf
-import qualified Text.Regex as RE
 
-
-
-class Default a where
-    default' :: a
-
-instance Default Double where
-    default' = 0
-
-instance Default Int where
-    default' = 0
-
-instance Default [Char] where
-    default' = ""
-
-data TimeBar = TimeBar String Int Int Int Int
-
-instance Ord TimeBar where
-    (TimeBar x _ _ _ _) `compare` (TimeBar y _ _ _ _) = x `compare` y
-
-instance Eq TimeBar where
-    (TimeBar x _ _ _ _) == (TimeBar y _ _ _ _) = x == y
-
-
-
-class Print a where
-    print' :: a -> String
-
-instance Print Int where
-    print' = show
-
-instance Print Double where
-    print' = printf "%.2f"
-
-instance Print String where
-    print' = id
+import IRCDB.DB.Utils
 
 instance Print TimeBar where
     print' (TimeBar user w x y z) =
         (makeCanvas user 100 16) ++ (makeRectScript user w x y z)
 
-replace :: String -> String -> String -> String
-replace x y z = RE.subRegex (RE.mkRegex x) z y
-
-escapeHtml :: String -> String
-escapeHtml = replace ">" "&gt;" . replace "<" "&lt;"
 
 type Heading = String
 type Name = String
@@ -85,6 +45,7 @@ getWidth (Column _ _ w) = w
 
 getHeading :: Column -> Heading
 getHeading (Column _ h _) = h
+
 rowify :: [Name]
        -> [Column]
        -> [Row]
