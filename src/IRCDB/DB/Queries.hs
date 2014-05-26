@@ -5,7 +5,6 @@ import Control.Applicative
 import Database.HDBC
 import Text.Printf
 import IRCDB.DB.Utils
-import IRCDB.Renderer
 
 getUniqueNicks :: IConnection c => c -> IO [(String,Int)]
 getUniqueNicks con =
@@ -86,7 +85,7 @@ getUrls con = do
                            \ LIMIT 10"
     execute prepared [toSql urlRegexp]
     rows <- fetchAllRows' prepared
-    let r = (second (linkify.extractUrl)) <$> extractTup <$> rows
+    let r = (second (extractUrl)) <$> extractTup <$> rows
     return r
 
 

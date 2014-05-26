@@ -91,7 +91,7 @@ generate con = do
                              , headerTable "Topics" ("Name", "Topic") topics
                              ]
 
-    writeFile "generated.html" $ makeFile rendered "css.css" ["util.js"]
+    writeFile "generated.html" $ makeFile (linkLinks rendered) "css.css" ["util.js"]
 
 doAction :: Action -> IO ()
 doAction action = do

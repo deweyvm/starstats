@@ -15,6 +15,9 @@ import System.Directory
 replace :: String -> String -> String -> String
 replace x y z = RE.subRegex (RE.mkRegex x) z y
 
+linkLinks :: String -> String
+linkLinks x = replace urlRegexp "<a href=\"\\0\">\\0</a>" x
+
 escapeHtml :: String -> String
 escapeHtml = replace ">" "&gt;" . replace "<" "&lt;"
 
