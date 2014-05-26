@@ -357,11 +357,11 @@ getSelfTalk con =
                   \ @name := name\
                \ FROM\
                   \ messages\
-           \ JOIN (\
-               \ SELECT\
-                  \ @name:=\"\",\
-                  \ @count:=0\
-              \ ) AS r\
+               \ JOIN (\
+                   \ SELECT\
+                      \ @name:=\"\",\
+                      \ @count:=0\
+               \ ) AS r\
            \ ) AS t\
            \ WHERE c > 5\
            \ GROUP BY name\
