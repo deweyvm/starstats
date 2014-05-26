@@ -8,6 +8,8 @@ import Data.List
 import Data.Maybe
 import qualified Data.Map as M
 import Text.Printf
+import qualified Text.Regex as RE
+
 
 
 class Default a where
@@ -47,6 +49,12 @@ instance Print String where
 instance Print TimeBar where
     print' (TimeBar user w x y z) =
         (makeCanvas user 100 16) ++ (makeRectScript user w x y z)
+
+replace :: String -> String -> String -> String
+replace x y z = RE.subRegex (RE.mkRegex x) z y
+
+escapeHtml :: String -> String
+escapeHtml = replace ">" "&gt;" . replace "<" "&lt;"
 
 type Heading = String
 type Name = String

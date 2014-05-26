@@ -38,6 +38,10 @@ readConfig = do
     where processConfig (c:_) = c
           processConfig     _ = error "file 'config' is empty"
 
+fromSqlString :: SqlValue -> String
+fromSqlString v =
+    let s = fromSql v :: String in
+    escapeHtml s
 
 processOne :: IConnection c
            => c
@@ -134,6 +138,7 @@ extractTup :: (Convertible SqlValue a
 extractTup (x:y:_) = (fromSql x, fromSql y)
 extractTup       _ = (default', default')
 
+
 type Extract a = [SqlValue] -> a
 
 runQuery :: IConnection c => c -> String -> IO [[SqlValue]]
@@ -169,7 +174,7 @@ populateUnique con = do
     let q = "INSERT INTO uniquenicks (name, count)\
            \ (SELECT DISTINCT newname, c.count\
            \ FROM nickchanges AS v\
-           \ INNER JOIN counts as c\
+           \ INNER JOIN counts AS c\
            \ ON c.count > 100 AND c.name = v.newname\
            \ WHERE (ISNULL((SELECT newname\
                           \ FROM nickchanges\
@@ -216,7 +221,7 @@ getRandTopTen :: IConnection c => c -> IO [(String, String)]
 getRandTopTen con = do
     let q = "SELECT m.name, text\
            \ FROM messages AS m\
-           \ INNER JOIN (SELECT ROUND(RAND() * msgs) as r, name, msgs\
+           \ INNER JOIN (SELECT ROUND(RAND() * msgs) AS r, name, msgs\
                        \ FROM top) AS t\
            \ ON m.name = t.name AND m.userindex = r"
 
@@ -277,9 +282,9 @@ getUrls con = do
 
 getAverageWordCount :: IConnection c => c -> IO [(String, Double)]
 getAverageWordCount con =
-    let q = "SELECT m.name, AVG(m.wordcount) as avg\
-           \ FROM top as t\
-           \ INNER JOIN messages as m\
+    let q = "SELECT m.name, AVG(m.wordcount) AS avg\
+           \ FROM top AS t\
+           \ INNER JOIN messages AS m\
            \ ON t.name = m.name\
            \ GROUP BY m.name\
            \ ORDER BY avg DESC" in
@@ -287,9 +292,9 @@ getAverageWordCount con =
 
 getAverageWordLength :: IConnection c => c -> IO [(String, Double)]
 getAverageWordLength con =
-    let q = "SELECT m.name, IFNULL(SUM(m.charcount)/SUM(m.wordcount), 0) as avg\
-           \ FROM top as t\
-           \ INNER JOIN messages as m\
+    let q = "SELECT m.name, IFNULL(SUM(m.charcount)/SUM(m.wordcount), 0) AS avg\
+           \ FROM top AS t\
+           \ INNER JOIN messages AS m\
            \ ON t.name = m.name\
            \ GROUP BY m.name\
            \ ORDER BY avg DESC" in
@@ -317,7 +322,7 @@ getTimes :: IConnection c
          => c
          -> IO [(String, Int, Int, Int, Int)]
 getTimes con = do
-    let all' = "SELECT messages.name, FLOOR(HOUR(time)/6) as h, COUNT(*) AS count\
+    let all' = "SELECT messages.name, FLOOR(HOUR(time)/6) AS h, COUNT(*) AS count\
               \ FROM messages\
               \ JOIN top AS t\
               \ ON t.name = messages.name\
@@ -366,9 +371,9 @@ getSelfTalk con =
 
 mostMentions :: IConnection c => c -> IO [(String, String)]
 mostMentions con =
-    let q = "SELECT u.name, COUNT(*) as c\
+    let q = "SELECT u.name, COUNT(*) AS c\
            \ FROM messages\
-           \ INNER JOIN (SELECT uniquenicks.name, CONCAT(\"%\", uniquenicks.name, \"%\") as nn\
+           \ INNER JOIN (SELECT uniquenicks.name, CONCAT(\"%\", uniquenicks.name, \"%\") AS nn\
                        \ FROM uniquenicks) AS u\
            \ WHERE messages.text LIKE nn\
            \ GROUP BY u.name\
@@ -384,18 +389,18 @@ getBffs con = do
             \ CREATE FUNCTION countmentions (n1 VARCHAR(36), n2 VARCHAR(36))\
             \ RETURNS INT\
             \ BEGIN\
-            \ RETURN (SELECT COUNT(*) as c\
+            \ RETURN (SELECT COUNT(*) AS c\
                     \ FROM messages\
-                    \ INNER JOIN (SELECT CONCAT(\"%\", n2, \"%\") as nn) AS k\
+                    \ INNER JOIN (SELECT CONCAT(\"%\", n2, \"%\") AS nn) AS k\
                     \ WHERE messages.name = n1 AND messages.text LIKE nn);\
             \ END$$"
     let q = "SELECT \
                \ u.name, \
                \ v.name, \
-               \ countmentions(u.name, v.name) as c1, \
-               \ countmentions(v.name, u.name) as c2\
-           \ FROM uniquenicks as u\
-           \ INNER JOIN uniquenicks as v\
+               \ countmentions(u.name, v.name) AS c1, \
+               \ countmentions(v.name, u.name) AS c2\
+           \ FROM uniquenicks AS u\
+           \ INNER JOIN uniquenicks AS v\
            \ ON u.id < v.id\
            \ HAVING c1 > 100 OR c2 > 100;"
     executeRaw <$> (prepare con qs)
@@ -404,17 +409,62 @@ getBffs con = do
                               , (fromSql x ++ " mentioned " ++ fromSql w, fromSql z)]
     concat <$> getAndExtract con [] extract q
 
+getNaysayers :: IConnection c => c -> IO [(String,Double)]
+getNaysayers con =
+    let q = "SELECT m.name, COUNT(*)/cc as c\
+           \ FROM messages as m\
+           \ JOIN (SELECT name, COUNT(*) as cc FROM messages GROUP BY name) as j\
+           \ ON j.name = m.name\
+           \ JOIN uniquenicks as u ON u.name = j.name\
+           \ WHERE text REGEXP '[[:<:]]no[[:>:]]' \
+           \ GROUP BY m.name\
+           \ ORDER BY c DESC\
+           \ LIMIT 10" in
+
+    getAndExtract con [] (mapSnd (*100) . extractTup) q
+
 mostNeedy :: IConnection c => c -> IO [(String, String)]
 mostNeedy con =
-    let q = "SELECT messages.name, COUNT(*) as c\
+    let q = "SELECT messages.name, COUNT(*) AS c\
            \ FROM messages\
-           \ INNER JOIN (SELECT uniquenicks.name, CONCAT(\"%\", uniquenicks.name, \"%\") as nn\
+           \ INNER JOIN (SELECT uniquenicks.name, CONCAT(\"%\", uniquenicks.name, \"%\") AS nn\
                        \ FROM uniquenicks) AS u\
            \ WHERE messages.text LIKE nn\
            \ GROUP BY messages.name\
            \ ORDER BY c DESC\
            \ LIMIT 10"  in
     getAndExtract con [] extractTup q
+
+getQuestions :: IConnection c => c -> IO [(String, Int)]
+getQuestions con =
+    let q = "SELECT name, COUNT(*) AS c\
+           \ FROM messages\
+           \ WHERE text LIKE '%?'\
+           \ GROUP BY name\
+           \ ORDER BY c DESC\
+           \ LIMIT 10" in
+    getAndExtract con [] extractTup q
+
+getRepeatedSimple :: IConnection c => c -> IO [(String, Int)]
+getRepeatedSimple con =
+    let q = "SELECT text, COUNT(*) AS c\
+           \ FROM messages\
+           \ GROUP BY text\
+           \ ORDER BY c DESC\
+           \ LIMIT 5" in
+    getAndExtract con [] extractTup q
+
+getRepeatedComplex :: IConnection c => c -> IO [(String, Int)]
+getRepeatedComplex con = do
+    let q = "SELECT text, COUNT(*) AS c\
+           \ FROM messages\
+           \ WHERE CHAR_LENGTH(text) > 12 AND NOT text LIKE '%http%'\
+           \ GROUP BY text\
+           \ HAVING c > 10\
+           \ ORDER BY c DESC"
+    elts <- getAndExtract con [] (mapFst escapeHtml . extractTup) q
+    return $ filter (\(x, _) -> length x > 12) elts
+
 
 connect :: IO Connection
 connect = do
@@ -525,6 +575,10 @@ repopulateDb con = do
 mapSnd :: (a -> b) -> (c, a) -> (c, b)
 mapSnd f (x, y) = (x, f y)
 
+mapFst :: (a -> b) -> (a, c) -> (b, c)
+mapFst f (x, y) = (f x, y)
+
+
 generate :: IConnection c => c -> IO ()
 generate con = do
     populateTop con
@@ -548,7 +602,11 @@ generate con = do
     !self <- getSelfTalk con
     !mentions <- mostMentions con
     !needy <- mostNeedy con
-    -- !bffs <- getBffs con
+    !questions <- getQuestions con
+    !repSimple <- getRepeatedSimple con
+    !repComplex <- getRepeatedComplex con
+    !nay <- getNaysayers con
+    -- !bffs <- getBffs con -- expensive
     let printify = (mapSnd print' <$> )
     let col1 = toColumn (printify users) "Messages" 10
     let col2 = toColumn (printify bars) "Active" 10
@@ -561,6 +619,10 @@ generate con = do
     let rows = formatTable us "User" 10 [col1, col2, col3, col4, col5]
     let rendered = unlines $ [ makeTimeScript "Activity (UTC)" activity
                              , withHeading "Top Users" $ rows
+                             , headerTable "Naysayers" ("Name", "Percent Negative") nay
+                             , headerTable "Repeated Phrases" ("Phrase", "Times Repeated") repSimple
+                             , headerTable "Longer Repeated Phrases" ("Phrase", "Times Repeated") repComplex
+                             , headerTable "Clueless" ("Name", "Number Of Questions Asked") questions
                              --, headerTable "Bffs" ("Mention", "Times") bffs
                              , headerTable "Clingy" ("Name", "Times Mentioning Someone") needy
                              , headerTable "Popular" ("Name", "Times Mentioned") mentions
@@ -573,8 +635,8 @@ generate con = do
                              , headerTable "Trouble Makers" ("Name", "Times Kicked") kickees
                              , headerTable "Topics" ("Name", "Topic") topics
                              ]
-    let r2 = rendered
-    writeFile "generated.html" $ makeFile r2 "css.css" ["util.js"]
+
+    writeFile "generated.html" $ makeFile rendered "css.css" ["util.js"]
 
 doAction :: Action -> IO ()
 doAction action = do
