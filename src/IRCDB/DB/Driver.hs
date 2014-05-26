@@ -13,8 +13,6 @@ import IRCDB.DB.Queries
 
 data Action = Repopulate | Generate
 
-
-
 connect :: IO Connection
 connect = do
     let connectionString = "DSN=name32;\
@@ -57,8 +55,10 @@ generate con = do
     !nay <- getNaysayers con
     !text <- getTextSpeakers con
     !apos <- getApostrophes con
-    -- !bffs <- getBffs con -- expensive
-    let printify = (mapSnd print' <$> )
+    !bffs <- getBffs con
+    !aloof <- getAloof con
+    !amaze <- getAmazed con
+    let printify = (mapSnd print' <$>)
     let col1 = toColumn (printify users) "Messages" 10
     let col2 = toColumn (printify bars) "Active" 10
     let col3 = toColumn (printify avgwl) "AWL" 6
@@ -70,13 +70,15 @@ generate con = do
     let rows = formatTable us "User" 10 [col1, col2, col3, col4, col5]
     let rendered = unlines $ [ makeTimeScript "Activity (UTC)" activity
                              , withHeading "Top Users" $ rows
+                             , headerTable "Amazed" ("Name", "Times dumbfounded") amaze
+                             , headerTable "Aloof" ("Name", "Has No Interest In This Number of Individuals") aloof
                              , headerTable "Apostrophe Users" ("Name", "Percent of Messages with ''s") apos
                              , headerTable "Can't English" ("Name", "Text Speak Count") text
                              , headerTable "Naysayers" ("Name", "Percent Negative") nay
                              , headerTable "Repeated Phrases" ("Phrase", "Times Repeated") repSimple
                              , headerTable "Longer Repeated Phrases" ("Phrase", "Times Repeated") repComplex
                              , headerTable "Clueless" ("Name", "Number Of Questions Asked") questions
-                             --, headerTable "Bffs" ("Mention", "Times") bffs
+                             , headerTable "Relationships" ("Mention", "Times") bffs
                              , headerTable "Clingy" ("Name", "Times Mentioning Someone") needy
                              , headerTable "Popular" ("Name", "Times Mentioned") mentions
                              , headerTable "Lonely Chatters" ("Name", "Times In A Row") self

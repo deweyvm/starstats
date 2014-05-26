@@ -172,30 +172,38 @@ mostMentions con =
 
 getBffs :: IConnection c => c -> IO [(String, String)]
 getBffs con = do
-    let qs = "DROP FUNCTION IF EXISTS countmentions;\
-            \ DELIMITER $$\
-            \ CREATE FUNCTION countmentions (n1 VARCHAR(36), n2 VARCHAR(36))\
-            \ RETURNS INT\
-            \ BEGIN\
-            \ RETURN (SELECT COUNT(*) AS c\
-                    \ FROM messages\
-                    \ INNER JOIN (SELECT CONCAT(\"%\", n2, \"%\") AS nn) AS k\
-                    \ WHERE messages.name = n1 AND messages.text LIKE nn);\
-            \ END$$"
     let q = "SELECT \
                \ u.name, \
                \ v.name, \
-               \ countmentions(u.name, v.name) AS c1, \
-               \ countmentions(v.name, u.name) AS c2\
+               \ IFNULL((SELECT count FROM mentions WHERE mentioner = u.name AND mentionee = v.name LIMIT 1), 0) AS c1,\
+               \ IFNULL((SELECT count FROM mentions WHERE mentioner = v.name AND mentionee = u.name LIMIT 1), 0) AS c2\
            \ FROM uniquenicks AS u\
            \ INNER JOIN uniquenicks AS v\
            \ ON u.id < v.id\
            \ HAVING c1 > 100 OR c2 > 100;"
-    executeRaw <$> (prepare con qs)
     let extract :: [SqlValue] -> [(String, String)]
         extract (w:x:y:z:_) = [ (fromSql w ++ " mentioned " ++ fromSql x, fromSql y)
                               , (fromSql x ++ " mentioned " ++ fromSql w, fromSql z)]
     concat <$> getAndExtract con [] extract q
+
+
+
+getAloof :: IConnection c => c -> IO [(String,String)]
+getAloof con =
+    let q = "SELECT\
+           \    u.name,\
+           \    COUNT(*) as c,\
+           \    v.name\
+           \ FROM uniquenicks AS u\
+           \ JOIN uniquenicks AS v\
+           \ ON u.id < v.id\
+           \ GROUP BY u.name\
+           \ HAVING IFNULL((SELECT count\
+                          \ FROM mentions\
+                          \ WHERE mentioner = u.name AND mentionee = v.name LIMIT 1), 0) = 0\
+                  \ AND c > 10\
+           \ ORDER BY c DESC" in
+    getAndExtract con [] extractTup q
 
 getNaysayers :: IConnection c => c -> IO [(String,Double)]
 getNaysayers con =
@@ -286,8 +294,16 @@ getApostrophes con = do
     let extract :: [SqlValue] -> (String, String)
         extract = mapSnd showDouble . extractTup
     r1 <- reverse <$> getAndExtract con [] extract q1
-    print r1
-    let res =insertHalfway r1 ("...", "...")
-    print res
+    let res = insertHalfway r1 ("...", "...")
     return $ res
+
+getAmazed :: IConnection c => c -> IO [(String,Int)]
+getAmazed con =
+    let q = "SELECT name, COUNT(*) as c\
+           \ FROM messages\
+           \ WHERE text REGEXP '[[:<:]]wow[[:>:]]|really.?$'\
+           \ GROUP BY name\
+           \ ORDER BY c DESC\
+           \ LIMIT 10;" in
+    getAndExtract con [] extractTup q
 
