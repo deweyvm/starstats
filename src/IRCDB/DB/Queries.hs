@@ -3,7 +3,7 @@ module IRCDB.DB.Queries where
 import Control.Arrow(second)
 import Control.Applicative
 import Database.HDBC
-
+import Text.Printf
 import IRCDB.DB.Utils
 import IRCDB.Renderer
 
@@ -250,6 +250,44 @@ getRepeatedComplex con = do
            \ GROUP BY text\
            \ HAVING c > 10\
            \ ORDER BY c DESC"
-    elts <- getAndExtract con [] (mapFst escapeHtml . extractTup) q
-    return $ filter (\(x, _) -> length x > 12) elts
+    getAndExtract con [] (mapFst escapeHtml . extractTup) q
+
+getTextSpeakers :: IConnection c => c -> IO [(String, Int)]
+getTextSpeakers con =
+    let q = "SELECT name, COUNT(*) AS c\
+           \ FROM messages\
+           \ WHERE text REGEXP '[[:<:]](wat|wot|r|u|k|idk|ikr|v)[[:>:]]'\
+           \ GROUP BY name\
+           \ ORDER BY c DESC\
+           \ LIMIT 10" in
+    getAndExtract con [] extractTup q
+
+
+getApostrophes :: IConnection c => c -> IO [(String,String)]
+getApostrophes con = do
+    let q1 = "SELECT dt.name, c\
+            \ FROM (SELECT @index := 0) n\
+            \ STRAIGHT_JOIN (\
+                \ SELECT d.name, c, @index := @index + 1 as `row`\
+                \ FROM (SELECT messages.name, 100*(COUNT(*)/cc) AS c\
+                      \ FROM messages\
+                      \ JOIN uniquenicks\
+                      \ ON uniquenicks.name = messages.name\
+                      \ JOIN (SELECT name, COUNT(*) as cc FROM messages GROUP BY name) as j\
+                      \ ON j.name = messages.name\
+                      \ WHERE text LIKE '%''%'\
+                      \ GROUP BY messages.name\
+                      \ ORDER BY c\
+                \ ) as d\
+            \ ) dt\
+            \ WHERE `row` < 5 OR `row` > @index - 4;"
+
+    let showDouble d = printf "%.2f" (d :: Double)
+    let extract :: [SqlValue] -> (String, String)
+        extract = mapSnd showDouble . extractTup
+    r1 <- reverse <$> getAndExtract con [] extract q1
+    print r1
+    let res =insertHalfway r1 ("...", "...")
+    print res
+    return $ res
 

@@ -58,6 +58,17 @@ readConfig = do
     where processConfig (c:_) = c
           processConfig     _ = error "file 'config' is empty"
 
+
+insertHalfway :: [a] -> a -> [a]
+insertHalfway [] x = [x]
+insertHalfway xs x =
+    helper xs 0
+    where halflen = (length xs :: Int) `quot` 2
+          helper (y:ys) ct =
+              if ct == halflen
+                then (x : y : ys)
+                else (y : helper ys (ct + 1))
+
 mapSnd :: (a -> b) -> (c, a) -> (c, b)
 mapSnd f (x, y) = (x, f y)
 
