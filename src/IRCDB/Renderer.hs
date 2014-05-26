@@ -156,9 +156,6 @@ td width =  genTag "td" [("width", width)]
 tr :: String -> String
 tr = tag "tr"
 
-linkify :: String -> String
-linkify s = genTag "a" [("href", s)] s
-
 propToString :: (String,String) -> String
 propToString (k, v) = k ++ "=\"" ++ v ++ "\" "
 
