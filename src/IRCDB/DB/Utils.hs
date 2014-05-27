@@ -2,6 +2,7 @@
 module IRCDB.DB.Utils where
 
 import Control.Applicative
+import Criterion.Measurement
 import Data.Convertible
 import Data.List
 import Data.Maybe
@@ -136,3 +137,12 @@ fromSqlString :: SqlValue -> String
 fromSqlString v =
     let s = fromSql v :: String in
     escapeHtml s
+
+
+time' :: String -> IO a -> IO a
+time' msg action = do
+    (s, res) <- time action
+    let len = length msg
+    let whitespace = printf ("%" ++ show (27 - len) ++ "s") " " ++ "\t"
+    putStrLn ("@" ++ msg ++ ": " ++ whitespace ++ printf "%.3fs" s)
+    return res

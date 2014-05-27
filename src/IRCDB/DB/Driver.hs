@@ -4,10 +4,8 @@ module IRCDB.DB.Driver where
 import Prelude hiding (foldl, concat, sequence_, sum)
 import Control.Applicative
 import Control.DeepSeq
-import Criterion.Measurement
 import Database.HDBC
 import Database.HDBC.ODBC
-import Text.Printf
 
 import IRCDB.Renderer
 import IRCDB.DB.Utils
@@ -29,13 +27,6 @@ connect = do
     conn <- connectODBC connectionString
     return conn
 
-time' :: String -> IO a -> IO a
-time' msg action = do
-    (s, res) <- time action
-    let len = length msg
-    let whitespace = printf ("%" ++ show (27 - len) ++ "s") " " ++ "\t"
-    putStrLn (msg ++ ": " ++ whitespace ++ printf "%.3fs" s)
-    return res
 
 generate :: IConnection c => c -> IO ()
 generate con = do

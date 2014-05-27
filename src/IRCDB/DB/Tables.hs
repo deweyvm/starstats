@@ -4,7 +4,7 @@ import Control.Applicative
 import Data.Foldable(foldlM)
 import Data.Time.LocalTime
 import Database.HDBC
-
+import System.IO
 import IRCDB.DB.Utils
 import IRCDB.Parser
 import IRCDB.Time
@@ -18,31 +18,37 @@ getIndex con name = do
 
 processOne :: IConnection c
            => c
-           -> LocalTime
+           -> (LocalTime, Int)
            -> Either (Int, String, String) DataLine
-           -> IO LocalTime
-processOne _ t (Left (ln, s, err)) = do
+           -> IO (LocalTime, Int)
+processOne _ (t, ct) (Left (ln, s, err)) = do
     putStrLn ("Line " ++ show ln)
     print s
     print err
-    return t
-processOne con t (Right l) = insert t l con
+    return (t, ct+1)
+processOne con (t, ct) (Right l) = do
+    --if ct `mod` 100 == 0 then print ct else return ()
+    hFlush stdout
+    insert t ct l con
 
-insert :: IConnection c => LocalTime -> DataLine -> c -> IO LocalTime
-insert t (Message time typ name msg) con = do
+insert :: IConnection c => LocalTime -> Int -> DataLine -> c -> IO (LocalTime, Int)
+insert t ct (Message time typ name msg) con = do
     let newT = setHoursMinutes t time
     let sqlName = toSql name
     let sqlType = toSql typ
     let sqlMsg = toSql msg
     let sqlTime = toSql (subHours newT (subtract 3))
 
-    let qq = "UPDATE counts\
-            \ SET count=count+1, firstseen=(\
-              \ CASE WHEN (DATEDIFF(?, lastseen) > 365)\
-                   \ THEN ?\
-                   \ ELSE firstseen\
-              \ END), lastseen=?\
-            \ WHERE name=?;"
+    let qq = "INSERT INTO counts (name, count, lastseen, firstseen) \
+            \ VALUES (?, 0, ?, ?)\
+            \ ON DUPLICATE KEY UPDATE\
+            \     count=count+1, \
+            \     firstseen=(\
+            \         CASE WHEN (DATEDIFF(?, lastseen) > 365)\
+            \              THEN ?\
+            \              ELSE firstseen\
+            \         END), \
+            \     lastseen=?;"
 
     let qu = "INSERT INTO allusers (name)\
             \ VALUES (?)\
@@ -74,14 +80,10 @@ insert t (Message time typ name msg) con = do
     execute users [sqlName]
     execute mention [sqlName]
     execute mention2 [sqlMsg, sqlName]
-    case fromSql index == (0 :: Int) of
-        True -> do quickQuery con "INSERT INTO counts (name, count, lastseen, firstseen)\
-                                 \ VALUES (?,?,?,?)" [sqlName, toSql (1 :: Int), sqlTime, sqlTime]
-                   return newT
-        False -> do countQ <- prepare con qq
-                    execute countQ [sqlTime, sqlTime, sqlTime, sqlName]
-                    return newT
-insert t (Nick time old new) con = do
+    countQ <- prepare con qq
+    execute countQ [sqlName, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime]
+    return (newT, ct+1)
+insert t ct (Nick time old new) con = do
     let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO nickchanges (oldname, newname, time)\
                            \ VALUES (?,?,?);"
@@ -89,8 +91,8 @@ insert t (Nick time old new) con = do
     let sqlMsg = toSql new
     let sqlTime = toSql newT
     execute prepared [sqlOld, sqlMsg, sqlTime]
-    return newT
-insert t (Kick time kickee kicker reason) con = do
+    return (newT, ct+1)
+insert t ct (Kick time kickee kicker reason) con = do
     let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO kicks (kicker, kickee, reason, time)\
                            \ VALUES (?,?,?, ?);"
@@ -99,8 +101,8 @@ insert t (Kick time kickee kicker reason) con = do
     let sqlReason = toSql reason
     let sqlTime = toSql newT
     execute prepared [sqlKicker, sqlKickee, sqlReason, sqlTime]
-    return newT
-insert t (Topic time setter topic) con = do
+    return (newT, ct+1)
+insert t ct (Topic time setter topic) con = do
     let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO topics (name, topic, time)\
                            \ VALUES (?,?,?);"
@@ -108,10 +110,10 @@ insert t (Topic time setter topic) con = do
     let sqlTopic = toSql topic
     let sqlTime = toSql newT
     execute prepared [sqlName, sqlTopic, sqlTime]
-    return newT
-insert _ (Day date) _ = return date
-insert _ (Open date) _ = return date
-insert t _ _ = return t
+    return (newT, ct+1)
+insert _ ct (Day date) _ = return (date, ct+1)
+insert _ ct (Open date) _ = return (date, ct+1)
+insert t ct _ _ = return (t, ct+1)
 
 populateTop :: IConnection c => c -> IO ()
 populateTop con = do
@@ -201,12 +203,11 @@ createDbs con = do
                               \ msgs INT,\
                               \ PRIMARY KEY (id))\
              \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    let count = "CREATE TABLE counts(id INT NOT NULL AUTO_INCREMENT,\
-                                   \ name VARCHAR(36),\
+    let count = "CREATE TABLE counts(name VARCHAR(36),\
                                    \ count INT,\
                                    \ lastseen TIME,\
                                    \ firstseen TIME,\
-                                   \ PRIMARY KEY (id));"
+                                   \ PRIMARY KEY (name));"
     let unique = "CREATE TABLE uniquenicks(id INT NOT NULL AUTO_INCREMENT,\
                                          \ name VARCHAR(36),\
                                          \ count INT,\
@@ -239,7 +240,7 @@ populateDbs con = do
     contents <- lines <$> readFile logfile
     let parsed = parseLine <$> zip [1..] contents
     let time = undefined
-    foldlM (processOne con) time parsed
+    foldlM (processOne con) (time, 0) parsed
     commit con
 
 repopulateDb :: IConnection c => c -> IO ()
