@@ -11,7 +11,11 @@ pushd src &> /dev/null && \
 popd &> /dev/null
 echo "Building... "
 rm -f $EXE &&\
-cabal build &> /dev/null &&\
+cabal build &> /dev/null
+if [[ $? -ne 0 ]] ; then
+    echo "Build Failed"
+    exit 1
+fi
 echo "Running ircdb... "  &&\
 time $EXE +RTS -K100M -M3.9G
 if [[ $? -ne 0 ]] ; then
