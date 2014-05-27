@@ -4,8 +4,11 @@ module IRCDB.DB.Driver where
 import Prelude hiding (foldl, concat, sequence_, sum)
 import Control.Applicative
 import Control.DeepSeq
+import Criterion.Measurement
 import Database.HDBC
 import Database.HDBC.ODBC
+import Text.Printf
+
 import IRCDB.Renderer
 import IRCDB.DB.Utils
 import IRCDB.DB.Tables
@@ -26,40 +29,48 @@ connect = do
     conn <- connectODBC connectionString
     return conn
 
+time' :: String -> IO a -> IO a
+time' msg action = do
+    (s, res) <- time action
+    let len = length msg
+    let whitespace = printf ("%" ++ show (27 - len) ++ "s") " "
+    putStrLn (msg ++ ": " ++ whitespace ++ printf "%.3fs" s)
+    return res
+
 generate :: IConnection c => c -> IO ()
 generate con = do
-    populateTop con
-    populateUnique con
+    time' "Populate top" $ populateTop con
+    time' "Populate unique" $ populateUnique con
     commit con
-    users <- force <$> getUsers con
+    users <- time' "Get users" $ force <$> getUsers con
 
-    tups <- force <$> getTimes con
-    randTop <- force <$> getRandTopTen con
+    tups <- time' "Get user activity" $ force <$> getTimes con
+    randTop <- time' "Get random top10" $ force <$> getRandTopTen con
     let bars = (toTimeBars tups)
-    !rand <- getRandMessages con
-    !nicks <- getNicks con
-    !kickers <- getKickers con
-    !kickees <- getKickees con
-    !topics <- getRandTopics con
-    !urls <- getUrls con
-    !activity <- getOverallActivity con
-    !unique <- getUniqueNicks con
-    !avgwc <- getAverageWordCount con
-    !avgwl <- getAverageWordLength con
-    !self <- getSelfTalk con
-    !mentions <- mostMentions con
-    !needy <- mostNeedy con
-    !questions <- getQuestions con
-    !repSimple <- getRepeatedSimple con
-    !repComplex <- getRepeatedComplex con
-    !nay <- getNaysayers con
-    !text <- getTextSpeakers con
-    !apos <- getApostrophes con
-    !bffs <- getBffs con
-    !aloof <- getAloof con
-    !amaze <- getAmazed con
-    !excite <- getExcited con
-    !yell <- getYell con
+    !rand <- time' "Random" $ getRandMessages con
+    !nicks <- time' "Get nick changes" $ getNicks con
+    !kickers <- time' "Get kickers" $ getKickers con
+    !kickees <- time' "Get kickees" $ getKickees con
+    !topics <- time' "Get random topics" $ getRandTopics con
+    !urls <- time' "Get random urls" $ getUrls con
+    !activity <- time' "Get overall activity" $ getOverallActivity con
+    !unique <- time' "Get unique nicks" $ getUniqueNicks con
+    !avgwc <- time' "Get awc" $ getAverageWordCount con
+    !avgwl <- time' "Get awl" $ getAverageWordLength con
+    !self <- time' "Get self talk" $ getSelfTalk con
+    !mentions <- time' "Get mentions" $ mostMentions con
+    !needy <- time' "Get needy" $ mostNeedy con
+    !questions <- time' "Get questions" $ getQuestions con
+    !repSimple <- time' "Get repeated phrases" $ getRepeatedSimple con
+    !repComplex <- time' "Get complex rep. phrases" $ getRepeatedComplex con
+    !nay <- time' "Get naysayers" $ getNaysayers con
+    !text <- time' "Get txt spk" $ getTextSpeakers con
+    !apos <- time' "Get ''s" $ getApostrophes con
+    !bffs <- time' "Get relationships" $ getBffs con
+    !aloof <- time' "Get aloof" $ getAloof con
+    !amaze <- time' "Get amaze" $ getAmazed con
+    !excite <- time' "Get excite" $ getExcited con
+    !yell <- time' "Get yell" $ getYell con
     let printify = (mapSnd print' <$>)
     let col1 = toColumn (printify users) "Messages" 10
     let col2 = toColumn (printify bars) "Active" 10
