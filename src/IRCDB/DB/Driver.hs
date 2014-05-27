@@ -33,7 +33,7 @@ time' :: String -> IO a -> IO a
 time' msg action = do
     (s, res) <- time action
     let len = length msg
-    let whitespace = printf ("%" ++ show (27 - len) ++ "s") " "
+    let whitespace = printf ("%" ++ show (27 - len) ++ "s") " " ++ "\t"
     putStrLn (msg ++ ": " ++ whitespace ++ printf "%.3fs" s)
     return res
 
@@ -41,7 +41,7 @@ generate :: IConnection c => c -> IO ()
 generate con = do
     time' "Populate top" $ populateTop con
     time' "Populate unique" $ populateUnique con
-    commit con
+    time' "Commit" $ commit con
     users <- time' "Get users" $ force <$> getUsers con
 
     tups <- time' "Get user activity" $ force <$> getTimes con

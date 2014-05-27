@@ -17,7 +17,7 @@ if [[ $? -ne 0 ]] ; then
     exit 1
 fi
 echo "Running ircdb... "  &&\
-time $EXE +RTS -K100M -M3.9G
+time $EXE +RTS -K100M -M3.9G | sort -k2 -t '	'
 if [[ $? -ne 0 ]] ; then
     echo "failed"
     exit 1
