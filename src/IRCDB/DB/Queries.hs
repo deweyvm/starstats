@@ -158,12 +158,11 @@ getSelfTalk con =
 
 mostMentions :: IConnection c => c -> IO [(String, String)]
 mostMentions con =
-    let q = "SELECT u.name, COUNT(*) AS c\
-           \ FROM messages\
-           \ INNER JOIN (SELECT uniquenicks.name, CONCAT(\"%\", uniquenicks.name, \"%\") AS nn\
-                       \ FROM uniquenicks) AS u\
-           \ WHERE messages.text LIKE nn\
-           \ GROUP BY u.name\
+    let q = "SELECT mentionee, SUM(mentions.count) AS c\
+           \ FROM mentions\
+           \ JOIN uniquenicks AS u\
+           \ ON u.name = mentionee\
+           \ GROUP BY mentionee\
            \ ORDER BY c DESC\
            \ LIMIT 10"  in
     getAndExtract con [] extractTup q
@@ -208,10 +207,11 @@ getNaysayers :: IConnection c => c -> IO [(String,Double)]
 getNaysayers con =
     let q = "SELECT m.name, COUNT(*)/cc as c\
            \ FROM messages as m\
-           \ JOIN (SELECT name, COUNT(*) as cc FROM messages GROUP BY name) as j\
+           \ JOIN (SELECT name, count as cc FROM counts) as j\
            \ ON j.name = m.name\
-           \ JOIN uniquenicks as u ON u.name = j.name\
-           \ WHERE text REGEXP '[[:<:]]no[[:>:]]' \
+           \ JOIN uniquenicks as u\
+           \ ON u.name = j.name\
+           \ WHERE text LIKE '%no%' AND text REGEXP '[[:<:]]no[[:>:]]' \
            \ GROUP BY m.name\
            \ ORDER BY c DESC\
            \ LIMIT 10" in
@@ -220,12 +220,9 @@ getNaysayers con =
 
 mostNeedy :: IConnection c => c -> IO [(String, String)]
 mostNeedy con =
-    let q = "SELECT messages.name, COUNT(*) AS c\
-           \ FROM messages\
-           \ INNER JOIN (SELECT uniquenicks.name, CONCAT(\"%\", uniquenicks.name, \"%\") AS nn\
-                       \ FROM uniquenicks) AS u\
-           \ WHERE messages.text LIKE nn\
-           \ GROUP BY messages.name\
+    let q = "SELECT mentioner, SUM(count) AS c\
+           \ FROM mentions\
+           \ GROUP BY mentioner\
            \ ORDER BY c DESC\
            \ LIMIT 10"  in
     getAndExtract con [] extractTup q
@@ -242,9 +239,9 @@ getQuestions con =
 
 getRepeatedSimple :: IConnection c => c -> IO [(String, Int)]
 getRepeatedSimple con =
-    let q = "SELECT text, COUNT(*) AS c\
+    let q = "SELECT textpre, COUNT(*) AS c\
            \ FROM messages\
-           \ GROUP BY text\
+           \ GROUP BY textpre\
            \ ORDER BY c DESC\
            \ LIMIT 5" in
     getAndExtract con [] extractTup q
@@ -280,7 +277,7 @@ getApostrophes con = do
                       \ FROM messages\
                       \ JOIN uniquenicks\
                       \ ON uniquenicks.name = messages.name\
-                      \ JOIN (SELECT name, COUNT(*) as cc FROM messages GROUP BY name) as j\
+                      \ JOIN (SELECT name, count as cc FROM counts) as j\
                       \ ON j.name = messages.name\
                       \ WHERE text LIKE '%''%'\
                       \ GROUP BY messages.name\
@@ -292,7 +289,7 @@ getApostrophes con = do
     let showDouble d = printf "%.2f" (d :: Double)
     let extract :: [SqlValue] -> (String, String)
         extract = mapSnd showDouble . extractTup
-    r1 <- reverse <$> getAndExtract con [] extract q1
+    r1 <- reverse <$> getAndExtract con []   extract q1
     let res = insertHalfway r1 ("...", "...")
     return $ res
 
@@ -300,7 +297,7 @@ getAmazed :: IConnection c => c -> IO [(String,Int)]
 getAmazed con =
     let q = "SELECT name, COUNT(*) as c\
            \ FROM messages\
-           \ WHERE text REGEXP '[[:<:]]wow[[:>:]]|really.?$'\
+           \ WHERE text LIKE '%wow%' AND text REGEXP '[[:<:]]wow[[:>:]]|really.?$'\
            \ GROUP BY name\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
@@ -308,7 +305,7 @@ getAmazed con =
 
 getExcited :: IConnection c => c -> IO [(String, Int)]
 getExcited con =
-    let q = "SELECT name, MAX(LENGTH(text) - LENGTH(REPLACE(text, '!', ''))) as c\
+    let q = "SELECT name, MAX(charcount - LENGTH(REPLACE(text, '!', ''))) as c\
            \ FROM messages\
            \ GROUP BY name\
            \ ORDER BY c DESC\

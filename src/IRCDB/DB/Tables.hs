@@ -27,7 +27,7 @@ processOne _ (t, ct) (Left (ln, s, err)) = do
     print err
     return (t, ct+1)
 processOne con (t, ct) (Right l) = do
-    --if ct `mod` 100 == 0 then print ct else return ()
+    if ct `mod` 100 == 0 then print ct else return ()
     hFlush stdout
     insert t ct l con
 
@@ -36,6 +36,7 @@ insert t ct (Message time typ name msg) con = do
     let newT = setHoursMinutes t time
     let sqlName = toSql name
     let sqlType = toSql typ
+    let sqlPre = toSql (take (24) msg)
     let sqlMsg = toSql msg
     let sqlTime = toSql (subHours newT (subtract 3))
 
@@ -70,13 +71,13 @@ insert t ct (Message time typ name msg) con = do
     let stripped = words $ replace urlRegexp "" msg
     let charcount = toSql $ sum $ length <$> stripped -- fixme : this could be more precise
 
-    prepared <- prepare con "INSERT INTO messages (name, type, userindex, wordcount, charcount, text, time)\
-                           \ VALUES (?,?,?,?,?,?,?);"
+    prepared <- prepare con "INSERT INTO messages (name, type, userindex, wordcount, charcount, text, textpre, time)\
+                           \ VALUES (?,?,?,?,?,?,?,?);"
 
     mention <- prepare con qp
     mention2 <- prepare con qqp
     users <- prepare con qu
-    execute prepared [sqlName, sqlType, index, wordcount, charcount, sqlMsg, sqlTime]
+    execute prepared [sqlName, sqlType, index, wordcount, charcount, sqlMsg, sqlPre, sqlTime]
     execute users [sqlName]
     execute mention [sqlName]
     execute mention2 [sqlMsg, sqlName]
@@ -166,13 +167,15 @@ createDbs :: IConnection c => c -> IO ()
 createDbs con = do
     let messages = "CREATE TABLE messages(id BIGINT NOT NULL AUTO_INCREMENT,\
                                         \ text VARCHAR(4000),\
+                                        \ textpre VARCHAR(100),\
                                         \ type INT,\
                                         \ userindex INT,\
                                         \ wordcount INT,\
                                         \ charcount INT,\
                                         \ name VARCHAR(36),\
                                         \ time DATETIME,\
-                                        \ PRIMARY KEY (id))\
+                                        \ PRIMARY KEY (id),\
+                                        \ INDEX (textpre))\
                   \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let statuses = "CREATE TABLE statuses(id BIGINT NOT NULL AUTO_INCREMENT,\
                                         \ text VARCHAR(4000),\
