@@ -42,10 +42,10 @@ generate con = do
     time' "Populate top" $ populateTop con
     time' "Populate unique" $ populateUnique con
     time' "Commit" $ commit con
-    users <- time' "Get users" $ force <$> getUsers con
+    !users <- time' "Get users" $ force <$> getUsers con
 
-    tups <- time' "Get user activity" $ force <$> getTimes con
-    randTop <- time' "Get random top10" $ force <$> getRandTopTen con
+    !tups <- time' "Get user activity" $ force <$> getTimes con
+    !randTop <- time' "Get random top10" $ force <$> getRandTopTen con
     let bars = (toTimeBars tups)
     !rand <- time' "Random" $ getRandMessages con
     !nicks <- time' "Get nick changes" $ getNicks con
