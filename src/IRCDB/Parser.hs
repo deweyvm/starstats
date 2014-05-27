@@ -7,6 +7,7 @@ import qualified Text.Parsec.Token as P
 import Text.Parsec.Language (emptyDef)
 import Data.Functor.Identity
 import Data.Time.LocalTime
+import Data.Maybe
 import IRCDB.Time
 
 type Name = String
@@ -162,7 +163,7 @@ parseContents = eatLine
 
 
 get :: Maybe LocalTime -> LocalTime
-get = maybe (anyTime) id
+get = fromMaybe anyTime
 
 parseDateString :: Parser LocalTime
 parseDateString = (get . stringToLocalTime) <$> eatLine
