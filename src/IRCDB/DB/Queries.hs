@@ -306,3 +306,23 @@ getAmazed con =
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
 
+getExcited :: IConnection c => c -> IO [(String, Int)]
+getExcited con =
+    let q = "SELECT name, MAX(LENGTH(text) - LENGTH(REPLACE(text, '!', ''))) as c\
+           \ FROM messages\
+           \ GROUP BY name\
+           \ ORDER BY c DESC\
+           \ LIMIT 10" in
+    getAndExtract con [] extractTup q
+
+getYell :: IConnection c => c -> IO [(String, Int)]
+getYell con =
+    let q = "SELECT name, COUNT(*) AS c\
+           \ FROM messages\
+           \ WHERE text = BINARY UPPER(text)\
+           \ GROUP BY name\
+           \ ORDER BY c DESC\
+           \ LIMIT 10" in
+    getAndExtract con [] extractTup q
+
+

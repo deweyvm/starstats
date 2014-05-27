@@ -16,13 +16,6 @@ getIndex con name = do
         [(x:_)] -> return x
         _ -> return $ toSql (0 :: Int)
 
-getCount :: IConnection c => c -> SqlValue -> IO SqlValue
-getCount con name = do
-    m <- quickQuery con "SELECT count FROM mentions WHERE name=?;" [name]
-    case m of
-        [(x:_)] -> return x
-        _ -> return $ toSql (0 :: Int)
-
 processOne :: IConnection c
            => c
            -> LocalTime

@@ -58,6 +58,8 @@ generate con = do
     !bffs <- getBffs con
     !aloof <- getAloof con
     !amaze <- getAmazed con
+    !excite <- getExcited con
+    !yell <- getYell con
     let printify = (mapSnd print' <$>)
     let col1 = toColumn (printify users) "Messages" 10
     let col2 = toColumn (printify bars) "Active" 10
@@ -70,6 +72,8 @@ generate con = do
     let rows = formatTable us "User" 10 [col1, col2, col3, col4, col5]
     let rendered = unlines $ [ makeTimeScript "Activity (UTC)" activity
                              , withHeading "Top Users" $ rows
+                             , headerTable "Broken Keyboard" ("Name", "YELLING") yell
+                             , headerTable "Overexcited" ("Name", "!!!!!!!!!!!!!!") excite
                              , headerTable "Amazed" ("Name", "Times dumbfounded") amaze
                              , headerTable "Aloof" ("Name", "Has No Interest In This Number of Individuals") aloof
                              , headerTable "Apostrophe Users" ("Name", "Percent of Messages with ''s") apos
