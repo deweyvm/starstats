@@ -302,7 +302,7 @@ getAmazed :: IConnection c => c -> IO [(String,Int)]
 getAmazed con =
     let q = "SELECT name, COUNT(*) as c\
            \ FROM messages\
-           \ WHERE text LIKE '%wow%' AND text REGEXP '[[:<:]]wow[[:>:]]|really.?$'\
+           \ WHERE isAmaze\
            \ GROUP BY name\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
@@ -321,7 +321,7 @@ getYell :: IConnection c => c -> IO [(String, Int)]
 getYell con =
     let q = "SELECT name, COUNT(*) AS c\
            \ FROM messages\
-           \ WHERE text = BINARY UPPER(text)\
+           \ WHERE isCaps\
            \ GROUP BY name\
            \ ORDER BY c DESC\
            \ LIMIT 10" in

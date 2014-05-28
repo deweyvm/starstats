@@ -23,31 +23,48 @@ getIndex con name = do
 
 processOne :: IConnection c
            => c
-           -> (LocalTime, Int)
+           -> (LocalTime, Int, Maybe String, Int)
            -> Either (Int, String, String) DataLine
-           -> IO (LocalTime, Int)
-processOne _ (t, ct) (Left (ln, s, err)) = do
+           -> IO (LocalTime, Int, Maybe String, Int)
+processOne _ (t, ct, prevName, repCt) (Left (ln, s, err)) = do
     putStrLn ("Line " ++ show ln)
     print s
     print err
-    return (t, ct+1)
-processOne con (t, ct) (Right l) = do
+    return (t, ct+1, prevName, repCt)
+processOne con (t, ct, prevName, repCt) (Right l) = do
     if ct `mod` 100 == 0 then print ct else return ()
     hFlush stdout
-    insert t ct l con
+    insert t ct prevName repCt l con
 
-insert :: IConnection c => LocalTime -> Int -> DataLine -> c -> IO (LocalTime, Int)
-insert t ct (Message time typ name msg) con = do
+insert :: IConnection c
+       => LocalTime
+       -> Int
+       -> Maybe String
+       -> Int
+       -> DataLine
+       -> c
+       -> IO (LocalTime, Int, Maybe String, Int)
+insert t ct prevName repCt (Message time typ name msg) con = do
     let newT = setHoursMinutes t time
+    let newRep = if (prevName == Just name) then repCt + 1 else 1
     let sqlName = toSql name
     let sqlType = toSql typ
     let sqlPre = toSql (take (24) msg)
     let sqlMsg = toSql (take 500 msg)
     let sqlTime = toSql (subHours newT (subtract 3))
 
+    let qs = "INSERT INTO seqcount (name, num)\
+            \ VALUES (?, ?);"
+
+    case (prevName, newRep) of
+        (Just n, 1) | repCt > 5 -> do seqQ <- prepare con qs
+                                      execute seqQ [toSql n, toSql repCt]
+        _ -> return 1
+
+
     let qm = "INSERT INTO allmsgs (hash, contents, count, length, hasURL)\
             \ VALUES (CRC32(?), ?, 1, ?, ? LIKE '%http%')\
-            \ ON DUPLICATE KEY UPDATE count=count+1"
+            \ ON DUPLICATE KEY UPDATE count=count+1;"
 
     let len = toSql $ length msg
     msgQ <- prepare con qm
@@ -85,20 +102,26 @@ insert t ct (Message time typ name msg) con = do
     let wordcount = toSql $ length words'
     let stripped = words $ replace urlRegexp "" msg
     let charcount = toSql $ sum $ length <$> stripped -- fixme : this could be more precise
-    prepared <- prepare con "INSERT INTO messages (name, type, userindex, wordcount, charcount, text, textpre, time, hour, quartile, isTxt, hash)\
-                           \ VALUES (?,?,?,?,?,?,?,?,HOUR(?),HOUR(?)/6,? REGEXP '[[:<:]](wat|wot|r|u|k|idk|ikr|v)[[:>:]]', CRC32(?));"
+    prepared <- prepare con "INSERT INTO messages (name, type, userindex, wordcount, charcount, text, textpre, time, hour, quartile, isTxt, hash, isCaps, isAmaze)\
+                           \ VALUES (?,?,?,?,?,?,?,?,\
+                                   \ HOUR(?),\
+                                   \ HOUR(?)/6,\
+                                   \ ? REGEXP '[[:<:]](wat|wot|r|u|k|idk|ikr|v)[[:>:]]',\
+                                   \ CRC32(?),\
+                                   \ ? = BINARY UPPER(?),\
+                                   \ ? LIKE '%wow%' AND ? REGEXP '[[:<:]]wow[[:>:]]|really.?$');"
 
     mention <- prepare con qp
     mention2 <- prepare con qqp
     users <- prepare con qu
-    execute prepared [sqlName, sqlType, index, wordcount, charcount, sqlMsg, sqlPre, sqlTime, sqlTime, sqlTime, sqlMsg, sqlMsg]
+    execute prepared [sqlName, sqlType, index, wordcount, charcount, sqlMsg, sqlPre, sqlTime, sqlTime, sqlTime, sqlMsg, sqlMsg, sqlMsg, sqlMsg, sqlMsg, sqlMsg]
     execute users [sqlName]
     execute mention [sqlName]
     execute mention2 [sqlMsg, sqlName]
     countQ <- prepare con qq
     execute countQ [sqlName, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, toSql wordcount, toSql charcount]
-    return (newT, ct+1)
-insert t ct (Nick time old new) con = do
+    return (newT, ct+1, Just name, newRep)
+insert t ct prevName newRep (Nick time old new) con = do
     let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO nickchanges (oldname, newname, time)\
                            \ VALUES (?,?,?);"
@@ -106,8 +129,8 @@ insert t ct (Nick time old new) con = do
     let sqlMsg = toSql new
     let sqlTime = toSql newT
     execute prepared [sqlOld, sqlMsg, sqlTime]
-    return (newT, ct+1)
-insert t ct (Kick time kickee kicker reason) con = do
+    return (newT, ct+1, prevName, newRep)
+insert t ct prevName repCt (Kick time kickee kicker reason) con = do
     let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO kicks (kicker, kickee, reason, time)\
                            \ VALUES (?,?,?, ?);"
@@ -116,8 +139,8 @@ insert t ct (Kick time kickee kicker reason) con = do
     let sqlReason = toSql reason
     let sqlTime = toSql newT
     execute prepared [sqlKicker, sqlKickee, sqlReason, sqlTime]
-    return (newT, ct+1)
-insert t ct (Topic time setter topic) con = do
+    return (newT, ct+1, prevName, repCt)
+insert t ct prevName repCt (Topic time setter topic) con = do
     let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO topics (name, topic, time)\
                            \ VALUES (?,?,?);"
@@ -125,10 +148,10 @@ insert t ct (Topic time setter topic) con = do
     let sqlTopic = toSql topic
     let sqlTime = toSql newT
     execute prepared [sqlName, sqlTopic, sqlTime]
-    return (newT, ct+1)
-insert _ ct (Day date) _ = return (date, ct+1)
-insert _ ct (Open date) _ = return (date, ct+1)
-insert t ct _ _ = return (t, ct+1)
+    return (newT, ct+1, prevName, repCt)
+insert _ ct prevName repCt (Day date) _ = return (date, ct+1, prevName, repCt)
+insert _ ct prevName repCt (Open date) _ = return (date, ct+1, prevName, repCt)
+insert t ct prevName repCt _ _ = return (t, ct+1, prevName, repCt)
 
 populateTop :: IConnection c => c -> IO ()
 populateTop con = do
@@ -174,6 +197,7 @@ deleteDbs con = do
                                  , "DROP TABLE IF EXISTS mentions;"
                                  , "DROP TABLE IF EXISTS allusers;"
                                  , "DROP TABLE IF EXISTS allmsgs;"
+                                 , "DROP TABLE IF EXISTS seqcount;"
                                  ]
     return ()
 
@@ -191,12 +215,21 @@ createDbs con = do
                                         \ hour TINYINT UNSIGNED NOT NULL,\
                                         \ quartile TINYINT UNSIGNED NOT NULL,\
                                         \ isTxt BOOL NOT NULL,\
+                                        \ isCaps BOOL NOT NULL,\
+                                        \ isAmaze BOOL NOT NULL,\
                                         \ hash INT UNSIGNED NOT NULL,\
                                         \ PRIMARY KEY (id),\
                                         \ KEY (hash),\
                                         \ INDEX (textpre),\
+                                        \ INDEX (name, isCaps),\
+                                        \ INDEX (name, isTxt),\
+                                        \ INDEX (name, isAmaze),\
                                         \ INDEX (name, hour, quartile))\
                   \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    let seqcount = "CREATE TABLE seqcount(id INT NOT NULL AUTO_INCREMENT,\
+                                        \ name VARCHAR(36) NOT NULL,\
+                                        \ num INT NOT NULL,\
+                                        \ PRIMARY KEY (id));"
     let statuses = "CREATE TABLE statuses(id INT NOT NULL AUTO_INCREMENT,\
                                         \ text VARCHAR(500) NOT NULL,\
                                         \ name VARCHAR(36) NOT NULL,\
@@ -266,6 +299,7 @@ createDbs con = do
                                  , mentions
                                  , allusers
                                  , allmsgs
+                                 , seqcount
                                  ]
     return ()
 
@@ -277,7 +311,7 @@ populateDbs con = do
     let contents = lines utf8'
     let parsed = parseLine <$> zip [1..] contents
     let time = undefined
-    foldlM (processOne con) (time, 0) parsed
+    foldlM (processOne con) (time, 0, Nothing, 1) parsed
     commit con
 
 repopulateDb :: IConnection c => c -> IO ()
