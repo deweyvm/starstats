@@ -61,6 +61,15 @@ readConfig = do
     where processConfig (c:_) = c
           processConfig     _ = error "file 'config' is empty"
 
+halfList :: [a] -> ([a], [a])
+halfList [] = ([], [])
+halfList xs =
+    helper xs [] 0
+    where halflen = (length xs :: Int) `quot` 2
+          helper (y:ys) first ct =
+              if ct == halflen
+                then ((y : first), ys)
+                else helper ys (y : first) (ct + 1)
 
 insertHalfway :: [a] -> a -> [a]
 insertHalfway [] x = [x]

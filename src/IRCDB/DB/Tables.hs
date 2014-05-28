@@ -53,6 +53,10 @@ insert t ct prevName repCt (Message time typ name msg) con = do
     let sqlMsg = toSql (take 500 msg)
     let sqlTime = toSql (subHours newT (subtract 3))
 
+    let words' = words msg
+    let wordcount = toSql $ length words'
+    let stripped = words $ replace urlRegexp "" msg
+    let charcount = toSql $ sum $ length <$> stripped -- fixme : this could be more precise
     let qs = "INSERT INTO seqcount (name, num)\
             \ VALUES (?, ?);"
 
@@ -62,16 +66,16 @@ insert t ct prevName repCt (Message time typ name msg) con = do
         _ -> return 1
 
 
-    let qm = "INSERT INTO allmsgs (hash, contents, count, length, hasURL)\
+    let qa = "INSERT INTO allmsgs (hash, contents, count, length, hasURL)\
             \ VALUES (CRC32(?), ?, 1, ?, ? LIKE '%http%')\
             \ ON DUPLICATE KEY UPDATE count=count+1;"
 
     let len = toSql $ length msg
-    msgQ <- prepare con qm
+    msgQ <- prepare con qa
     execute msgQ [sqlMsg, sqlMsg, len, sqlMsg, sqlMsg]
 
-    let qq = "INSERT INTO counts (name, msgcount, wordcount, charcount, lastseen, firstseen) \
-            \ VALUES (?, 0, 0, 0, ?, ?)\
+    let qq = "INSERT INTO counts (name, msgcount, wordcount, charcount, lastseen, firstseen, q1, q2, q3, q4) \
+            \ VALUES (?, 0, 0, 0, ?, ?, 0, 0, 0, 0)\
             \ ON DUPLICATE KEY UPDATE\
             \     msgcount=msgcount+1, \
             \     firstseen=(\
@@ -81,47 +85,60 @@ insert t ct prevName repCt (Message time typ name msg) con = do
             \         END), \
             \     lastseen=?,\
             \     wordcount=wordcount+?,\
-            \     charcount=charcount+?"
-
+            \     charcount=charcount+?,\
+            \     q1=q1+(IF(FLOOR(HOUR(?)/6) = 0, 1, 0)),\
+            \     q2=q2+(IF(FLOOR(HOUR(?)/6) = 1, 1, 0)),\
+            \     q3=q3+(IF(FLOOR(HOUR(?)/6) = 2, 1, 0)),\
+            \     q4=q4+(IF(FLOOR(HOUR(?)/6) = 3, 1, 0))"
+    countQ <- prepare con qq
+    execute countQ [sqlName, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, toSql wordcount, toSql charcount, sqlTime, sqlTime, sqlTime, sqlTime]
     let qu = "INSERT INTO allusers (name)\
             \ VALUES (?)\
             \ ON DUPLICATE KEY UPDATE name=name;"
+    users <- prepare con qu
+    execute users [sqlName]
 
     let qp = "INSERT INTO mentions (mentioner, mentionee, count)\
             \ (SELECT ?, name, 0 FROM allusers)\
             \ ON DUPLICATE KEY UPDATE count=count"
+    mention <- prepare con qp
+    execute mention [sqlName]
+
     let qqp = "UPDATE mentions\
              \ JOIN allusers AS u\
              \ SET count=IF(? REGEXP CONCAT('[[:<:]]', REPLACE(u.name, '|', '\\''), '[[:>:]]'), count + 1, count)\
              \ WHERE mentioner=? AND mentionee=u.name AND mentioner != mentionee"
-
+    mention2 <- prepare con qqp
+    execute mention2 [sqlMsg, sqlName]
 
 
     index <- getIndex con sqlName
-    let words' = words msg
-    let wordcount = toSql $ length words'
-    let stripped = words $ replace urlRegexp "" msg
-    let charcount = toSql $ sum $ length <$> stripped -- fixme : this could be more precise
-    prepared <- prepare con "INSERT INTO messages (name, type, userindex, wordcount, charcount, text, textpre, time, hour, quartile, isTxt, hash, isCaps, isAmaze, isQuestion, isExclamation)\
-                           \ VALUES (?,?,?,?,?,?,?,?,\
-                                   \ HOUR(?),\
-                                   \ HOUR(?)/6,\
-                                   \ ? REGEXP '[[:<:]](wat|wot|r|u|k|idk|ikr|v)[[:>:]]',\
-                                   \ CRC32(?),\
-                                   \ ? = BINARY UPPER(?),\
-                                   \ ? LIKE '%wow%' AND ? REGEXP '[[:<:]]wow[[:>:]]|really.?$',\
-                                   \ ? - LENGTH(REPLACE(?, '!', '')) > 0,\
-                                   \ ? LIKE '%?');"
+    let qm = "INSERT INTO messages (name, type, userindex, wordcount, charcount, text, textpre, time, hour, quartile, isTxt, hash, isCaps, isAmaze, isQuestion, isExclamation, hasNo, hasApostrophe)\
+            \ VALUES (?,?,?,?,?,?,?,?,\
+                    \ HOUR(?),\
+                    \ HOUR(?)/6,\
+                    \ ? REGEXP '[[:<:]](wat|wot|r|u|k|idk|ikr|v)[[:>:]]',\
+                    \ CRC32(?),\
+                    \ ? = BINARY UPPER(?),\
+                    \ ? LIKE '%wow%' AND ? REGEXP '[[:<:]]wow[[:>:]]|really.?$',\
+                    \ ? LIKE '%!%',\
+                    \ ? LIKE '%?',\
+                    \ ? LIKE '%no%' AND ? REGEXP '[[:<:]]no[[:>:]]',\
+                    \ ? LIKE '%''%');"
+    message <- prepare con qm
+    execute message [sqlName, sqlType, index, wordcount, charcount, sqlMsg, sqlPre, sqlTime
+                    , sqlTime
+                    , sqlTime
+                    , sqlMsg
+                    , sqlMsg
+                    , sqlMsg, sqlMsg
+                    , sqlMsg, sqlMsg
+                    , sqlMsg
+                    , sqlMsg
+                    , sqlMsg, sqlMsg
+                    , sqlMsg]
 
-    mention <- prepare con qp
-    mention2 <- prepare con qqp
-    users <- prepare con qu
-    execute prepared [sqlName, sqlType, index, wordcount, charcount, sqlMsg, sqlPre, sqlTime, sqlTime, sqlTime, sqlMsg, sqlMsg, sqlMsg, sqlMsg, sqlMsg, sqlMsg, charcount, sqlMsg, sqlMsg]
-    execute users [sqlName]
-    execute mention [sqlName]
-    execute mention2 [sqlMsg, sqlName]
-    countQ <- prepare con qq
-    execute countQ [sqlName, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, toSql wordcount, toSql charcount]
+
     return (newT, ct+1, Just name, newRep)
 insert t ct prevName newRep (Nick time old new) con = do
     let newT = setHoursMinutes t time
@@ -221,6 +238,8 @@ createDbs con = do
                                         \ isAmaze BOOL NOT NULL,\
                                         \ isQuestion BOOL NOT NULL,\
                                         \ isExclamation BOOL NOT NULL,\
+                                        \ hasApostrophe BOOL NOT NULL,\
+                                        \ hasNo BOOL NOT NULL,\
                                         \ hash INT UNSIGNED NOT NULL,\
                                         \ PRIMARY KEY (id),\
                                         \ KEY (hash),\
@@ -230,7 +249,10 @@ createDbs con = do
                                         \ INDEX (name, isAmaze),\
                                         \ INDEX (name, isQuestion),\
                                         \ INDEX (name, isExclamation),\
-                                        \ INDEX (name, hour, quartile))\
+                                        \ INDEX (name, hasNo),\
+                                        \ INDEX (name, hasApostrophe),\
+                                        \ INDEX (name, hour, quartile),\
+                                        \ INDEX (name, userindex))\
                   \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let seqcount = "CREATE TABLE seqcount(id INT NOT NULL AUTO_INCREMENT,\
                                         \ name VARCHAR(36) NOT NULL,\
@@ -271,6 +293,10 @@ createDbs con = do
                                    \ charcount INT NOT NULL,\
                                    \ lastseen TIME NOT NULL,\
                                    \ firstseen TIME NOT NULL,\
+                                   \ q1 INT NOT NULL,\
+                                   \ q2 INT NOT NULL,\
+                                   \ q3 INT NOT NULL,\
+                                   \ q4 INT NOT NULL,\
                                    \ PRIMARY KEY (name),\
                                    \ INDEX (name, msgcount));"
     let unique = "CREATE TABLE uniquenicks(id INT NOT NULL AUTO_INCREMENT,\

@@ -3,6 +3,7 @@ module IRCDB.DB.Queries where
 import Control.Arrow(second)
 import Control.Applicative
 import Database.HDBC
+import Data.List (sortBy)
 import Text.Printf
 import IRCDB.DB.Utils
 
@@ -38,9 +39,8 @@ getRandTopTen :: IConnection c => c -> IO [(String, String)]
 getRandTopTen con = do
     let q = "SELECT m.name, text\
            \ FROM messages AS m\
-           \ INNER JOIN (SELECT ROUND(RAND() * msgs) AS r, name, msgs\
-                       \ FROM top) AS t\
-           \ ON m.name = t.name AND m.userindex = r"
+           \ JOIN top AS t\
+           \ ON m.name = t.name AND m.userindex = FLOOR(RAND() * t.msgs)"
 
     getAndExtract con [] extractTup q
 
@@ -117,19 +117,39 @@ getAverageWordLength con =
            \ ORDER BY avg DESC" in
     getAndExtract con [] extractTup q
 
+cmp :: (String, Int, Int) -> (String, Int, Int) -> Ordering
+cmp (x0, x1, _) (y0, y1, _)
+    | x0 < y0 = GT
+    | x0 > y0 = LT
+    | otherwise = x1 `compare` y1
+
 getTimes :: IConnection c
          => c
          -> IO [(String, Int, Int, Int, Int)]
 getTimes con = do
-    let all' = "SELECT messages.name, quartile AS h, COUNT(*) AS count\
-              \ FROM messages\
-              \ JOIN top AS t\
-              \ ON t.name = messages.name\
-              \ GROUP BY h, messages.name\
-              \ ORDER BY messages.name, h, count DESC;"
+    let all' = "(SELECT counts.name, 0, q1 \
+              \ FROM counts\
+              \ JOIN top as t\
+              \ ON t.name = counts.name)\
+              \ UNION\
+              \(SELECT counts.name, 1, q2 \
+              \ FROM counts\
+              \ JOIN top as t\
+              \ ON t.name = counts.name)\
+              \ UNION\
+              \(SELECT counts.name, 2, q3 \
+              \ FROM counts\
+              \ JOIN top as t\
+              \ ON t.name = counts.name)\
+              \ UNION\
+              \(SELECT counts.name, 3, q4 \
+              \ FROM counts\
+              \ JOIN top as t\
+              \ ON t.name = counts.name)"
     let extract (x:y:z:_) = (fromSql x, fromSql y, fromSql z) :: (String, Int, Int)
     xs <- getAndExtract con [] extract all'
-    return $ (assemble2 . assemble) xs
+    let xs' = sortBy cmp xs
+    return $ (assemble2 . assemble) xs'
 
 getRandTopics :: IConnection c => c -> IO [(String, String)]
 getRandTopics con =
@@ -207,7 +227,7 @@ getNaysayers con =
            \ ON j.name = m.name\
            \ JOIN uniquenicks as u\
            \ ON u.name = j.name\
-           \ WHERE text LIKE '%no%' AND text REGEXP '[[:<:]]no[[:>:]]' \
+           \ WHERE hasNo \
            \ GROUP BY m.name\
            \ ORDER BY c DESC\
            \ LIMIT 10" in
@@ -249,31 +269,32 @@ getTextSpeakers con =
            \ LIMIT 10" in
     getAndExtract con [] extractTup q
 
+getTopBottom :: Int -> [a] -> ([a], [a])
+getTopBottom split [] = ([],[])
+getTopBottom split xs
+    | split `div` 2 > length xs = halfList xs
+    | otherwise = let first = take split xs in
+                  let last = drop (length xs - split) xs in
+                  (first, last)
 
 getApostrophes :: IConnection c => c -> IO [(String,String)]
 getApostrophes con = do
-    let q1 = "SELECT dt.name, c\
-            \ FROM (SELECT @index := 0) n\
-            \ STRAIGHT_JOIN (\
-                \ SELECT d.name, c, @index := @index + 1 as `row`\
-                \ FROM (SELECT messages.name, 100*(COUNT(*)/cc) AS c\
-                      \ FROM messages\
-                      \ JOIN uniquenicks\
-                      \ ON uniquenicks.name = messages.name\
-                      \ JOIN (SELECT name, msgcount as cc FROM counts) as j\
-                      \ ON j.name = messages.name\
-                      \ WHERE text LIKE '%''%'\
-                      \ GROUP BY messages.name\
-                      \ ORDER BY c\
-                \ ) as d\
-            \ ) dt\
-            \ WHERE `row` < 5 OR `row` > @index - 4;"
+    let q1 = "SELECT messages.name, 100*(COUNT(*)/cc) AS c\
+            \ FROM messages\
+            \ JOIN uniquenicks\
+            \ ON uniquenicks.name = messages.name\
+            \ JOIN (SELECT name, msgcount as cc FROM counts) as j\
+            \ ON j.name = messages.name\
+            \ WHERE hasApostrophe\
+            \ GROUP BY messages.name\
+            \ ORDER BY c"
 
     let showDouble d = printf "%.2f" (d :: Double)
     let extract :: [SqlValue] -> (String, String)
         extract = mapSnd showDouble . extractTup
-    r1 <- reverse <$> getAndExtract con []   extract q1
-    let res = insertHalfway r1 ("...", "...")
+    r1 <- reverse <$> getAndExtract con []  extract q1
+    let (xs, ys) = (getTopBottom 5 r1)
+    let res = xs  ++ [("...", "...")] ++ ys
     return $ res
 
 getQuestions :: IConnection c => c -> IO [(String, Int)]
