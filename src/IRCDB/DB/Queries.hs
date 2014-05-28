@@ -223,16 +223,6 @@ mostNeedy con =
            \ LIMIT 10"  in
     getAndExtract con [] extractTup q
 
-getQuestions :: IConnection c => c -> IO [(String, Int)]
-getQuestions con =
-    let q = "SELECT name, COUNT(*) AS c\
-           \ FROM messages\
-           \ WHERE isQuestion\
-           \ GROUP BY name\
-           \ ORDER BY c DESC\
-           \ LIMIT 10" in
-    getAndExtract con [] extractTup q
-
 getRepeatedSimple :: IConnection c => c -> IO [(String, Int)]
 getRepeatedSimple con =
     let q = "SELECT contents, count\
@@ -285,6 +275,16 @@ getApostrophes con = do
     r1 <- reverse <$> getAndExtract con []   extract q1
     let res = insertHalfway r1 ("...", "...")
     return $ res
+
+getQuestions :: IConnection c => c -> IO [(String, Int)]
+getQuestions con =
+    let q = "SELECT name, COUNT(*) AS c\
+           \ FROM messages\
+           \ WHERE isQuestion\
+           \ GROUP BY name\
+           \ ORDER BY c DESC\
+           \ LIMIT 10" in
+    getAndExtract con [] extractTup q
 
 getAmazed :: IConnection c => c -> IO [(String,Int)]
 getAmazed con =
