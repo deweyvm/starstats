@@ -12,7 +12,6 @@ import qualified Text.Regex as RE
 import Text.Printf
 import System.Directory
 
-
 replace :: String -> String -> String -> String
 replace x y z = RE.subRegex (RE.mkRegex x) z y
 

@@ -1,17 +1,22 @@
 module IRCDB.DB.Tables where
 
+import Prelude hiding (readFile)
 import Control.Applicative
 import Data.Foldable(foldlM)
 import Data.Time.LocalTime
+import Data.ByteString(readFile)
+import Data.Text(unpack)
+import Data.Text.Encoding(decodeUtf8)
 import Database.HDBC
-import System.IO
+import System.IO hiding (readFile)
+
 import IRCDB.DB.Utils
 import IRCDB.Parser
 import IRCDB.Time
 
 getIndex :: IConnection c => c -> SqlValue -> IO SqlValue
 getIndex con name = do
-    m <- quickQuery con "SELECT count FROM counts WHERE name=?;" [name]
+    m <- quickQuery con "SELECT msgcount FROM counts WHERE name=?;" [name]
     case m of
         [(x:_)] -> return x
         _ -> return $ toSql (0 :: Int)
@@ -37,19 +42,29 @@ insert t ct (Message time typ name msg) con = do
     let sqlName = toSql name
     let sqlType = toSql typ
     let sqlPre = toSql (take (24) msg)
-    let sqlMsg = toSql msg
+    let sqlMsg = toSql (take 500 msg)
     let sqlTime = toSql (subHours newT (subtract 3))
 
-    let qq = "INSERT INTO counts (name, count, lastseen, firstseen) \
-            \ VALUES (?, 0, ?, ?)\
+    let qm = "INSERT INTO allmsgs (hash, contents, count, length, hasURL)\
+            \ VALUES (CRC32(?), ?, 1, ?, ? LIKE '%http%')\
+            \ ON DUPLICATE KEY UPDATE count=count+1"
+
+    let len = toSql $ length msg
+    msgQ <- prepare con qm
+    execute msgQ [sqlMsg, sqlMsg, len, sqlMsg, sqlMsg]
+
+    let qq = "INSERT INTO counts (name, msgcount, wordcount, charcount, lastseen, firstseen) \
+            \ VALUES (?, 0, 0, 0, ?, ?)\
             \ ON DUPLICATE KEY UPDATE\
-            \     count=count+1, \
+            \     msgcount=msgcount+1, \
             \     firstseen=(\
             \         CASE WHEN (DATEDIFF(?, lastseen) > 365)\
             \              THEN ?\
             \              ELSE firstseen\
             \         END), \
-            \     lastseen=?;"
+            \     lastseen=?,\
+            \     wordcount=wordcount+?,\
+            \     charcount=charcount+?"
 
     let qu = "INSERT INTO allusers (name)\
             \ VALUES (?)\
@@ -70,19 +85,18 @@ insert t ct (Message time typ name msg) con = do
     let wordcount = toSql $ length words'
     let stripped = words $ replace urlRegexp "" msg
     let charcount = toSql $ sum $ length <$> stripped -- fixme : this could be more precise
-
-    prepared <- prepare con "INSERT INTO messages (name, type, userindex, wordcount, charcount, text, textpre, time)\
-                           \ VALUES (?,?,?,?,?,?,?,?);"
+    prepared <- prepare con "INSERT INTO messages (name, type, userindex, wordcount, charcount, text, textpre, time, hour, quartile, isTxt, hash)\
+                           \ VALUES (?,?,?,?,?,?,?,?,HOUR(?),HOUR(?)/6,? REGEXP '[[:<:]](wat|wot|r|u|k|idk|ikr|v)[[:>:]]', CRC32(?));"
 
     mention <- prepare con qp
     mention2 <- prepare con qqp
     users <- prepare con qu
-    execute prepared [sqlName, sqlType, index, wordcount, charcount, sqlMsg, sqlPre, sqlTime]
+    execute prepared [sqlName, sqlType, index, wordcount, charcount, sqlMsg, sqlPre, sqlTime, sqlTime, sqlTime, sqlMsg, sqlMsg]
     execute users [sqlName]
     execute mention [sqlName]
     execute mention2 [sqlMsg, sqlName]
     countQ <- prepare con qq
-    execute countQ [sqlName, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime]
+    execute countQ [sqlName, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, toSql wordcount, toSql charcount]
     return (newT, ct+1)
 insert t ct (Nick time old new) con = do
     let newT = setHoursMinutes t time
@@ -120,10 +134,9 @@ populateTop :: IConnection c => c -> IO ()
 populateTop con = do
     runQuery con "TRUNCATE top;"
     runQuery con "INSERT INTO top (name, msgs)\
-                \ (SELECT name, COUNT(*) AS count\
-                 \ FROM messages\
-                 \ GROUP BY name\
-                 \ ORDER BY count DESC\
+                \ (SELECT name, msgcount\
+                 \ FROM counts\
+                 \ ORDER BY msgcount DESC\
                  \ LIMIT 10);"
     return ()
 
@@ -133,18 +146,18 @@ populateUnique :: IConnection c => c -> IO ()
 populateUnique con = do
     runQuery con "TRUNCATE uniquenicks;"
     let q = "INSERT INTO uniquenicks (name, count)\
-           \ (SELECT DISTINCT newname, c.count\
+           \ (SELECT DISTINCT newname, c.msgcount\
            \ FROM nickchanges AS v\
            \ INNER JOIN counts AS c\
-           \ ON c.count > 100 AND c.name = v.newname\
+           \ ON c.msgcount > 100 AND c.name = v.newname\
            \ WHERE (ISNULL((SELECT newname\
                           \ FROM nickchanges\
                           \ WHERE newname = v.oldname\
                           \ LIMIT 1))\
-               \ OR ISNULL((SELECT count AS cc\
+               \ OR ISNULL((SELECT msgcount AS cc\
                           \ FROM counts\
                           \ WHERE name = v.oldname\
-                          \ HAVING cc / 10 < c.count))))"
+                          \ HAVING cc / 10 < c.msgcount))))"
     runQuery con q
     return ()
 
@@ -160,67 +173,85 @@ deleteDbs con = do
                                  , "DROP TABLE IF EXISTS uniquenicks;"
                                  , "DROP TABLE IF EXISTS mentions;"
                                  , "DROP TABLE IF EXISTS allusers;"
+                                 , "DROP TABLE IF EXISTS allmsgs;"
                                  ]
     return ()
 
 createDbs :: IConnection c => c -> IO ()
 createDbs con = do
-    let messages = "CREATE TABLE messages(id BIGINT NOT NULL AUTO_INCREMENT,\
-                                        \ text VARCHAR(4000),\
-                                        \ textpre VARCHAR(100),\
-                                        \ type INT,\
-                                        \ userindex INT,\
-                                        \ wordcount INT,\
-                                        \ charcount INT,\
-                                        \ name VARCHAR(36),\
-                                        \ time DATETIME,\
+    let messages = "CREATE TABLE messages(id INT NOT NULL AUTO_INCREMENT,\
+                                        \ text VARCHAR(500) NOT NULL,\
+                                        \ textpre VARCHAR(100) NOT NULL,\
+                                        \ type INT NOT NULL,\
+                                        \ userindex INT NOT NULL,\
+                                        \ wordcount INT NOT NULL,\
+                                        \ charcount INT NOT NULL,\
+                                        \ name VARCHAR(36) NOT NULL,\
+                                        \ time DATETIME NOT NULL,\
+                                        \ hour TINYINT UNSIGNED NOT NULL,\
+                                        \ quartile TINYINT UNSIGNED NOT NULL,\
+                                        \ isTxt BOOL NOT NULL,\
+                                        \ hash INT UNSIGNED NOT NULL,\
                                         \ PRIMARY KEY (id),\
-                                        \ INDEX (textpre))\
+                                        \ KEY (hash),\
+                                        \ INDEX (textpre),\
+                                        \ INDEX (name, hour, quartile))\
                   \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    let statuses = "CREATE TABLE statuses(id BIGINT NOT NULL AUTO_INCREMENT,\
-                                        \ text VARCHAR(4000),\
-                                        \ name VARCHAR(36),\
-                                        \ time DATETIME,\
+    let statuses = "CREATE TABLE statuses(id INT NOT NULL AUTO_INCREMENT,\
+                                        \ text VARCHAR(500) NOT NULL,\
+                                        \ name VARCHAR(36) NOT NULL,\
+                                        \ time DATETIME NOT NULL,\
                                         \ PRIMARY KEY (id))\
                   \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    let nickchanges = "CREATE TABLE nickchanges(id BIGINT NOT NULL AUTO_INCREMENT,\
-                                              \ oldname VARCHAR(36),\
-                                              \ newname VARCHAR(36),\
-                                              \ time DATETIME,\
+    let nickchanges = "CREATE TABLE nickchanges(id INT NOT NULL AUTO_INCREMENT,\
+                                              \ oldname VARCHAR(36) NOT NULL,\
+                                              \ newname VARCHAR(36) NOT NULL,\
+                                              \ time DATETIME NOT NULL,\
                                               \ PRIMARY KEY (id))"
-    let topics = "CREATE TABLE topics(id BIGINT NOT NULL AUTO_INCREMENT,\
-                                    \ name VARCHAR(36),\
-                                    \ topic VARCHAR(3000),\
-                                    \ time DATETIME,\
+    let topics = "CREATE TABLE topics(id INT NOT NULL AUTO_INCREMENT,\
+                                    \ name VARCHAR(36) NOT NULL,\
+                                    \ topic VARCHAR(500) NOT NULL,\
+                                    \ time DATETIME NOT NULL,\
                                     \ PRIMARY KEY (id))\
                 \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    let kicks = "CREATE TABLE kicks(id BIGINT NOT NULL AUTO_INCREMENT,\
-                                  \ kicker VARCHAR(36),\
-                                  \ kickee VARCHAR(36),\
-                                  \ reason VARCHAR(3000),\
-                                  \ time DATETIME,\
+    let kicks = "CREATE TABLE kicks(id INT NOT NULL AUTO_INCREMENT,\
+                                  \ kicker VARCHAR(36) NOT NULL,\
+                                  \ kickee VARCHAR(36) NOT NULL,\
+                                  \ reason VARCHAR(500) NOT NULL,\
+                                  \ time DATETIME NOT NULL,\
                                   \ PRIMARY KEY (id))\
                \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let top = "CREATE TABLE top(id INT NOT NULL AUTO_INCREMENT,\
-                              \ name VARCHAR(36),\
-                              \ msgs INT,\
+                              \ name VARCHAR(36) NOT NULL,\
+                              \ msgs INT NOT NULL,\
                               \ PRIMARY KEY (id))\
              \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    let count = "CREATE TABLE counts(name VARCHAR(36),\
-                                   \ count INT,\
-                                   \ lastseen TIME,\
-                                   \ firstseen TIME,\
-                                   \ PRIMARY KEY (name));"
+    let count = "CREATE TABLE counts(name VARCHAR(36) NOT NULL,\
+                                   \ msgcount INT NOT NULL,\
+                                   \ wordcount INT NOT NULL,\
+                                   \ charcount INT NOT NULL,\
+                                   \ lastseen TIME NOT NULL,\
+                                   \ firstseen TIME NOT NULL,\
+                                   \ PRIMARY KEY (name),\
+                                   \ INDEX (name, msgcount));"
     let unique = "CREATE TABLE uniquenicks(id INT NOT NULL AUTO_INCREMENT,\
-                                         \ name VARCHAR(36),\
-                                         \ count INT,\
+                                         \ name VARCHAR(36) NOT NULL,\
+                                         \ count INT NOT NULL,\
                                          \ PRIMARY KEY (id));"
-    let allusers = "CREATE TABLE allusers(name VARCHAR(36),\
+    let allusers = "CREATE TABLE allusers(name VARCHAR(36) NOT NULL,\
                                         \ PRIMARY KEY (name));"
+    let allmsgs = "CREATE TABLE allmsgs(contents VARCHAR(500) NOT NULL,\
+                                      \ count INT NOT NULL,\
+                                      \ length INT NOT NULL,\
+                                      \ hasURL BOOL NOT NULL,\
+                                      \ hash CHAR(50) NOT NULL,\
+                                      \ PRIMARY KEY (hash))\
+                 \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
     let mentions = "CREATE TABLE mentions(id INT NOT NULL AUTO_INCREMENT,\
-                                        \ mentioner VARCHAR(36) DEFAULT \"\",\
-                                        \ mentionee VARCHAR(36) DEFAULT \"\",\
-                                        \ count INT DEFAULT 0,\
+                                        \ mentioner VARCHAR(36) NOT NULL,\
+                                        \ mentionee VARCHAR(36) NOT NULL,\
+                                        \ count INT NOT NULL,\
                                         \ PRIMARY KEY (mentioner, mentionee),\
                                         \ KEY (id));"
 
@@ -234,13 +265,16 @@ createDbs con = do
                                  , unique
                                  , mentions
                                  , allusers
+                                 , allmsgs
                                  ]
     return ()
 
 populateDbs :: IConnection c => c -> IO ()
 populateDbs con = do
     logfile <- readConfig
-    contents <- lines <$> readFile logfile
+    bytestring <- readFile logfile
+    let utf8' = unpack $ decodeUtf8 bytestring
+    let contents = lines utf8'
     let parsed = parseLine <$> zip [1..] contents
     let time = undefined
     foldlM (processOne con) (time, 0) parsed

@@ -15,7 +15,7 @@ getUniqueNicks con =
 
 getOverallActivity :: IConnection c => c -> IO [(Int,Int)]
 getOverallActivity con = do
-    let q = "SELECT HOUR(messages.time) AS h, COUNT(*)\
+    let q = "SELECT hour AS h, COUNT(*)\
            \ FROM messages\
            \ GROUP BY h\
            \ ORDER BY h;"
@@ -91,9 +91,13 @@ getUrls con = do
 
 getAverageWordCount :: IConnection c => c -> IO [(String, Double)]
 getAverageWordCount con =
-    let q = "SELECT m.name, AVG(m.wordcount) AS avg\
+    let q = "SELECT m.name, wc/mc as avg\
            \ FROM top AS t\
-           \ INNER JOIN messages AS m\
+           \ JOIN (SELECT\
+           \           name,\
+           \           msgcount as mc,\
+           \           wordcount as wc\
+           \       FROM counts) AS m\
            \ ON t.name = m.name\
            \ GROUP BY m.name\
            \ ORDER BY avg DESC" in
@@ -101,9 +105,13 @@ getAverageWordCount con =
 
 getAverageWordLength :: IConnection c => c -> IO [(String, Double)]
 getAverageWordLength con =
-    let q = "SELECT m.name, IFNULL(SUM(m.charcount)/SUM(m.wordcount), 0) AS avg\
+    let q = "SELECT m.name, IFNULL(cc/wc, 0) AS avg\
            \ FROM top AS t\
-           \ INNER JOIN messages AS m\
+           \ JOIN (SELECT\
+           \           name,\
+           \           wordcount as wc,\
+           \           charcount as cc\
+           \       FROM counts) AS m\
            \ ON t.name = m.name\
            \ GROUP BY m.name\
            \ ORDER BY avg DESC" in
@@ -113,7 +121,7 @@ getTimes :: IConnection c
          => c
          -> IO [(String, Int, Int, Int, Int)]
 getTimes con = do
-    let all' = "SELECT messages.name, FLOOR(HOUR(time)/6) AS h, COUNT(*) AS count\
+    let all' = "SELECT messages.name, quartile AS h, COUNT(*) AS count\
               \ FROM messages\
               \ JOIN top AS t\
               \ ON t.name = messages.name\
@@ -207,7 +215,7 @@ getNaysayers :: IConnection c => c -> IO [(String,Double)]
 getNaysayers con =
     let q = "SELECT m.name, COUNT(*)/cc as c\
            \ FROM messages as m\
-           \ JOIN (SELECT name, count as cc FROM counts) as j\
+           \ JOIN (SELECT name, msgcount as cc FROM counts) as j\
            \ ON j.name = m.name\
            \ JOIN uniquenicks as u\
            \ ON u.name = j.name\
@@ -239,28 +247,25 @@ getQuestions con =
 
 getRepeatedSimple :: IConnection c => c -> IO [(String, Int)]
 getRepeatedSimple con =
-    let q = "SELECT textpre, COUNT(*) AS c\
-           \ FROM messages\
-           \ GROUP BY textpre\
-           \ ORDER BY c DESC\
+    let q = "SELECT contents, count\
+           \ FROM allmsgs\
+           \ ORDER BY count DESC\
            \ LIMIT 5" in
     getAndExtract con [] extractTup q
 
 getRepeatedComplex :: IConnection c => c -> IO [(String, Int)]
 getRepeatedComplex con = do
-    let q = "SELECT text, COUNT(*) AS c\
-           \ FROM messages\
-           \ WHERE CHAR_LENGTH(text) > 12 AND NOT text LIKE '%http%'\
-           \ GROUP BY text\
-           \ HAVING c > 10\
-           \ ORDER BY c DESC"
+    let q = "SELECT contents, count\
+           \ FROM allmsgs\
+           \ WHERE NOT hasURL AND count > 12 AND LENGTH(contents) > 12\
+           \ ORDER BY count DESC"
     getAndExtract con [] (mapFst escapeHtml . extractTup) q
 
 getTextSpeakers :: IConnection c => c -> IO [(String, Int)]
 getTextSpeakers con =
     let q = "SELECT name, COUNT(*) AS c\
            \ FROM messages\
-           \ WHERE text REGEXP '[[:<:]](wat|wot|r|u|k|idk|ikr|v)[[:>:]]'\
+           \ WHERE isTxt\
            \ GROUP BY name\
            \ ORDER BY c DESC\
            \ LIMIT 10" in
@@ -277,7 +282,7 @@ getApostrophes con = do
                       \ FROM messages\
                       \ JOIN uniquenicks\
                       \ ON uniquenicks.name = messages.name\
-                      \ JOIN (SELECT name, count as cc FROM counts) as j\
+                      \ JOIN (SELECT name, msgcount as cc FROM counts) as j\
                       \ ON j.name = messages.name\
                       \ WHERE text LIKE '%''%'\
                       \ GROUP BY messages.name\
