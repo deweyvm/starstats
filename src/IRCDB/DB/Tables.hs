@@ -102,19 +102,21 @@ insert t ct prevName repCt (Message time typ name msg) con = do
     let wordcount = toSql $ length words'
     let stripped = words $ replace urlRegexp "" msg
     let charcount = toSql $ sum $ length <$> stripped -- fixme : this could be more precise
-    prepared <- prepare con "INSERT INTO messages (name, type, userindex, wordcount, charcount, text, textpre, time, hour, quartile, isTxt, hash, isCaps, isAmaze)\
+    prepared <- prepare con "INSERT INTO messages (name, type, userindex, wordcount, charcount, text, textpre, time, hour, quartile, isTxt, hash, isCaps, isAmaze, isQuestion, isExclamation)\
                            \ VALUES (?,?,?,?,?,?,?,?,\
                                    \ HOUR(?),\
                                    \ HOUR(?)/6,\
                                    \ ? REGEXP '[[:<:]](wat|wot|r|u|k|idk|ikr|v)[[:>:]]',\
                                    \ CRC32(?),\
                                    \ ? = BINARY UPPER(?),\
-                                   \ ? LIKE '%wow%' AND ? REGEXP '[[:<:]]wow[[:>:]]|really.?$');"
+                                   \ ? LIKE '%wow%' AND ? REGEXP '[[:<:]]wow[[:>:]]|really.?$',\
+                                   \ ? - LENGTH(REPLACE(?, '!', '')) > 0,\
+                                   \ ? LIKE '%?');"
 
     mention <- prepare con qp
     mention2 <- prepare con qqp
     users <- prepare con qu
-    execute prepared [sqlName, sqlType, index, wordcount, charcount, sqlMsg, sqlPre, sqlTime, sqlTime, sqlTime, sqlMsg, sqlMsg, sqlMsg, sqlMsg, sqlMsg, sqlMsg]
+    execute prepared [sqlName, sqlType, index, wordcount, charcount, sqlMsg, sqlPre, sqlTime, sqlTime, sqlTime, sqlMsg, sqlMsg, sqlMsg, sqlMsg, sqlMsg, sqlMsg, charcount, sqlMsg, sqlMsg]
     execute users [sqlName]
     execute mention [sqlName]
     execute mention2 [sqlMsg, sqlName]
@@ -217,6 +219,8 @@ createDbs con = do
                                         \ isTxt BOOL NOT NULL,\
                                         \ isCaps BOOL NOT NULL,\
                                         \ isAmaze BOOL NOT NULL,\
+                                        \ isQuestion BOOL NOT NULL,\
+                                        \ isExclamation BOOL NOT NULL,\
                                         \ hash INT UNSIGNED NOT NULL,\
                                         \ PRIMARY KEY (id),\
                                         \ KEY (hash),\
@@ -224,6 +228,8 @@ createDbs con = do
                                         \ INDEX (name, isCaps),\
                                         \ INDEX (name, isTxt),\
                                         \ INDEX (name, isAmaze),\
+                                        \ INDEX (name, isQuestion),\
+                                        \ INDEX (name, isExclamation),\
                                         \ INDEX (name, hour, quartile))\
                   \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let seqcount = "CREATE TABLE seqcount(id INT NOT NULL AUTO_INCREMENT,\

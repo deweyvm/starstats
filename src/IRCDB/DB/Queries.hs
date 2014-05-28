@@ -227,7 +227,7 @@ getQuestions :: IConnection c => c -> IO [(String, Int)]
 getQuestions con =
     let q = "SELECT name, COUNT(*) AS c\
            \ FROM messages\
-           \ WHERE text LIKE '%?'\
+           \ WHERE isQuestion\
            \ GROUP BY name\
            \ ORDER BY c DESC\
            \ LIMIT 10" in
@@ -298,8 +298,9 @@ getAmazed con =
 
 getExcited :: IConnection c => c -> IO [(String, Int)]
 getExcited con =
-    let q = "SELECT name, MAX(charcount - LENGTH(REPLACE(text, '!', ''))) as c\
+    let q = "SELECT name, COUNT(*) as c\
            \ FROM messages\
+           \ WHERE isExclamation\
            \ GROUP BY name\
            \ ORDER BY c DESC\
            \ LIMIT 10" in
