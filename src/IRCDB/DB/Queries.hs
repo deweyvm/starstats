@@ -144,23 +144,11 @@ getRandTopics con =
 getSelfTalk :: IConnection c => c -> IO [(String, Int)]
 getSelfTalk con =
     let q = "SELECT\
-               \ name, MAX(c) AS maxc\
-           \ FROM (\
-               \ SELECT\
-                  \ name,\
-                  \ IF (@name = name,  @count := @count + 1, @count := 1) AS c,\
-                  \ @name := name\
-               \ FROM\
-                  \ messages\
-               \ JOIN (\
-                   \ SELECT\
-                      \ @name:=\"\",\
-                      \ @count:=0\
-               \ ) AS r\
-           \ ) AS t\
-           \ WHERE c > 5\
+           \    name, COUNT(*) as c\
+           \ FROM seqcount\
+           \ WHERE num > 5\
            \ GROUP BY name\
-           \ ORDER BY maxc DESC\
+           \ ORDER BY c DESC\
            \ LIMIT 10" in
     getAndExtract con [] extractTup q
 

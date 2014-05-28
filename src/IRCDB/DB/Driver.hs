@@ -87,7 +87,7 @@ generate con = do
                              , headerTable "Relationships" ("Mention", "Times") bffs
                              , headerTable "Clingy" ("Name", "Times Mentioning Someone") needy
                              , headerTable "Popular" ("Name", "Times Mentioned") mentions
-                             , headerTable "Lonely Chatters" ("Name", "Times In A Row") self
+                             , headerTable "Lonely Chatters" ("Name", "Times Talking to Self") self
                              , headerTable "Unique Nicks" ("Name","Messages") unique
                              , headerTable "Some Random URLs" ("Name", "URL") urls
                              , headerTable "Random Messages" ("Name", "Message") rand
