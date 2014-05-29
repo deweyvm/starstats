@@ -18,7 +18,7 @@ if [[ $? -ne 0 ]] ; then
 fi
 echo "Running ircdb... "  &&\
 rm -f temp &&\
-time $EXE +RTS -K100M -M3.9G | tee temp &&\
+time $EXE "$@" +RTS -K100M -M3.9G | tee temp &&\
 cat temp | egrep '^@' | sort -k2 -t '	'
 if [[ $? -ne 0 ]] ; then
     echo "failed"

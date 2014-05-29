@@ -29,7 +29,7 @@ getRandMessages con =
     let qs = ["SET @max = (SELECT MAX(id) FROM messages); "] in
     let q = "SELECT name, text\
            \ FROM messages AS m\
-           \ JOIN (SELECT ROUND(RAND() * @max) AS m2\
+           \ JOIN (SELECT FLOOR(RAND() * @max) AS m2\
                  \ FROM messages\
                  \ LIMIT 10) AS dummy\
            \ ON m.id = m2;" in
@@ -39,8 +39,11 @@ getRandTopTen :: IConnection c => c -> IO [(String, String)]
 getRandTopTen con = do
     let q = "SELECT m.name, text\
            \ FROM messages AS m\
-           \ INNER JOIN (SELECT ROUND(RAND() * msgs) AS r, name, msgs\
-                       \ FROM top) AS t\
+           \ JOIN (SELECT \
+           \           FLOOR(RAND() * msgs) AS r, \
+           \           name, \
+           \           msgs\
+           \       FROM top) AS t\
            \ ON m.name = t.name AND m.userindex = r"
 
     getAndExtract con [] extractTup q
@@ -76,9 +79,6 @@ getNicks con =
            \ ORDER BY count DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
-
-
-
 
 getUrls :: IConnection c => c -> IO [(String, String)]
 getUrls con = do
@@ -174,6 +174,7 @@ getSelfTalk con =
            \ LIMIT 10" in
     getAndExtract con [] extractTup q
 
+--store all mentions then simply report them for uniquenicks
 mostMentions :: IConnection c => c -> IO [(String, String)]
 mostMentions con =
     let q = "SELECT mentionee, SUM(mentions.count) AS c\
@@ -257,16 +258,14 @@ getRepeatedComplex :: IConnection c => c -> IO [(String, Int)]
 getRepeatedComplex con = do
     let q = "SELECT contents, count\
            \ FROM allmsgs\
-           \ WHERE NOT hasURL AND count > 12 AND LENGTH(contents) > 12\
+           \ WHERE isComplex\
            \ ORDER BY count DESC"
     getAndExtract con [] (mapFst escapeHtml . extractTup) q
 
 getTextSpeakers :: IConnection c => c -> IO [(String, Int)]
 getTextSpeakers con =
-    let q = "SELECT name, COUNT(*) AS c\
-           \ FROM messages\
-           \ WHERE isTxt\
-           \ GROUP BY name\
+    let q = "SELECT name, isTxt AS c\
+           \ FROM counts\
            \ ORDER BY c DESC\
            \ LIMIT 10" in
     getAndExtract con [] extractTup q
@@ -293,30 +292,24 @@ getApostrophes con = do
 
 getQuestions :: IConnection c => c -> IO [(String, Int)]
 getQuestions con =
-    let q = "SELECT name, COUNT(*) AS c\
-           \ FROM messages\
-           \ WHERE isQuestion\
-           \ GROUP BY name\
+    let q = "SELECT name, isQuestion AS c\
+           \ FROM counts\
            \ ORDER BY c DESC\
            \ LIMIT 10" in
     getAndExtract con [] extractTup q
 
 getAmazed :: IConnection c => c -> IO [(String,Int)]
 getAmazed con =
-    let q = "SELECT name, COUNT(*) as c\
-           \ FROM messages\
-           \ WHERE isAmaze\
-           \ GROUP BY name\
+    let q = "SELECT name, isAmaze as c\
+           \ FROM counts\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
 
 getExcited :: IConnection c => c -> IO [(String, Int)]
 getExcited con =
-    let q = "SELECT name, COUNT(*) as c\
-           \ FROM messages\
-           \ WHERE isExclamation\
-           \ GROUP BY name\
+    let q = "SELECT name, isExclamation as c\
+           \ FROM counts\
            \ ORDER BY c DESC\
            \ LIMIT 10" in
     getAndExtract con [] extractTup q
