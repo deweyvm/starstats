@@ -67,7 +67,7 @@ insert t ct prevName repCt (Message time typ name msg) con = do
 
 
     let qa = "INSERT INTO allmsgs (hash, contents, count, length, hasURL)\
-            \ VALUES (CRC32(?), ?, 1, ?, ? LIKE '%http%')\
+            \ VALUES (CRC32(?), ?, 1, ?, ? LIKE '%http://%')\
             \ ON DUPLICATE KEY UPDATE count=count+1;"
 
     let len = toSql $ length msg
@@ -111,6 +111,13 @@ insert t ct prevName repCt (Message time typ name msg) con = do
     mention2 <- prepare con qqp
     execute mention2 [sqlMsg, sqlName]
 
+    let qurl = "INSERT INTO urls (name, contents)\
+              \ (SELECT ?, ?\
+              \  FROM DUAL\
+              \  WHERE ? LIKE '%http://%'\
+              \ LIMIT 1);"
+    urlQ <- prepare con qurl
+    execute urlQ [sqlName, sqlMsg, sqlMsg]
 
     index <- getIndex con sqlName
     let qm = "INSERT INTO messages (name, type, userindex, wordcount, charcount, text, textpre, time, hour, quartile, isTxt, hash, isCaps, isAmaze, isQuestion, isExclamation, hasNo, hasApostrophe)\
@@ -217,6 +224,7 @@ deleteDbs con = do
                                  , "DROP TABLE IF EXISTS allusers;"
                                  , "DROP TABLE IF EXISTS allmsgs;"
                                  , "DROP TABLE IF EXISTS seqcount;"
+                                 , "DROP TABLE IF EXISTS urls;"
                                  ]
     return ()
 
@@ -319,7 +327,10 @@ createDbs con = do
                                         \ count INT NOT NULL,\
                                         \ PRIMARY KEY (mentioner, mentionee),\
                                         \ KEY (id));"
-
+    let urls = "CREATE TABLE urls(id INT NOT NULL AUTO_INCREMENT,\
+                                \ name VARCHAR(36) NOT NULL,\
+                                \ contents VARCHAR(500) NOT NULL,\
+                                \ PRIMARY KEY (id));"
     sequence_ $ runQuery con <$> [ messages
                                  , statuses
                                  , nickchanges
@@ -332,6 +343,7 @@ createDbs con = do
                                  , allusers
                                  , allmsgs
                                  , seqcount
+                                 , urls
                                  ]
     return ()
 

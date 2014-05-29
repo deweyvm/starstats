@@ -39,8 +39,9 @@ getRandTopTen :: IConnection c => c -> IO [(String, String)]
 getRandTopTen con = do
     let q = "SELECT m.name, text\
            \ FROM messages AS m\
-           \ JOIN top AS t\
-           \ ON m.name = t.name AND m.userindex = FLOOR(RAND() * t.msgs)"
+           \ INNER JOIN (SELECT ROUND(RAND() * msgs) AS r, name, msgs\
+                       \ FROM top) AS t\
+           \ ON m.name = t.name AND m.userindex = r"
 
     getAndExtract con [] extractTup q
 
@@ -76,17 +77,18 @@ getNicks con =
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
 
+
+
+
 getUrls :: IConnection c => c -> IO [(String, String)]
 getUrls con = do
-    prepared <- prepare con "SELECT DISTINCT name, text\
-                           \ FROM messages\
-                           \ WHERE text REGEXP ?\
-                           \ ORDER BY RAND()\
-                           \ LIMIT 10"
-    execute prepared [toSql urlRegexp]
-    rows <- fetchAllRows' prepared
-    let r = (second (extractUrl)) <$> extractTup <$> rows
-    return r
+    let qs = ["SET @max = (SELECT MAX(id) FROM urls);"]
+    let q = "SELECT DISTINCT name, contents FROM urls AS v\
+           \ JOIN (SELECT ROUND(RAND() * @max) AS r\
+                 \ FROM urls\
+                 \ LIMIT 10) AS dummy\
+           \ ON v.id = r;"
+    getAndExtract con qs (second (extractUrl) <$>extractTup) q
 
 
 getAverageWordCount :: IConnection c => c -> IO [(String, Double)]
@@ -268,14 +270,6 @@ getTextSpeakers con =
            \ ORDER BY c DESC\
            \ LIMIT 10" in
     getAndExtract con [] extractTup q
-
-getTopBottom :: Int -> [a] -> ([a], [a])
-getTopBottom split [] = ([],[])
-getTopBottom split xs
-    | split `div` 2 > length xs = halfList xs
-    | otherwise = let first = take split xs in
-                  let last = drop (length xs - split) xs in
-                  (first, last)
 
 getApostrophes :: IConnection c => c -> IO [(String,String)]
 getApostrophes con = do

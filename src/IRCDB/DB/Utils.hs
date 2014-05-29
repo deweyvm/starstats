@@ -11,7 +11,7 @@ import qualified Text.Regex.Posix as REP
 import qualified Text.Regex as RE
 import Text.Printf
 import System.Directory
-
+import Debug.Trace
 replace :: String -> String -> String -> String
 replace x y z = RE.subRegex (RE.mkRegex x) z y
 
@@ -106,13 +106,23 @@ assemble2 xs =
             (name, w, x, y, z) in
     grabAll <$> xs
 
+
+
+getTopBottom :: Int -> [a] -> ([a], [a])
+getTopBottom _ [] = ([],[])
+getTopBottom split xs
+    | split `div` 2 > length xs = halfList xs
+    | otherwise = let first = take split xs in
+                  let last' = drop (length xs - split) xs in
+                  (first, last')
+
 urlRegexp :: String
 urlRegexp = "http://[^ ]*"
 
 extractUrl :: String -> String
 extractUrl s = case s REP.=~ urlRegexp :: [[String]] of
     ((x:_) : _) -> x
-    _ -> "Error extracting url"
+    _ -> trace ("Error extracting : " ++ s) $ "Error extracting url"
 
 
 extractTup :: (Convertible SqlValue a
