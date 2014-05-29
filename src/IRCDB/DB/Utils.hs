@@ -1,6 +1,6 @@
 {-# LANGUAGE DoAndIfThenElse, FlexibleContexts, FlexibleInstances, TypeSynonymInstances #-}
 module IRCDB.DB.Utils where
-
+import Control.DeepSeq
 import Control.Applicative
 import Criterion.Measurement
 import Data.Convertible
@@ -124,6 +124,11 @@ extractUrl s = case s REP.=~ urlRegexp :: [[String]] of
     ((x:_) : _) -> x
     _ -> trace ("Error extracting : " ++ s) $ "Error extracting url"
 
+extractSingle :: (Convertible SqlValue a, Default a)
+              => [[SqlValue]]
+              -> a
+extractSingle ((x:_):_) = fromSql x
+extractSingle         _ = default'
 
 extractTup :: (Convertible SqlValue a
               , Convertible SqlValue b
@@ -150,6 +155,14 @@ getAndExtract con qs f query = do
     res <- runQuery con query
     return $ f <$> res
 
+getSimple :: IConnection c
+          => c
+          -> ([[SqlValue]] -> a)
+          -> String
+          -> IO a
+getSimple con f query = do
+    res <- runQuery con query
+    return $ f res
 
 fromSqlString :: SqlValue -> String
 fromSqlString v =
@@ -157,9 +170,9 @@ fromSqlString v =
     escapeHtml s
 
 
-time' :: String -> IO a -> IO a
+time' :: NFData a => String -> IO a -> IO a
 time' msg action = do
-    (s, res) <- time action
+    (s, res) <- time $ force <$> action
     let len = length msg
     let whitespace = printf ("%" ++ show (27 - len) ++ "s") " " ++ "\t"
     putStrLn ("@" ++ msg ++ ": " ++ whitespace ++ printf "%.3fs" s)

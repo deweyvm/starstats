@@ -144,7 +144,7 @@ insert t ct prevName repCt (Message time typ name msg) con = do
     execute urlQ [sqlName, sqlMsg, sqlMsg]
 
     index <- getIndex con sqlName
-    let qm = "INSERT INTO messages (name, type, userindex, wordcount, charcount, text, textpre, time, hour, quartile, hash, isCaps, hasNo, hasApostrophe)\
+    let qm = "INSERT INTO messages (name, type, userindex, wordcount, charcount, contents, contentspre, time, hour, quartile, hash, isCaps, hasNo, hasApostrophe)\
             \ VALUES (?,?,?,?,?,?,?,?,\
                     \ HOUR(?),\
                     \ HOUR(?)/6,\
@@ -247,8 +247,8 @@ deleteDbs con = do
 createDbs :: IConnection c => c -> IO ()
 createDbs con = do
     let messages = "CREATE TABLE messages(id INT NOT NULL AUTO_INCREMENT,\
-                                        \ text VARCHAR(500) NOT NULL,\
-                                        \ textpre VARCHAR(100) NOT NULL,\
+                                        \ contents VARCHAR(500) NOT NULL,\
+                                        \ contentspre VARCHAR(100) NOT NULL,\
                                         \ type INT NOT NULL,\
                                         \ userindex INT NOT NULL,\
                                         \ wordcount INT NOT NULL,\
@@ -263,7 +263,7 @@ createDbs con = do
                                         \ hash INT UNSIGNED NOT NULL,\
                                         \ PRIMARY KEY (id),\
                                         \ KEY (hash),\
-                                        \ INDEX (textpre),\
+                                        \ INDEX (contentspre),\
                                         \ INDEX (name, isCaps),\
                                         \ INDEX (name, hasNo),\
                                         \ INDEX (name, hasApostrophe),\
@@ -275,7 +275,7 @@ createDbs con = do
                                         \ num INT NOT NULL,\
                                         \ PRIMARY KEY (id));"
     let statuses = "CREATE TABLE statuses(id INT NOT NULL AUTO_INCREMENT,\
-                                        \ text VARCHAR(500) NOT NULL,\
+                                        \ contents VARCHAR(500) NOT NULL,\
                                         \ name VARCHAR(36) NOT NULL,\
                                         \ time DATETIME NOT NULL,\
                                         \ PRIMARY KEY (id))\

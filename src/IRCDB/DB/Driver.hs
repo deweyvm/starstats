@@ -4,6 +4,7 @@ module IRCDB.DB.Driver where
 import Prelude hiding (foldl, concat, sequence_, sum)
 import Control.Applicative
 import Control.DeepSeq
+import Data.List (concat)
 import Database.HDBC
 import Database.HDBC.ODBC
 
@@ -72,32 +73,72 @@ generate con = do
 
     let us = fst <$> users
     let rows = formatTable us "User" 10 [col1, col2, col3, col4, col5]
-    let rendered = unlines $ [ makeTimeScript "Activity (UTC)" activity
-                             , withHeading "Top Users" $ rows
-                             , headerTable "Broken Keyboard" ("Name", "YELLING") yell
-                             , headerTable "Overexcited" ("Name", "!!!!!!!!!!!!!!") excite
-                             , headerTable "Amazed" ("Name", "Times dumbfounded") amaze
-                             , headerTable "Aloof" ("Name", "Has No Interest In This Number of Individuals") aloof
-                             , headerTable "Apostrophe Users" ("Name", "Percent of Messages with ''s") apos
-                             , headerTable "Can't English" ("Name", "Text Speak Count") text
-                             , headerTable "Naysayers" ("Name", "Percent Negative") nay
-                             , headerTable "Repeated Phrases" ("Phrase", "Times Repeated") repSimple
-                             , headerTable "Longer Repeated Phrases" ("Phrase", "Times Repeated") repComplex
-                             , headerTable "Clueless" ("Name", "Number Of Questions Asked") questions
-                             , headerTable "Relationships" ("Mention", "Times") bffs
-                             , headerTable "Clingy" ("Name", "Times Mentioning Someone") needy
-                             , headerTable "Popular" ("Name", "Times Mentioned") mentions
-                             , headerTable "Lonely Chatters" ("Name", "Times Talking to Self") self
-                             , headerTable "Unique Nicks" ("Name","Messages") unique
-                             , headerTable "Some Random URLs" ("Name", "URL") urls
-                             , headerTable "Random Messages" ("Name", "Message") rand
-                             , headerTable "Most Changed Nicks" ("Name", "Times Changed") nicks
-                             , headerTable "Prolific Kickers" ("Name", "Times kicking") kickers
-                             , headerTable "Trouble Makers" ("Name", "Times Kicked") kickees
-                             , headerTable "Topics" ("Name", "Topic") topics
-                             ]
+    let tables = [ makeTimeScript "Activity (UTC)" activity
+                 , withHeading "Top Users" $ rows
+                 , headerTable "Broken Keyboard" ("Name", "YELLING") yell
+                 , headerTable "Overexcited" ("Name", "!!!!!!!!!!!!!!") excite
+                 , headerTable "Amazed" ("Name", "Times dumbfounded") amaze
+                 , headerTable "Aloof" ("Name", "Has No Interest In This Number of Individuals") aloof
+                 , headerTable "Apostrophe Users" ("Name", "Percent of Messages with ''s") apos
+                 , headerTable "Can't English" ("Name", "Text Speak Count") text
+                 , headerTable "Naysayers" ("Name", "Percent Negative") nay
+                 , headerTable "Repeated Phrases" ("Phrase", "Times Repeated") repSimple
+                 , headerTable "Longer Repeated Phrases" ("Phrase", "Times Repeated") repComplex
+                 , headerTable "Clueless" ("Name", "Number Of Questions Asked") questions
+                 , headerTable "Relationships" ("Mention", "Times") bffs
+                 , headerTable "Clingy" ("Name", "Times Mentioning Someone") needy
+                 , headerTable "Popular" ("Name", "Times Mentioned") mentions
+                 , headerTable "Lonely Chatters" ("Name", "Times Talking to Self") self
+                 , headerTable "Unique Nicks" ("Name","Messages") unique
+                 , headerTable "Some Random URLs" ("Name", "URL") urls
+                 , headerTable "Random Messages" ("Name", "Message") rand
+                 , headerTable "Most Changed Nicks" ("Name", "Times Changed") nicks
+                 , headerTable "Prolific Kickers" ("Name", "Times kicking") kickers
+                 , headerTable "Trouble Makers" ("Name", "Times Kicked") kickees
+                 , headerTable "Topics" ("Name", "Topic") topics
+                 ]
 
-    writeFile "generated.html" $ makeFile (linkLinks rendered) "css.css" ["util.js"]
+    let contents = unlines tables
+    heading <- makeHeading con
+    footer <- makeFooter con
+
+    writeFile "generated.html" $ makeFile (heading ++ (linkLinks contents) ++ footer) "css.css" ["util.js"]
+
+makeHeading :: IConnection c => c -> IO String
+makeHeading con = do
+    let channel = "<channel>"
+    !words' <- time' "H Get Words" $ getTotalWords con
+    !msgs <- time' "H Get Messages" $ getTotalMessages con
+    !start <- time' "H Get Start" $ getStartDate con
+    !end <- time' "H Get End" $ getEndDate con
+    let desc :: String
+        desc = concat [ "Analyzed "
+                      , show words'
+                      , " words and "
+                      , show msgs
+                      , " messages from "
+                      , start
+                      , " to "
+                      , end
+                      , "."
+                      ]
+    return $ unlines [ tag "h1" ("Stats for #" ++ channel)
+                     , genTag "div" [("id", "lead")] $ tag "p" desc
+                     ]
+
+makeFooter :: IConnection c => c -> IO String
+makeFooter con = do
+    let progname = "ircdb"
+    !now <- time' "F Get Now" $ getNow con
+    let desc = concat [ "Generated by "
+                      , progname
+                      , " on "
+                      , now
+                      , " in "
+                      , "0"
+                      , " seconds."
+                      ]
+    return $ genTag "div" [("id", "footer")] desc
 
 doAction :: Action -> IO ()
 doAction action = do
