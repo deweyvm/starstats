@@ -66,8 +66,8 @@ getKickees con =
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
 
-getUsers :: IConnection c => c -> IO [(String, Int)]
-getUsers con =
+getMessageCount :: IConnection c => c -> IO [(String, Int)]
+getMessageCount con =
     let q = "SELECT name, msgs FROM top;" in
     getAndExtract con [] extractTup q
 
@@ -174,7 +174,6 @@ getSelfTalk con =
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
 
---store all mentions then simply report them for uniquenicks
 getMentions :: IConnection c => c -> IO [(String, String)]
 getMentions con =
     let q = "SELECT mentionee, SUM(mentions.count) AS c\
@@ -237,8 +236,8 @@ getNaysayers con =
 
     getAndExtract con [] (mapSnd (*100) . extractTup) q
 
-mostNeedy :: IConnection c => c -> IO [(String, String)]
-mostNeedy con =
+getNeedy :: IConnection c => c -> IO [(String, String)]
+getNeedy con =
     let q = "SELECT mentioner, SUM(count) AS c\
            \ FROM mentions\
            \ GROUP BY mentioner\

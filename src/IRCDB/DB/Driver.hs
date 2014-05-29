@@ -1,9 +1,8 @@
-{-# LANGUAGE DoAndIfThenElse, NoMonomorphismRestriction, BangPatterns, TypeSynonymInstances, FlexibleContexts, FlexibleInstances #-}
+{-# LANGUAGE DoAndIfThenElse, NoMonomorphismRestriction, BangPatterns #-}
 module IRCDB.DB.Driver where
 
 import Prelude hiding (foldl, concat, sequence_, sum)
 import Control.Applicative
-import Control.DeepSeq
 import Data.List (concat)
 import Database.HDBC
 import Database.HDBC.ODBC
@@ -31,40 +30,42 @@ connect = do
 
 generate :: IConnection c => c -> IO ()
 generate con = do
-    time' "Populate top" $ populateTop con
-    time' "Populate unique" $ populateUnique con
-    time' "Commit" $ commit con
-    !users <- time' "Get users" $ force <$> getUsers con
 
-    !tups <- time' "Get user activity" $ force <$> getTimes con
-    !randTop <- time' "Get random top10" $ force <$> getRandTopTen con
-    let bars = (toTimeBars tups)
-    !rand <- time' "Random" $ getRandMessages con
-    !nicks <- time' "Get nick changes" $ getNicks con
-    !kickers <- time' "Get kickers" $ getKickers con
-    !kickees <- time' "Get kickees" $ getKickees con
-    !topics <- time' "Get random topics" $ getRandTopics con
-    !urls <- time' "Get random urls" $ getUrls con
-    !activity <- time' "Get overall activity" $ getOverallActivity con
-    !unique <- time' "Get unique nicks" $ getUniqueNicks con
-    !avgwc <- time' "Get awc" $ getAverageWordCount con
-    !avgwl <- time' "Get awl" $ getAverageWordLength con
-    !self <- time' "Get self talk" $ getSelfTalk con
-    !mentions <- time' "Get mentions" $ getMentions con
-    !needy <- time' "Get needy" $ mostNeedy con
-    !questions <- time' "Get questions" $ getQuestions con
-    !repSimple <- time' "Get repeated phrases" $ getRepeatedSimple con
-    !repComplex <- time' "Get complex rep. phrases" $ getRepeatedComplex con
-    !nay <- time' "Get naysayers" $ getNaysayers con
-    !text <- time' "Get txt spk" $ getTextSpeakers con
-    !apos <- time' "Get ''s" $ getApostrophes con
-    !bffs <- time' "Get relationships" $ getBffs con
-    !aloof <- time' "Get aloof" $ getAloof con
-    !amaze <- time' "Get amaze" $ getAmazed con
-    !excite <- time' "Get excite" $ getExcited con
-    !yell <- time' "Get yell" $ getYell con
-    !wellspoken <- time' "Get wellspoken" $ getWellSpoken con
+    let timeGet s f = time' s $ f con
+    _           <- timeGet "P Top"              populateTop
+    _           <- timeGet "P Unique"           populateUnique
+    _           <- timeGet "P Commit"           commit
+    !users      <- timeGet "Q Message Count"    getMessageCount
+    !tups       <- timeGet "Q User activity"    getTimes
+    !randTop    <- timeGet "Q Random top10"     getRandTopTen
+    !rand       <- timeGet "Q Random"           getRandMessages
+    !nicks      <- timeGet "Q Nick changes"     getNicks
+    !kickers    <- timeGet "Q Kickers"          getKickers
+    !kickees    <- timeGet "Q Kickees"          getKickees
+    !topics     <- timeGet "Q Random topics"    getRandTopics
+    !urls       <- timeGet "Q Random urls"      getUrls
+    !activity   <- timeGet "Q Overall activity" getOverallActivity
+    !unique     <- timeGet "Q Unique nicks"     getUniqueNicks
+    !avgwc      <- timeGet "Q AWC"              getAverageWordCount
+    !avgwl      <- timeGet "Q AWJ"              getAverageWordLength
+    !self       <- timeGet "Q Consecutive msgs" getSelfTalk
+    !mentions   <- timeGet "Q Mentions"         getMentions
+    !needy      <- timeGet "Q Needy"            getNeedy
+    !questions  <- timeGet "Q Questions"        getQuestions
+    !repSimple  <- timeGet "Q Simple repeated"  getRepeatedSimple
+    !repComplex <- timeGet "Q Complex repeated" getRepeatedComplex
+    !nay        <- timeGet "Q Naysayers"        getNaysayers
+    !text       <- timeGet "Q txt spk"          getTextSpeakers
+    !apos       <- timeGet "Q ''s"              getApostrophes
+    !bffs       <- timeGet "Q Relationships"    getBffs
+    !aloof      <- timeGet "Q Aloof"            getAloof
+    !amaze      <- timeGet "Q Amaze"            getAmazed
+    !excite     <- timeGet "Q Excite"           getExcited
+    !yell       <- timeGet "Q Yell"             getYell
+    !wellspoken <- timeGet "Q Wellspoken"       getWellSpoken
+
     let printify = (mapSnd print' <$>)
+    let bars = (toTimeBars tups)
     let col1 = toColumn (printify users) "Messages" 10
     let col2 = toColumn (printify bars) "Active" 10
     let col3 = toColumn (printify avgwl) "AWL" 6
@@ -78,7 +79,7 @@ generate con = do
                  , withHeading "Top Users" $ rows
                  , headerTable "Broken Keyboard" ("Name", "YELLING") yell
                  , headerTable "Overexcited" ("Name", "!!!!!!!!!!!!!!") excite
-                 , headerTable "Amazed" ("Name", "Times dumbfounded") amaze
+                 , headerTable "Amazed" ("Name", "Times Dumbfounded") amaze
                  , headerTable "Aloof" ("Name", "Has No Interest In This Number of Individuals") aloof
                  , headerTable "Apostrophe Users" ("Name", "Percent of Messages with ''s") apos
                  , headerTable "Can't English" ("Name", "Text Speak Count") text
