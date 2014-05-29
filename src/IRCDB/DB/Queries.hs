@@ -175,8 +175,8 @@ getSelfTalk con =
     getAndExtract con [] extractTup q
 
 --store all mentions then simply report them for uniquenicks
-mostMentions :: IConnection c => c -> IO [(String, String)]
-mostMentions con =
+getMentions :: IConnection c => c -> IO [(String, String)]
+getMentions con =
     let q = "SELECT mentionee, SUM(mentions.count) AS c\
            \ FROM mentions\
            \ JOIN uniquenicks AS u\
@@ -320,6 +320,16 @@ getYell con =
            \ FROM messages\
            \ WHERE isCaps\
            \ GROUP BY name\
+           \ ORDER BY c DESC\
+           \ LIMIT 10;" in
+    getAndExtract con [] extractTup q
+
+getWellSpoken :: IConnection c => c -> IO [(String, Double)]
+getWellSpoken con =
+    let q = "SELECT \
+           \     name,\
+           \     IFNULL(wordcount/msgcount + charcount/wordcount, 0) as c\
+           \ FROM counts\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q

@@ -50,7 +50,7 @@ generate con = do
     !avgwc <- time' "Get awc" $ getAverageWordCount con
     !avgwl <- time' "Get awl" $ getAverageWordLength con
     !self <- time' "Get self talk" $ getSelfTalk con
-    !mentions <- time' "Get mentions" $ mostMentions con
+    !mentions <- time' "Get mentions" $ getMentions con
     !needy <- time' "Get needy" $ mostNeedy con
     !questions <- time' "Get questions" $ getQuestions con
     !repSimple <- time' "Get repeated phrases" $ getRepeatedSimple con
@@ -63,6 +63,7 @@ generate con = do
     !amaze <- time' "Get amaze" $ getAmazed con
     !excite <- time' "Get excite" $ getExcited con
     !yell <- time' "Get yell" $ getYell con
+    !wellspoken <- time' "Get wellspoken" $ getWellSpoken con
     let printify = (mapSnd print' <$>)
     let col1 = toColumn (printify users) "Messages" 10
     let col2 = toColumn (printify bars) "Active" 10
@@ -81,6 +82,7 @@ generate con = do
                  , headerTable "Aloof" ("Name", "Has No Interest In This Number of Individuals") aloof
                  , headerTable "Apostrophe Users" ("Name", "Percent of Messages with ''s") apos
                  , headerTable "Can't English" ("Name", "Text Speak Count") text
+                 , headerTable "Well Spoken" ("Name", "Eloquence Quotient") wellspoken
                  , headerTable "Naysayers" ("Name", "Percent Negative") nay
                  , headerTable "Repeated Phrases" ("Phrase", "Times Repeated") repSimple
                  , headerTable "Longer Repeated Phrases" ("Phrase", "Times Repeated") repComplex
