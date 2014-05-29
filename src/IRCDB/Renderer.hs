@@ -132,8 +132,9 @@ withHeading h = (++) (tag "h2" h)
 pairMap :: (a -> b) -> (a, a) -> (b, b)
 pairMap f (x, y) = (f x, f y)
 
-headerTable :: Print a => String -> (String, String) -> [(String, a)] -> String
-headerTable h s xs =
+headerTable :: Print a => String -> String -> String -> [(String, a)] -> String
+headerTable h c1 c2 xs =
+    let s = (c1, c2) in
     let mapped = (second print') <$> xs in
     withHeading h $ simpleTable ((pairMap (tag "b") s):mapped)
 

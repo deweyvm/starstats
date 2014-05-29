@@ -77,28 +77,94 @@ generate con = do
     let rows = formatTable us "User" 10 [col1, col2, col3, col4, col5]
     let tables = [ makeTimeScript "Activity (UTC)" activity
                  , withHeading "Top Users" $ rows
-                 , headerTable "Broken Keyboard" ("Name", "YELLING") yell
-                 , headerTable "Overexcited" ("Name", "!!!!!!!!!!!!!!") excite
-                 , headerTable "Amazed" ("Name", "Times Dumbfounded") amaze
-                 , headerTable "Aloof" ("Name", "Has No Interest In This Number of Individuals") aloof
-                 , headerTable "Apostrophe Users" ("Name", "Percent of Messages with ''s") apos
-                 , headerTable "Can't English" ("Name", "Text Speak Count") text
-                 , headerTable "Well Spoken" ("Name", "Eloquence Quotient") wellspoken
-                 , headerTable "Naysayers" ("Name", "Percent Negative") nay
-                 , headerTable "Repeated Phrases" ("Phrase", "Times Repeated") repSimple
-                 , headerTable "Longer Repeated Phrases" ("Phrase", "Times Repeated") repComplex
-                 , headerTable "Clueless" ("Name", "Number Of Questions Asked") questions
-                 , headerTable "Relationships" ("Mention", "Times") bffs
-                 , headerTable "Clingy" ("Name", "Times Mentioning Someone") needy
-                 , headerTable "Popular" ("Name", "Times Mentioned") mentions
-                 , headerTable "Lonely Chatters" ("Name", "Times Talking to Self") self
-                 , headerTable "Unique Nicks" ("Name","Messages") unique
-                 , headerTable "Some Random URLs" ("Name", "URL") urls
-                 , headerTable "Random Messages" ("Name", "Message") rand
-                 , headerTable "Most Changed Nicks" ("Name", "Times Changed") nicks
-                 , headerTable "Prolific Kickers" ("Name", "Times kicking") kickers
-                 , headerTable "Trouble Makers" ("Name", "Times Kicked") kickees
-                 , headerTable "Topics" ("Name", "Topic") topics
+                 , headerTable "Broken Keyboard"
+                               "Name"
+                               "YELLING"
+                               yell
+                 , headerTable "Overexcited"
+                               "Name"
+                               "!!!!!!!!!!!!!!"
+                               excite
+                 , headerTable "Amazed"
+                               "Name"
+                               "Times Dumbfounded"
+                               amaze
+                 , headerTable "Aloof"
+                               "Name"
+                               "Has No Interest In This Number of Individuals"
+                               aloof
+                 , headerTable "Apostrophe Users"
+                               "Name"
+                               "Percent of Messages with ''s"
+                               apos
+                 , headerTable "Can't English"
+                               "Name"
+                               "Text Speak Count"
+                               text
+                 , headerTable "Well Spoken"
+                               "Name"
+                               "Eloquence Quotient"
+                               wellspoken
+                 , headerTable "Naysayers"
+                               "Name"
+                               "Percent Negative"
+                               nay
+                 , headerTable "Repeated Phrases"
+                               "Phrase"
+                               "Times Repeated"
+                               repSimple
+                 , headerTable "Longer Repeated Phrases"
+                               "Phrase"
+                               "Times Repeated"
+                               repComplex
+                 , headerTable "Clueless"
+                               "Name"
+                               "Number Of Questions Asked"
+                               questions
+                 , headerTable "Relationships"
+                               "Mention"
+                               "Times"
+                               bffs
+                 , headerTable "Clingy"
+                               "Name"
+                               "Times Mentioning Someone"
+                               needy
+                 , headerTable "Popular"
+                               "Name"
+                               "Times Mentioned"
+                               mentions
+                 , headerTable "Lonely Chatters"
+                               "Name"
+                               "Times Talking to Self"
+                               self
+                 , headerTable "Unique Nicks"
+                               "Name"
+                               "Messages"
+                               unique
+                 , headerTable "Some Random URLs"
+                               "Name"
+                               "URL"
+                               urls
+                 , headerTable "Random Messages"
+                               "Name"
+                               "Message"
+                               rand
+                 , headerTable "Most Changed Nicks"
+                               "Name"
+                               "Times Changed"
+                               nicks
+                 , headerTable "Prolific Kickers"
+                               "Name"
+                               "Times kicking"
+                               kickers
+                 , headerTable "Trouble Makers"
+                               "Name"
+                               "Times Kicked"
+                               kickees
+                 , headerTable "Topics"
+                               "Name"
+                               "Topic"
+                               topics
                  ]
 
     let contents = unlines tables
