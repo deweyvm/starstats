@@ -1,5 +1,5 @@
 
-import IRCDB.DB
+import IRCDB.DB.Driver
 
 
 main :: IO ()

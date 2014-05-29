@@ -1,46 +1,96 @@
-{-# LANGUAGE DoAndIfThenElse, BangPatterns, FlexibleInstances #-}
+{-# LANGUAGE DoAndIfThenElse, BangPatterns, FlexibleInstances, ExistentialQuantification, ImpredicativeTypes #-}
 module IRCDB.Renderer where
 
 import Control.Arrow
 import Control.Applicative
 import Data.List
+import Data.Maybe
+import qualified Data.Map as M
+import Text.Printf
 
-class Printable a where
-    print' :: a -> String
+import IRCDB.DB.Utils
 
-instance Printable Int where
-    print' = show
+data TimeBar = TimeBar String Int Int Int Int
 
-instance Printable String where
-    print' = id
+toTimeBars :: [(String, Int, Int, Int, Int)] -> [(String, TimeBar)]
+toTimeBars = ((\(user, w, x, y, z) -> (user, TimeBar user w x y z)) <$>)
 
 
-formatUserTimes :: [(String, Int, Int, Int, Int, Int, String)] -> String
-formatUserTimes times =
-    let addRow w x y z = tr $ (td "20%" w)
-                           ++ (td "10%" x)
-                           ++ (td "10%" y)
-                           ++ (td "60%" z) in
-    let formatTime :: (String, Int, Int, Int, Int, Int, String) -> String
-        formatTime (user, w, x, y, z, total, message) =
-            let rect = (makeRectScript user w x y z) in
-            addRow user ((makeCanvas user 100 16) ++ rect) (show total) message in
-    let formatted :: [String]
-        formatted = formatTime <$> times in
-    let heading = addRow "User" "Activity" "Total" "Random Message" in
-    tag "table" $ heading ++ (concat formatted)
+instance Ord TimeBar where
+    (TimeBar x _ _ _ _) `compare` (TimeBar y _ _ _ _) = x `compare` y
+
+instance Eq TimeBar where
+    (TimeBar x _ _ _ _) == (TimeBar y _ _ _ _) = x == y
+
+
+instance Print TimeBar where
+    print' (TimeBar user w x y z) =
+        (makeCanvas user 100 16) ++ (makeRectScript user w x y z)
+
+
+type Heading = String
+type Name = String
+type Width = Int
+data Column = Column (M.Map Name String) Heading Width
+data Row = Row [(String, Width)]
+
+toColumn :: [(String, String)] -> Heading -> Width -> Column
+toColumn xs h w = Column (M.fromList xs) h w
+
+--may be possible to pass width directly
+getHeadingWidth :: Column -> (Heading, Width)
+getHeadingWidth = (,) <$> getHeading <*> getWidth
+
+toRow :: [(Name, [String], Width)] -> [Row]
+toRow xs = (Row . doMap) <$> xs
+    where doMap (name, elts, width) = zip (name : (print' <$> elts)) (repeat width)
+
+makeHeadingRow :: [Column] -> Row
+makeHeadingRow cs =
+    Row $ getHeadingWidth <$> cs
+
+getMap :: Column -> M.Map String String
+getMap (Column m _ _) = m
+
+getWidth :: Column -> Width
+getWidth (Column _ _ w) = w
+
+getHeading :: Column -> Heading
+getHeading (Column _ h _) = h
+
+rowify :: [Name]
+       -> [Column]
+       -> [Row]
+rowify us cs =
+    let hr = makeHeadingRow cs in
+    let maps = getMap <$> cs in
+    let ws = getWidth <$> cs in
+    let find' u m = print' $ fromMaybe default' (M.lookup u m) in
+    let assemble' :: Name -> [(String, Width)]
+        assemble' u = zip (find' u <$> maps) ws in
+    let rows = Row . assemble' <$> us in
+    hr : rows
+
+formatTable :: [Name]
+            -> Heading
+            -> Width
+            -> [Column]
+            -> String
+formatTable ns nh nw cs =
+    let nameCol = Column (M.fromList $ zip ns ns) nh nw in
+    let cs' = nameCol : cs in
+    let rows = rowify ns cs' in
+    let formatCell (s, w) = td (printf "%d%%" w) s in
+    let formatRow (Row xs) = tr $ concat $ formatCell <$> xs in
+    tag "table" $ concat $ formatRow <$> rows
 
 
 makeCanvas :: String -> Int -> Int -> String
 makeCanvas name width height =
-    concat [ "<canvas id=\""
-           , name
-           , "\" width=\""
-           , show width
-           , "\" height=\""
-           , show height
-           , "\"></canvas>"
-           ]
+    genTag "canvas" [ ("id", name)
+                    , ("width", show width)
+                    , ("height", show height)
+                    ] ""
 
 makeRectScript :: String
                -> Int
@@ -54,7 +104,7 @@ makeRectScript name w x y z =
 
 makeTimeScript :: String -> [(Int,Int)] -> String
 makeTimeScript h hours =
-    let canvas = makeCanvas "timegraph" (24*24) 100 in
+    let canvas = makeCanvas "timegraph" (24*24) 140 in
     let values :: [String]
         values = (show . snd) <$> hours in
     let fmt = (intercalate ", " values) in
@@ -82,7 +132,7 @@ withHeading h = (++) (tag "h2" h)
 pairMap :: (a -> b) -> (a, a) -> (b, b)
 pairMap f (x, y) = (f x, f y)
 
-headerTable :: Printable a => String -> (String, String) -> [(String, a)] -> String
+headerTable :: Print a => String -> (String, String) -> [(String, a)] -> String
 headerTable h s xs =
     let mapped = (second print') <$> xs in
     withHeading h $ simpleTable ((pairMap (tag "b") s):mapped)
@@ -95,9 +145,9 @@ makeFile x file scripts =
         s = scriptSrc <$> scripts in
     tag "html" $ tag "head" (css ++ (concat $ s)) ++ tag "body" x
 
-simpleTable :: Printable a => [(String,a)] -> String
+simpleTable :: Print a => [(String,a)] -> String
 simpleTable xs = tag "table" $ concat $ format <$> xs
-    where format (s, y) = tr $ td "20%" s ++ td "80%" (print' y)
+    where format (s, y) = tr $ td "30%" s ++ td "70%" (print' y)
 
 
 td :: String -> (String -> String)
@@ -106,20 +156,17 @@ td width =  genTag "td" [("width", width)]
 tr :: String -> String
 tr = tag "tr"
 
-linkify :: String -> String
-linkify s = genTag "a" [("href", s)] s
-
 propToString :: (String,String) -> String
 propToString (k, v) = k ++ "=\"" ++ v ++ "\" "
 
 genTag :: String -> [(String,String)] -> String -> String
 genTag t props c =
-    let props' = foldl(\acc kv -> acc ++ propToString kv) "" props in
+    let props' = foldl (\acc kv -> acc ++ propToString kv) "" props in
     concat ["<", t, " ", props', ">\n", c, "\n</", t, ">"]
 
 voidTag :: String -> [(String,String)] -> String
 voidTag t props =
-    let props' = foldl(\acc kv -> acc ++ propToString kv) "" props in
+    let props' = foldl (\acc kv -> acc ++ propToString kv) "" props in
     concat ["<", t, " ", props', ">\n"]
 
 tag :: String -> String -> String
