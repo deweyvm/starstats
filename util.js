@@ -1,9 +1,8 @@
-
 var util__colors = [
-    '#757CB8',
-    '#B8759D',
-    '#B8B175',
-    '#75B890'
+    '#6F79D9',
+    '#D86EAE',
+    '#D8CE6E',
+    '#6ED899'
 ];
 function getContext(name) {
     var canvas = document.getElementById(name);

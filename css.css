@@ -4,36 +4,34 @@ body {
 table {
   table-layout: fixed;
   width: 100%;
-  color:#A2A4BA;
   text-overflow: ellipsis;
-  font-family:"Consolas", monospace;
   font-size: 0.95em;
 }
+h1 {
+  color:#6978FF!important;
+}
 h2 {
-  color:#747BB8;
-  font-family:"Consolas", monospace;
-  font-size: 1.25em;
+  color:#6978FF!important;
 }
 td {
   background-color:#4A4A4A;
-  color:#747BB8
   border-radius: 5px;
   overflow:hidden;
   margin-right: 8px;
-  font-family:"Consolas", monospace;
 }
 tr {
   white-space: nowrap;
 }
 a:link {
-  font-family:"Consolas", monospace;
-  color:#757CB8;
+  color:#6978FF;
 }
 a:visited {
-  font-family:"Consolas", monospace;
-  color:#B8759D;
+  color:#D86EAE;
 }
 a:active {
-  font-family:"Consolas", monospace;
-  color:#9DA2CD;
+  color:#828BDE;
+}
+html * {
+  font-family:"Consolas", monospace !important;
+  color:#A2A4BA;
 }
