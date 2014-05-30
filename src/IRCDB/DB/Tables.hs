@@ -151,41 +151,6 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
     totalsQ2 <- prepare con qt2
     execute totalsQ2 [wordcount]
 
-    let qMentioned = "UPDATE counts \
-                    \ JOIN allusers as u\
-                    \ ON counts.name = u.name \
-                    \ SET timesMentioned=timesMentioned+(IF(? REGEXP CONCAT('[[:<:]]', REPLACE(u.name, '|', '\\|'), '[[:>:]]'), 1, 0))"
-    mentionedQ <- prepare con qMentioned
-    execute mentionedQ [sqlMsg]
-
-    -- fixme -- doesnt account for multiple mentions in one message
-    let qMentioning = "UPDATE counts\
-                     \ JOIN allusers as u\
-                     \ ON ? REGEXP CONCAT('[[:<:]]', REPLACE(u.name, '|', '\\|'), '[[:>:]]')\
-                     \ SET timesMentioning=timesMentioning+1\
-                     \ WHERE counts.name = ?"
-    mentioningQ <- prepare con qMentioning
-    execute mentioningQ [sqlMsg, sqlName]
-
-    let qu = "INSERT INTO allusers (name)\
-            \ VALUES (?)\
-            \ ON DUPLICATE KEY UPDATE name=name;"
-    users <- prepare con qu
-    execute users [sqlName]
-
-    let qp = "INSERT INTO mentions (mentioner, mentionee, count)\
-            \ (SELECT ?, name, 0 FROM allusers)\
-            \ ON DUPLICATE KEY UPDATE count=count"
-    mention <- prepare con qp
-    execute mention [sqlName]
-
-    let qqp = "UPDATE mentions\
-             \ JOIN allusers AS u\
-             \ SET count=count+IF(? REGEXP CONCAT('[[:<:]]', REPLACE(u.name, '|', '\\|'), '[[:>:]]'), 1, 0)\
-             \ WHERE mentioner=? AND mentionee=u.name AND mentioner != mentionee"
-    mention2 <- prepare con qqp
-    execute mention2 [sqlMsg, sqlName]
-
     let qurl = "INSERT INTO urls (name, contents)\
               \ (SELECT ?, ?\
               \  FROM DUAL\
@@ -208,6 +173,51 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
                     , sqlMsg, sqlMsg
                     , sqlMsg, sqlMsg
                     , sqlMsg]
+
+
+
+    let qMentioned = "UPDATE counts \
+                    \ JOIN allusers as u\
+                    \ ON counts.name = u.name \
+                    \ SET timesMentioned=timesMentioned+(IF(? REGEXP CONCAT('[[:<:]]', REPLACE(u.name, '|', '\\|'), '[[:>:]]'), 1, 0))"
+    mentionedQ <- prepare con qMentioned
+    execute mentionedQ [sqlMsg]
+
+    -- fixme -- doesnt account for multiple mentions in one message
+    let qMentioning = "UPDATE counts\
+                     \ JOIN allusers as u\
+                     \ ON ? LIKE CONCAT('%', u.name, '%')\
+                     \ AND ? REGEXP CONCAT('[[:<:]]',\
+                     \                     REPLACE(u.name, '|', '\\|'),\
+                     \                     '[[:>:]]')\
+                     \ SET timesMentioning=timesMentioning+1\
+                     \ WHERE counts.name = ?"
+    mentioningQ <- prepare con qMentioning
+    execute mentioningQ [sqlMsg, sqlMsg, sqlName]
+
+    let qu = "INSERT INTO allusers (name)\
+            \ VALUES (?)\
+            \ ON DUPLICATE KEY UPDATE name=name;"
+    users <- prepare con qu
+    execute users [sqlName]
+
+    let qp = "INSERT INTO mentions (mentioner, mentionee, count)\
+            \ (SELECT ?, name, 0 FROM allusers)\
+            \ ON DUPLICATE KEY UPDATE count=count"
+    mention <- prepare con qp
+    execute mention [sqlName]
+
+    let qqp = "UPDATE mentions\
+             \ JOIN allusers AS u\
+             \ SET count=count+IF(? LIKE CONCAT('%', u.name, '%')\
+             \                AND ? REGEXP CONCAT('[[:<:]]',\
+             \                                    REPLACE(u.name, '|', '\\|'),\
+             \                                    '[[:>:]]'), 1, 0)\
+             \ WHERE mentioner=? AND mentionee=u.name\
+             \                   AND mentioner != mentionee"
+    mention2 <- prepare con qqp
+    execute mention2 [sqlMsg, sqlMsg, sqlName]
+
     return (DbInsert newT (ct+1) (Just name) newRep)
 insert (DbInsert t ct prevName repCt) (Nick time old new) con = do
     let newT = setHoursMinutes t time
