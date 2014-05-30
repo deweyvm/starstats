@@ -171,9 +171,6 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
     execute message [sqlName, sqlType, index, wordcount, charcount, sqlMsg, sqlPre, sqlTime
                     , sqlTime
                     , sqlTime
-                    , sqlMsg
-                    , sqlMsg, sqlMsg
-                    , sqlMsg, sqlMsg
                     , sqlMsg]
 
     let qMention = "UPDATE counts AS mentioner\
