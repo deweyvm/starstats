@@ -12,6 +12,7 @@ import qualified Text.Regex as RE
 import Text.Printf
 import System.Directory
 import Debug.Trace
+
 replace :: String -> String -> String -> String
 replace x y z = RE.subRegex (RE.mkRegex x) z y
 
@@ -118,6 +119,9 @@ getTopBottom split xs
 
 urlRegexp :: String
 urlRegexp = "http://[^ ]*"
+
+regexMatch :: String -> String -> Bool
+regexMatch s re = (s REP.=~ re) :: Bool
 
 extractUrl :: String -> String
 extractUrl s = case s REP.=~ urlRegexp :: [[String]] of

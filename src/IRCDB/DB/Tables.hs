@@ -3,9 +3,10 @@ module IRCDB.DB.Tables where
 import Prelude hiding (readFile)
 import Control.Applicative
 import Control.Exception
-import Data.Foldable(foldlM)
-import Data.Time.LocalTime
 import Data.ByteString(readFile)
+import Data.Foldable(foldlM)
+import Data.List(isInfixOf)
+import Data.Time.LocalTime
 import Data.Text(unpack)
 import Data.Text.Encoding(decodeUtf8)
 import Database.HDBC
@@ -22,6 +23,13 @@ getIndex con name = do
         [(x:_)] -> return x
         _ -> return $ toSql (0 :: Int)
 
+getCount :: IConnection c => c -> IO Int
+getCount con = do
+    m <- quickQuery con "SELECT COUNT(*) FROM allusers;" []
+    case m of
+        [(x:_)] -> return $ fromSql x
+        _ -> return 0
+
 processOne :: IConnection c
            => c
            -> (LocalTime, Int, Maybe String, Int)
@@ -33,13 +41,20 @@ processOne _ (t, ct, prevName, repCt) (Left (ln, s, err)) = do
     print err
     return (t, ct+1, prevName, repCt)
 processOne con (t, ct, prevName, repCt) (Right l) = do
-    if ct `mod` 100 == 0 then print ct else return ()
+    if ct `mod` 100 == 0
+        then do count <- getCount con
+                putStrLn (show ct ++ "  " ++ show count)
+        else return ()
     hFlush stdout
     e <- try (insert t ct prevName repCt l con) :: IO (Either SqlError (LocalTime, Int, Maybe String, Int))
     case e of
         Left l' -> do
-            print l'
-            return (t, ct, prevName, repCt)
+            if (isInfixOf "Data too long" (show l'))
+                then do print l'
+                        return (t, ct + 1, Nothing, 1)
+                else do print l'
+                        error "error"
+                        --return (t, ct + 1, Nothing, 1)
         Right r -> return r
 
 insert :: IConnection c
@@ -58,13 +73,13 @@ insert t ct prevName repCt (Message time typ name msg) con = do
     let sqlPre = toSql (take (24) msg)
     let sqlMsg = toSql (take 500 msg)
     let sqlTime = toSql (subHours newT (subtract 3))
-
     let words' = words msg
     let wordcount = toSql $ length words'
     let stripped = words $ replace urlRegexp "" msg
     let charcount = toSql $ sum $ length <$> stripped -- fixme : this could be more precise
     let qs = "INSERT INTO seqcount (name, num)\
             \ VALUES (?, ?);"
+
 
     case (prevName, newRep) of
         (Just n, 1) | repCt > 5 -> do seqQ <- prepare con qs
@@ -73,15 +88,16 @@ insert t ct prevName repCt (Message time typ name msg) con = do
 
 
     let qa = "INSERT INTO allmsgs (hash, contents, count, length, hasURL, isComplex)\
-            \ VALUES (CRC32(?), ?, 1, ?, ? LIKE '%http://%', NOT ? LIKE '%http://%' AND ? > 12 AND LENGTH(?) > 12)\
+            \ VALUES (CRC32(?), ?, 1, ?, ? LIKE '%http://%', ? NOT LIKE '%http://%' AND ? > 12)\
             \ ON DUPLICATE KEY UPDATE count=count+1;"
 
     let len = toSql $ length msg
     msgQ <- prepare con qa
-    execute msgQ [sqlMsg, sqlMsg, len, sqlMsg, sqlMsg, sqlMsg, len, sqlMsg]
+    execute msgQ [sqlMsg, sqlMsg, len, sqlMsg, sqlMsg, sqlMsg, len]
 
-    let qq = "INSERT INTO counts (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, q1, q2, q3, q4) \
-            \ VALUES (?, 0, 0, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0)\
+
+    let qq = "INSERT INTO counts (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, isNaysay, isApostrophe, isCaps, q1, q2, q3, q4, timesMentioned, timesMentioning) \
+            \ VALUES (?, 0, 0, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)\
             \ ON DUPLICATE KEY UPDATE\
             \     msgcount=msgcount+1, \
             \     firstseen=(\
@@ -96,10 +112,14 @@ insert t ct prevName repCt (Message time typ name msg) con = do
             \     isQuestion=isQuestion+(IF(? LIKE '%?', 1, 0)),\
             \     isAmaze=isAmaze+(IF(? LIKE '%wow%' AND ? REGEXP '[[:<:]]wow[[:>:]]|really.?$', 1, 0)),\
             \     isTxt=isTxt+(IF(? REGEXP '[[:<:]](wat|wot|r|u|k|idk|ikr|v)[[:>:]]', 1, 0)),\
+            \     isNaysay=isNaysay+(IF(? LIKE '%no%' AND ? REGEXP '[[:<:]]no[[:>:]]', 1, 0)),\
+            \     isApostrophe=isApostrophe+(IF(? LIKE '%''%', 1, 0)),\
+            \     isCaps=isCaps+(IF(? = BINARY UPPER(?), 1, 0)),\
             \     q1=q1+(IF(FLOOR(HOUR(?)/6) = 0, 1, 0)),\
             \     q2=q2+(IF(FLOOR(HOUR(?)/6) = 1, 1, 0)),\
             \     q3=q3+(IF(FLOOR(HOUR(?)/6) = 2, 1, 0)),\
             \     q4=q4+(IF(FLOOR(HOUR(?)/6) = 3, 1, 0))"
+
     countQ <- prepare con qq
     execute countQ [ sqlName, sqlTime, sqlTime
                    , sqlTime
@@ -111,11 +131,43 @@ insert t ct prevName repCt (Message time typ name msg) con = do
                    , sqlMsg
                    , sqlMsg, sqlMsg
                    , sqlMsg
+                   , sqlMsg, sqlMsg
+                   , sqlMsg
+                   , sqlMsg, sqlMsg
                    , sqlTime
                    , sqlTime
                    , sqlTime
                    , sqlTime
                    ]
+
+    let qt1 = "INSERT INTO totals (dummy, msgcount, wordcount, startDate, endDate)\
+             \ VALUES (1,1, ?, ?,?)\
+             \ ON DUPLICATE KEY UPDATE endDate=?"
+    totalsQ1 <- prepare con qt1
+    execute totalsQ1 [wordcount, sqlTime, sqlTime, sqlTime]
+
+    let qt2 = "UPDATE totals\
+             \ SET wordcount=wordcount+?,\
+             \     msgcount=msgcount+1"
+    totalsQ2 <- prepare con qt2
+    execute totalsQ2 [wordcount]
+
+    let qMentioned = "UPDATE counts \
+                    \ JOIN allusers as u\
+                    \ ON counts.name = u.name \
+                    \ SET timesMentioned=timesMentioned+(IF(? REGEXP CONCAT('[[:<:]]', REPLACE(u.name, '|', '\\|'), '[[:>:]]'), 1, 0))"
+    mentionedQ <- prepare con qMentioned
+    execute mentionedQ [sqlMsg]
+
+    -- fixme -- doesnt account for multiple mentions in one message
+    let qMentioning = "UPDATE counts\
+                     \ JOIN allusers as u\
+                     \ ON ? REGEXP CONCAT('[[:<:]]', REPLACE(u.name, '|', '\\|'), '[[:>:]]')\
+                     \ SET timesMentioning=timesMentioning+1\
+                     \ WHERE counts.name = ?"
+    mentioningQ <- prepare con qMentioning
+    execute mentioningQ [sqlMsg, sqlName]
+
     let qu = "INSERT INTO allusers (name)\
             \ VALUES (?)\
             \ ON DUPLICATE KEY UPDATE name=name;"
@@ -130,7 +182,7 @@ insert t ct prevName repCt (Message time typ name msg) con = do
 
     let qqp = "UPDATE mentions\
              \ JOIN allusers AS u\
-             \ SET count=IF(? REGEXP CONCAT('[[:<:]]', REPLACE(u.name, '|', '\\''), '[[:>:]]'), count + 1, count)\
+             \ SET count=count+IF(? REGEXP CONCAT('[[:<:]]', REPLACE(u.name, '|', '\\|'), '[[:>:]]'), 1, 0)\
              \ WHERE mentioner=? AND mentionee=u.name AND mentioner != mentionee"
     mention2 <- prepare con qqp
     execute mention2 [sqlMsg, sqlName]
@@ -144,14 +196,11 @@ insert t ct prevName repCt (Message time typ name msg) con = do
     execute urlQ [sqlName, sqlMsg, sqlMsg]
 
     index <- getIndex con sqlName
-    let qm = "INSERT INTO messages (name, type, userindex, wordcount, charcount, contents, contentspre, time, hour, quartile, hash, isCaps, hasNo, hasApostrophe)\
+    let qm = "INSERT INTO messages (name, type, userindex, wordcount, charcount, contents, contentspre, time, hour, quartile, hash)\
             \ VALUES (?,?,?,?,?,?,?,?,\
                     \ HOUR(?),\
                     \ HOUR(?)/6,\
-                    \ CRC32(?),\
-                    \ ? = BINARY UPPER(?),\
-                    \ ? LIKE '%no%' AND ? REGEXP '[[:<:]]no[[:>:]]',\
-                    \ ? LIKE '%''%');"
+                    \ CRC32(?));"
     message <- prepare con qm
     execute message [sqlName, sqlType, index, wordcount, charcount, sqlMsg, sqlPre, sqlTime
                     , sqlTime
@@ -160,8 +209,6 @@ insert t ct prevName repCt (Message time typ name msg) con = do
                     , sqlMsg, sqlMsg
                     , sqlMsg, sqlMsg
                     , sqlMsg]
-
-
     return (newT, ct+1, Just name, newRep)
 insert t ct prevName newRep (Nick time old new) con = do
     let newT = setHoursMinutes t time
@@ -241,6 +288,7 @@ deleteDbs con = do
                                  , "DROP TABLE IF EXISTS allmsgs;"
                                  , "DROP TABLE IF EXISTS seqcount;"
                                  , "DROP TABLE IF EXISTS urls;"
+                                 , "DROP TABLE IF EXISTS totals;"
                                  ]
     return ()
 
@@ -257,16 +305,10 @@ createDbs con = do
                                         \ time DATETIME NOT NULL,\
                                         \ hour TINYINT UNSIGNED NOT NULL,\
                                         \ quartile TINYINT UNSIGNED NOT NULL,\
-                                        \ isCaps BOOL NOT NULL,\
-                                        \ hasApostrophe BOOL NOT NULL,\
-                                        \ hasNo BOOL NOT NULL,\
                                         \ hash INT UNSIGNED NOT NULL,\
                                         \ PRIMARY KEY (id),\
                                         \ KEY (hash),\
                                         \ INDEX (contentspre),\
-                                        \ INDEX (name, isCaps),\
-                                        \ INDEX (name, hasNo),\
-                                        \ INDEX (name, hasApostrophe),\
                                         \ INDEX (name, hour, quartile),\
                                         \ INDEX (name, userindex))\
                   \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
@@ -309,10 +351,15 @@ createDbs con = do
                                    \ charcount INT NOT NULL,\
                                    \ lastseen TIME NOT NULL,\
                                    \ firstseen TIME NOT NULL,\
+                                   \ timesMentioned INT NOT NULL,\
+                                   \ timesMentioning INT NOT NULL,\
                                    \ isExclamation INT NOT NULL,\
                                    \ isQuestion INT NOT NULL,\
                                    \ isAmaze INT NOT NULL,\
                                    \ isTxt INT NOT NULL,\
+                                   \ isNaysay INT NOT NULL,\
+                                   \ isApostrophe INT NOT NULL,\
+                                   \ isCaps Int NOT NULL,\
                                    \ q1 INT NOT NULL,\
                                    \ q2 INT NOT NULL,\
                                    \ q3 INT NOT NULL,\
@@ -343,6 +390,12 @@ createDbs con = do
                                 \ name VARCHAR(36) NOT NULL,\
                                 \ contents VARCHAR(500) NOT NULL,\
                                 \ PRIMARY KEY (id));"
+    let totals = "CREATE TABLE totals(dummy INT NOT NULL,\
+                                    \ wordcount INT NOT NULL,\
+                                    \ msgcount INT NOT NULL,\
+                                    \ startDate DATETIME NOT NULL,\
+                                    \ endDate DATETIME NOT NULL,\
+                                    \ PRIMARY KEY (dummy));"
     sequence_ $ runQuery con <$> [ messages
                                  , statuses
                                  , nickchanges
@@ -356,6 +409,7 @@ createDbs con = do
                                  , allmsgs
                                  , seqcount
                                  , urls
+                                 , totals
                                  ]
     return ()
 

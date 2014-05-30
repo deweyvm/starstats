@@ -47,9 +47,9 @@ generate con = do
     !activity   <- timeGet "Q Overall activity" getOverallActivity
     !unique     <- timeGet "Q Unique nicks"     getUniqueNicks
     !avgwc      <- timeGet "Q AWC"              getAverageWordCount
-    !avgwl      <- timeGet "Q AWJ"              getAverageWordLength
+    !avgwl      <- timeGet "Q AWL"              getAverageWordLength
     !self       <- timeGet "Q Consecutive msgs" getSelfTalk
-    !mentions   <- timeGet "Q Mentions"         getMentions
+    !popular    <- timeGet "Q Popular"          getPopular
     !needy      <- timeGet "Q Needy"            getNeedy
     !questions  <- timeGet "Q Questions"        getQuestions
     !repSimple  <- timeGet "Q Simple repeated"  getRepeatedSimple
@@ -57,7 +57,7 @@ generate con = do
     !nay        <- timeGet "Q Naysayers"        getNaysayers
     !text       <- timeGet "Q txt spk"          getTextSpeakers
     !apos       <- timeGet "Q ''s"              getApostrophes
-    !bffs       <- timeGet "Q Relationships"    getBffs
+    !rltships   <- timeGet "Q Relationships"    getRelationships
     !aloof      <- timeGet "Q Aloof"            getAloof
     !amaze      <- timeGet "Q Amaze"            getAmazed
     !excite     <- timeGet "Q Excite"           getExcited
@@ -124,7 +124,7 @@ generate con = do
                  , headerTable "Relationships"
                                "Mention"
                                "Times"
-                               bffs
+                               rltships
                  , headerTable "Clingy"
                                "Name"
                                "Times Mentioning Someone"
@@ -132,7 +132,7 @@ generate con = do
                  , headerTable "Popular"
                                "Name"
                                "Times Mentioned"
-                               mentions
+                               popular
                  , headerTable "Lonely Chatters"
                                "Name"
                                "Times Talking to Self"

@@ -174,20 +174,10 @@ getSelfTalk con =
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
 
-getMentions :: IConnection c => c -> IO [(String, String)]
-getMentions con =
-    let q = "SELECT mentionee, SUM(mentions.count) AS c\
-           \ FROM mentions\
-           \ JOIN uniquenicks AS u\
-           \ ON u.name = mentionee\
-           \ GROUP BY mentionee\
-           \ ORDER BY c DESC\
-           \ LIMIT 10;"  in
-    getAndExtract con [] extractTup q
 
 
-getBffs :: IConnection c => c -> IO [(String, String)]
-getBffs con = do
+getRelationships :: IConnection c => c -> IO [(String, String)]
+getRelationships con = do
     let q = "SELECT \
                \ u.name, \
                \ v.name, \
@@ -223,24 +213,33 @@ getAloof con =
 
 getNaysayers :: IConnection c => c -> IO [(String,Double)]
 getNaysayers con =
-    let q = "SELECT m.name, COUNT(*)/cc as c\
-           \ FROM messages as m\
-           \ JOIN (SELECT name, msgcount as cc FROM counts) as j\
-           \ ON j.name = m.name\
+    let q = "SELECT m.name, isNaysay/msgcount as c\
+           \ FROM counts as m\
            \ JOIN uniquenicks as u\
-           \ ON u.name = j.name\
-           \ WHERE hasNo \
+           \ ON u.name = m.name\
+           \ WHERE isNaysay \
            \ GROUP BY m.name\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
 
     getAndExtract con [] (mapSnd (*100) . extractTup) q
 
+getPopular :: IConnection c => c -> IO [(String, String)]
+getPopular con =
+    let q = "SELECT counts.name, timesMentioned AS c\
+           \ FROM counts\
+           \ JOIN uniquenicks AS u\
+           \ ON u.name = counts.name\
+           \ ORDER BY c DESC\
+           \ LIMIT 10;"  in
+    getAndExtract con [] extractTup q
+
 getNeedy :: IConnection c => c -> IO [(String, String)]
 getNeedy con =
-    let q = "SELECT mentioner, SUM(count) AS c\
-           \ FROM mentions\
-           \ GROUP BY mentioner\
+    let q = "SELECT counts.name, timesMentioning AS c\
+           \ FROM counts\
+           \ JOIN uniquenicks AS u\
+           \ ON u.name = counts.name\
            \ ORDER BY c DESC\
            \ LIMIT 10;"  in
     getAndExtract con [] extractTup q
@@ -257,7 +256,7 @@ getRepeatedComplex :: IConnection c => c -> IO [(String, Int)]
 getRepeatedComplex con = do
     let q = "SELECT contents, count\
            \ FROM allmsgs\
-           \ WHERE isComplex\
+           \ WHERE isComplex AND count > 12\
            \ ORDER BY count DESC;"
     getAndExtract con [] (mapFst escapeHtml . extractTup) q
 
@@ -271,14 +270,10 @@ getTextSpeakers con =
 
 getApostrophes :: IConnection c => c -> IO [(String,String)]
 getApostrophes con = do
-    let q1 = "SELECT messages.name, 100*(COUNT(*)/cc) AS c\
-            \ FROM messages\
+    let q1 = "SELECT counts.name, 100*(isApostrophe/msgcount) AS c\
+            \ FROM counts\
             \ JOIN uniquenicks\
-            \ ON uniquenicks.name = messages.name\
-            \ JOIN (SELECT name, msgcount as cc FROM counts) as j\
-            \ ON j.name = messages.name\
-            \ WHERE hasApostrophe\
-            \ GROUP BY messages.name\
+            \ ON uniquenicks.name = counts.name\
             \ ORDER BY c;"
 
     let showDouble d = printf "%.2f" (d :: Double)
@@ -315,10 +310,8 @@ getExcited con =
 
 getYell :: IConnection c => c -> IO [(String, Int)]
 getYell con =
-    let q = "SELECT name, COUNT(*) AS c\
-           \ FROM messages\
-           \ WHERE isCaps\
-           \ GROUP BY name\
+    let q = "SELECT name, isCaps AS c\
+           \ FROM counts\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
@@ -335,22 +328,22 @@ getWellSpoken con =
 
 getTotalMessages :: IConnection c => c -> IO Int
 getTotalMessages con =
-    let q = "SELECT COUNT(*) FROM messages;" in
+    let q = "SELECT msgcount FROM totals;" in
     getSimple con extractSingle q
 
 getTotalWords :: IConnection c => c -> IO Int
 getTotalWords con =
-    let q = "SELECT SUM(wordcount) from messages;" in
+    let q = "SELECT wordcount from totals;" in
     getSimple con extractSingle q
 
 getStartDate :: IConnection c => c -> IO String
 getStartDate con =
-    let q = "SELECT DATE(MIN(time)) FROM messages;" in
+    let q = "SELECT startDate FROM totals;" in
     getSimple con extractSingle q
 
 getEndDate :: IConnection c => c -> IO String
 getEndDate con =
-    let q = "SELECT DATE(MAX(time)) FROM messages;" in
+    let q = "SELECT endDate FROM totals;" in
     getSimple con extractSingle q
 
 getNow :: IConnection c => c -> IO String
