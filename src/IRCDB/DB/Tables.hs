@@ -109,10 +109,10 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
             \     charcount=charcount+?,\
             \     isExclamation=isExclamation+(IF(? LIKE '%!%', 1, 0)),\
             \     isQuestion=isQuestion+(IF(? LIKE '%?', 1, 0)),\
-            \     isAmaze=isAmaze+(IF(? LIKE '%wow%'
+            \     isAmaze=isAmaze+(IF(? LIKE '%wow%'\
             \                     AND ? REGEXP '[[:<:]]wow[[:>:]]|really.?$', 1, 0)),\
             \     isTxt=isTxt+(IF(? REGEXP '[[:<:]](wat|wot|r|u|k|idk|ikr|v)[[:>:]]', 1, 0)),\
-            \     isNaysay=isNaysay+(IF(? LIKE '%no%'
+            \     isNaysay=isNaysay+(IF(? LIKE '%no%'\
             \                       AND ? REGEXP '[[:<:]]no[[:>:]]', 1, 0)),\
             \     isApostrophe=isApostrophe+(IF(? LIKE '%''%', 1, 0)),\
             \     isCaps=isCaps+(IF(? = BINARY UPPER(?), 1, 0)),\
