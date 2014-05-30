@@ -176,32 +176,22 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
                     , sqlMsg, sqlMsg
                     , sqlMsg]
 
+    let qMention = "UPDATE counts AS mentioner\
+                  \ JOIN (SELECT \
+                  \           name as mentionee,\
+                  \           (? LIKE CONCAT('%', name, '%')\
+                  \            AND ? REGEXP CONCAT('[[:<:]]',\
+                  \                                name,\
+                  \                                '[[:>:]]')) AS mmatch\
+                  \       FROM counts) as c1\
+                  \ SET \
+                  \     timesMentioned=timesMentioned+IF(mentioner.name=mentionee, 1, 0),\
+                  \     timesMentioning=timesMentioning+IF(mentionee=?, 1, 0)\
+                  \ WHERE\
+                  \     mmatch AND (mentioner.name = mentionee OR mentionee = ?)"
+    mentionQ <- prepare con qMention
+    execute mentionQ [sqlMsg, sqlMsg, sqlName, sqlName, sqlName]
 
-
-    let qMentioned = "UPDATE counts as c \
-                    \ JOIN (SELECT * FROM counts ORDER BY msgcount DESC LIMIT 10) as u\
-                    \ ON c.name = u.name \
-                    \ SET c.timesMentioned=c.timesMentioned+(IF(? REGEXP CONCAT('[[:<:]]', REPLACE(u.name, '|', '\\|'), '[[:>:]]'), 1, 0))"
-    mentionedQ <- prepare con qMentioned
-    execute mentionedQ [sqlMsg]
-
-    -- fixme -- doesnt account for multiple mentions in one message
-    let qMentioning = "UPDATE counts as c\
-                     \ JOIN (SELECT * FROM counts ORDER BY msgcount DESC LIMIT 10) as u\
-                     \ ON ? LIKE CONCAT('%', u.name, '%')\
-                     \ AND ? REGEXP CONCAT('[[:<:]]',\
-                     \                     REPLACE(u.name, '|', '\\|'),\
-                     \                     '[[:>:]]')\
-                     \ SET c.timesMentioning=c.timesMentioning+1\
-                     \ WHERE c.name = ?"
-    mentioningQ <- prepare con qMentioning
-    execute mentioningQ [sqlMsg, sqlMsg, sqlName]
-
-    --let qu = "INSERT INTO allusers (name)\
-    --        \ VALUES (?)\
-    --        \ ON DUPLICATE KEY UPDATE name=name;"
-    --users <- prepare con qu
-    --execute users [sqlName]
 
     let qp = "INSERT INTO mentions (mentioner, mentionee, count)\
             \ (SELECT ?, name, 0 FROM counts)\
