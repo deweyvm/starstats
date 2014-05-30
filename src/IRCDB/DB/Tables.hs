@@ -25,7 +25,7 @@ getIndex con name = do
 
 getCount :: IConnection c => c -> IO Int
 getCount con = do
-    m <- quickQuery con "SELECT COUNT(*) FROM allusers;" []
+    m <- quickQuery con "SELECT COUNT(*) FROM counts;" []
     case m of
         [(x:_)] -> return $ fromSql x
         _ -> return 0
@@ -109,9 +109,11 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
             \     charcount=charcount+?,\
             \     isExclamation=isExclamation+(IF(? LIKE '%!%', 1, 0)),\
             \     isQuestion=isQuestion+(IF(? LIKE '%?', 1, 0)),\
-            \     isAmaze=isAmaze+(IF(? LIKE '%wow%' AND ? REGEXP '[[:<:]]wow[[:>:]]|really.?$', 1, 0)),\
+            \     isAmaze=isAmaze+(IF(? LIKE '%wow%'
+            \                     AND ? REGEXP '[[:<:]]wow[[:>:]]|really.?$', 1, 0)),\
             \     isTxt=isTxt+(IF(? REGEXP '[[:<:]](wat|wot|r|u|k|idk|ikr|v)[[:>:]]', 1, 0)),\
-            \     isNaysay=isNaysay+(IF(? LIKE '%no%' AND ? REGEXP '[[:<:]]no[[:>:]]', 1, 0)),\
+            \     isNaysay=isNaysay+(IF(? LIKE '%no%'
+            \                       AND ? REGEXP '[[:<:]]no[[:>:]]', 1, 0)),\
             \     isApostrophe=isApostrophe+(IF(? LIKE '%''%', 1, 0)),\
             \     isCaps=isCaps+(IF(? = BINARY UPPER(?), 1, 0)),\
             \     q1=q1+(IF(FLOOR(HOUR(?)/6) = 0, 1, 0)),\
@@ -176,44 +178,44 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
 
 
 
-    let qMentioned = "UPDATE counts \
-                    \ JOIN allusers as u\
-                    \ ON counts.name = u.name \
-                    \ SET timesMentioned=timesMentioned+(IF(? REGEXP CONCAT('[[:<:]]', REPLACE(u.name, '|', '\\|'), '[[:>:]]'), 1, 0))"
+    let qMentioned = "UPDATE counts as c \
+                    \ JOIN (SELECT * FROM counts ORDER BY msgcount DESC LIMIT 10) as u\
+                    \ ON c.name = u.name \
+                    \ SET c.timesMentioned=c.timesMentioned+(IF(? REGEXP CONCAT('[[:<:]]', REPLACE(u.name, '|', '\\|'), '[[:>:]]'), 1, 0))"
     mentionedQ <- prepare con qMentioned
     execute mentionedQ [sqlMsg]
 
     -- fixme -- doesnt account for multiple mentions in one message
-    let qMentioning = "UPDATE counts\
-                     \ JOIN allusers as u\
+    let qMentioning = "UPDATE counts as c\
+                     \ JOIN (SELECT * FROM counts ORDER BY msgcount DESC LIMIT 10) as u\
                      \ ON ? LIKE CONCAT('%', u.name, '%')\
                      \ AND ? REGEXP CONCAT('[[:<:]]',\
                      \                     REPLACE(u.name, '|', '\\|'),\
                      \                     '[[:>:]]')\
-                     \ SET timesMentioning=timesMentioning+1\
-                     \ WHERE counts.name = ?"
+                     \ SET c.timesMentioning=c.timesMentioning+1\
+                     \ WHERE c.name = ?"
     mentioningQ <- prepare con qMentioning
     execute mentioningQ [sqlMsg, sqlMsg, sqlName]
 
-    let qu = "INSERT INTO allusers (name)\
-            \ VALUES (?)\
-            \ ON DUPLICATE KEY UPDATE name=name;"
-    users <- prepare con qu
-    execute users [sqlName]
+    --let qu = "INSERT INTO allusers (name)\
+    --        \ VALUES (?)\
+    --        \ ON DUPLICATE KEY UPDATE name=name;"
+    --users <- prepare con qu
+    --execute users [sqlName]
 
     let qp = "INSERT INTO mentions (mentioner, mentionee, count)\
-            \ (SELECT ?, name, 0 FROM allusers)\
+            \ (SELECT ?, name, 0 FROM counts)\
             \ ON DUPLICATE KEY UPDATE count=count"
     mention <- prepare con qp
     execute mention [sqlName]
 
     let qqp = "UPDATE mentions\
-             \ JOIN allusers AS u\
+             \ JOIN (SELECT * FROM counts ORDER BY msgcount DESC LIMIT 10) AS u\
              \ SET count=count+IF(? LIKE CONCAT('%', u.name, '%')\
              \                AND ? REGEXP CONCAT('[[:<:]]',\
              \                                    REPLACE(u.name, '|', '\\|'),\
              \                                    '[[:>:]]'), 1, 0)\
-             \ WHERE mentioner=? AND mentionee=u.name\
+             \ WHERE mentioner=? AND mentionee = u.name\
              \                   AND mentioner != mentionee"
     mention2 <- prepare con qqp
     execute mention2 [sqlMsg, sqlMsg, sqlName]
@@ -378,8 +380,6 @@ createDbs con = do
                                          \ name VARCHAR(36) NOT NULL,\
                                          \ count INT NOT NULL,\
                                          \ PRIMARY KEY (id));"
-    let allusers = "CREATE TABLE allusers(name VARCHAR(36) NOT NULL,\
-                                        \ PRIMARY KEY (name));"
     let allmsgs = "CREATE TABLE allmsgs(contents VARCHAR(500) NOT NULL,\
                                       \ count INT NOT NULL,\
                                       \ length INT NOT NULL,\
@@ -414,7 +414,6 @@ createDbs con = do
                                  , count
                                  , unique
                                  , mentions
-                                 , allusers
                                  , allmsgs
                                  , seqcount
                                  , urls

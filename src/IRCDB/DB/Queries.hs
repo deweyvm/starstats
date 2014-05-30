@@ -256,8 +256,9 @@ getRepeatedComplex :: IConnection c => c -> IO [(String, Int)]
 getRepeatedComplex con = do
     let q = "SELECT contents, count\
            \ FROM allmsgs\
-           \ WHERE isComplex AND count > 12\
-           \ ORDER BY count DESC;"
+           \ WHERE isComplex AND count > 1\
+           \ ORDER BY count DESC\
+           \ LIMIT 10;"
     getAndExtract con [] (mapFst escapeHtml . extractTup) q
 
 getTextSpeakers :: IConnection c => c -> IO [(String, Int)]
