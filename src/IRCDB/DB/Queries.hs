@@ -166,7 +166,7 @@ getRandTopics con =
 getSelfTalk :: IConnection c => c -> IO [(String, Int)]
 getSelfTalk con =
     let q = "SELECT\
-           \    name, COUNT(*) as c\
+           \    name, COUNT(*) AS c\
            \ FROM seqcount\
            \ WHERE num > 5\
            \ GROUP BY name\
@@ -174,7 +174,24 @@ getSelfTalk con =
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
 
+getWelcomers :: IConnection c => c -> IO [(String, Int)]
+getWelcomers con =
+    let q = "SELECT name, isWelcoming AS c\
+           \ FROM counts\
+           \ ORDER BY c DESC\
+           \ LIMIT 10;" in
+    getAndExtract con [] extractTup q
 
+getIdlers :: IConnection c => c -> IO [(String,String)]
+getIdlers con =
+    let q = "SELECT joins.name, IFNULL(num/msgcount, 'Infinity') as c\
+           \ FROM joins \
+           \ JOIN counts as c \
+           \ ON c.name = joins.name\
+           \ WHERE num > msgcount/10 AND num > 10\
+           \ ORDER BY c DESC\
+           \ LIMIT 10" in
+    getAndExtract con [] extractTup q
 
 getRelationships :: IConnection c => c -> IO [(String, String)]
 getRelationships con = do
@@ -186,7 +203,8 @@ getRelationships con = do
            \ FROM uniquenicks AS u\
            \ INNER JOIN uniquenicks AS v\
            \ ON u.id < v.id\
-           \ HAVING c1 > 100 OR c2 > 100;"
+           \ HAVING c1 > 100 OR c2 > 100\
+           \ LIMIT 20;"
     let extract :: [SqlValue] -> [(String, String)]
         extract (w:x:y:z:_) = [ (fromSql w ++ " mentioned " ++ fromSql x, fromSql y)
                               , (fromSql x ++ " mentioned " ++ fromSql w, fromSql z)]
@@ -334,7 +352,7 @@ getTotalMessages con =
 
 getTotalWords :: IConnection c => c -> IO Int
 getTotalWords con =
-    let q = "SELECT wordcount from totals;" in
+    let q = "SELECT wordcount FROM totals;" in
     getSimple con extractSingle q
 
 getStartDate :: IConnection c => c -> IO String

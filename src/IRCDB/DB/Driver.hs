@@ -6,7 +6,7 @@ import Control.Applicative
 import Data.List (concat)
 import Database.HDBC
 import Database.HDBC.ODBC
-
+import GHC.IO.Encoding
 import IRCDB.Renderer
 import IRCDB.DB.Utils
 import IRCDB.DB.Tables
@@ -30,7 +30,9 @@ connect = do
 
 generate :: IConnection c => c -> IO ()
 generate con = do
-
+    setLocaleEncoding utf8
+    setFileSystemEncoding utf8
+    setForeignEncoding utf8
     let timeGet s f = time' s $ f con
     _           <- timeGet "P Top"              populateTop
     _           <- timeGet "P Unique"           populateUnique
@@ -63,7 +65,8 @@ generate con = do
     !excite     <- timeGet "Q Excite"           getExcited
     !yell       <- timeGet "Q Yell"             getYell
     !wellspoken <- timeGet "Q Wellspoken"       getWellSpoken
-
+    !welcoming  <- timeGet "Q Welcoming"        getWelcomers
+    !idlers     <- timeGet "Q Idlers"           getIdlers
     let printify = (mapSnd print' <$>)
     let bars = (toTimeBars tups)
     let col1 = toColumn (printify users) "Messages" 10
@@ -77,6 +80,14 @@ generate con = do
     let rows = formatTable us "User" 10 [col1, col2, col3, col4, col5]
     let tables = [ makeTimeScript "Activity (UTC)" activity
                  , withHeading "Top Users" $ rows
+                 , headerTable "Welcoming"
+                               "Name"
+                               "Times"
+                               welcoming
+                 , headerTable "Idlers"
+                               "Name"
+                               "Idle Quotient"
+                               idlers
                  , headerTable "Broken Keyboard"
                                "Name"
                                "YELLING"

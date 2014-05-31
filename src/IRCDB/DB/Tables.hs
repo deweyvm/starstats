@@ -51,8 +51,7 @@ processOne con (d, dbi@(DbInsert t ct _ _)) (Right l) = do
             if (isInfixOf "Data too long" (show l'))
                 then do return (newD, DbInsert t (ct + 1) Nothing 1)
                 else do print l'
-                        error "error"
-                        --return (t, ct + 1, Nothing, 1)
+                        error "Fatal SQL error"
         Right (tt, r) -> return (newD+tt, r)
 
 insert :: IConnection c
@@ -88,7 +87,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
 
     let len = toSql $ length msg
     msgQ <- prepare con qa
-    execute msgQ [sqlMsg, sqlMsg, len, sqlMsg, sqlMsg, sqlMsg, len]
+    execute msgQ [sqlMsg, sqlMsg, len, sqlMsg, sqlMsg, len]
 
     quickQuery con "INSERT INTO activeusers (name, lastspoke)\
                   \ VALUES (?,?)\
@@ -96,8 +95,8 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
                   \ name=name,\
                   \ lastspoke=?" [sqlName, sqlTime, sqlTime]
 
-    let qq = "INSERT INTO counts (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, isNaysay, isApostrophe, isCaps, q1, q2, q3, q4, timesMentioned, timesMentioning) \
-            \ VALUES (?, 0, 0, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)\
+    let qq = "INSERT INTO counts (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, isNaysay, isApostrophe, isCaps, isWelcoming, q1, q2, q3, q4, timesMentioned, timesMentioning) \
+            \ VALUES (?, 0, 0, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)\
             \ ON DUPLICATE KEY UPDATE\
             \     msgcount=msgcount+1, \
             \     firstseen=(\
@@ -117,6 +116,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
             \                       AND ? REGEXP '[[:<:]]no[[:>:]]', 1, 0)),\
             \     isApostrophe=isApostrophe+(IF(? LIKE '%''%', 1, 0)),\
             \     isCaps=isCaps+(IF(? = BINARY UPPER(?), 1, 0)),\
+            \     isWelcoming=isWelcoming+(IF(? REGEXP '[[:<:]](welcome|hi|hello|good morning)[[:>:]]', 1, 2)),\
             \     q1=q1+(IF(FLOOR(HOUR(?)/6) = 0, 1, 0)),\
             \     q2=q2+(IF(FLOOR(HOUR(?)/6) = 1, 1, 0)),\
             \     q3=q3+(IF(FLOOR(HOUR(?)/6) = 2, 1, 0)),\
@@ -136,6 +136,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
                    , sqlMsg, sqlMsg
                    , sqlMsg
                    , sqlMsg, sqlMsg
+                   , sqlMsg
                    , sqlTime
                    , sqlTime
                    , sqlTime
@@ -143,7 +144,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
                    ]
 
     let qt1 = "INSERT INTO totals (dummy, msgcount, wordcount, startDate, endDate)\
-             \ VALUES (1,1, ?, ?,?)\
+             \ VALUES (1,1,?,?,?)\
              \ ON DUPLICATE KEY UPDATE endDate=?"
     totalsQ1 <- prepare con qt1
     execute totalsQ1 [wordcount, sqlTime, sqlTime, sqlTime]
@@ -164,13 +165,14 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
 
     let qm = "INSERT INTO messages (name, type, userindex, wordcount, charcount, contents, contentspre, time, hour, quartile, hash)\
             \ VALUES (?,?,\
-                    \ IFNULL((SELECT msgcount FROM counts WHERE name=VALUES(name)), 0),\
+                    \ IFNULL((SELECT msgcount FROM counts WHERE name=?), 0),\
                     \ ?,?,?,?,?,\
                     \ HOUR(?),\
                     \ HOUR(?)/6,\
                     \ CRC32(?));"
     message <- prepare con qm
     execute message [ sqlName, sqlType
+                    , sqlName
                     , wordcount, charcount, sqlMsg, sqlPre, sqlTime
                     , sqlTime
                     , sqlTime
@@ -200,7 +202,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
     execute mentionQ [sqlMsg, sqlMsg, sqlName, sqlName, sqlName, sqlName, sqlName]
 
     quickQuery con "DELETE FROM activeusers\
-                  \ WHERE DATEDIFF(?, lastspoke) >= 5" [sqlTime]
+                  \ WHERE LENGTH(name) < 3 OR DATEDIFF(?, lastspoke) >= 5" [sqlTime]
 
     let qqp = "UPDATE mentions\
              \ JOIN (SELECT * FROM activeusers) AS u\
@@ -242,6 +244,15 @@ insert (DbInsert t ct prevName repCt) (Topic time setter topic) con = do
     let sqlTime = toSql newT
     execute prepared [sqlName, sqlTopic, sqlTime]
     return (DbInsert newT (ct+1) prevName repCt)
+insert (DbInsert t ct prevName repCt) (Join time name) con = do
+    let newT = setHoursMinutes t time
+    prepared <- prepare con "INSERT INTO joins (name, num)\
+                           \ VALUES (?, 1)\
+                           \ ON DUPLICATE KEY UPDATE\
+                           \     num = num+1"
+    let sqlName = toSql name
+    execute prepared [sqlName]
+    return (DbInsert newT ct prevName repCt)
 insert (DbInsert _ ct prevName repCt) (Day date) _ = return (DbInsert date (ct+1) prevName repCt)
 insert (DbInsert _ ct prevName repCt) (Open date) _ = return (DbInsert date (ct+1) prevName repCt)
 insert (DbInsert t ct prevName repCt) _ _ = return (DbInsert t (ct+1) prevName repCt)
@@ -294,6 +305,7 @@ deleteDbs con = do
                                  , "DROP TABLE IF EXISTS urls;"
                                  , "DROP TABLE IF EXISTS totals;"
                                  , "DROP TABLE IF EXISTS activeusers;"
+                                 , "DROP TABLE IF EXISTS joins;"
                                  ]
     return ()
 
@@ -328,7 +340,7 @@ createDbs con = do
                                               \ oldname VARCHAR(36) NOT NULL,\
                                               \ newname VARCHAR(36) NOT NULL,\
                                               \ time DATETIME NOT NULL,\
-                                              \ PRIMARY KEY (id))"
+                                              \ PRIMARY KEY (id));"
     let topics = "CREATE TABLE topics(id INT NOT NULL AUTO_INCREMENT,\
                                     \ name VARCHAR(36) NOT NULL,\
                                     \ topic VARCHAR(500) NOT NULL,\
@@ -342,30 +354,34 @@ createDbs con = do
                                   \ time DATETIME NOT NULL,\
                                   \ PRIMARY KEY (id))\
                \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    let joins = "CREATE TABLE joins(name VARCHAR(36) NOT NULL,\
+                                  \ num MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ PRIMARY KEY (name));"
     let top = "CREATE TABLE top(id INT NOT NULL AUTO_INCREMENT,\
                               \ name VARCHAR(36) NOT NULL,\
                               \ msgs INT NOT NULL,\
                               \ PRIMARY KEY (id))\
              \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let count = "CREATE TABLE counts(name VARCHAR(36) NOT NULL,\
-                                   \ msgcount INT NOT NULL,\
-                                   \ wordcount INT NOT NULL,\
-                                   \ charcount INT NOT NULL,\
+                                   \ msgcount MEDIUMINT UNSIGNED NOT NULL,\
+                                   \ wordcount MEDIUMINT UNSIGNED NOT NULL,\
+                                   \ charcount MEDIUMINT UNSIGNED NOT NULL,\
                                    \ lastseen DATETIME NOT NULL,\
                                    \ firstseen DATETIME NOT NULL,\
-                                   \ timesMentioned INT NOT NULL,\
-                                   \ timesMentioning INT NOT NULL,\
-                                   \ isExclamation INT NOT NULL,\
-                                   \ isQuestion INT NOT NULL,\
-                                   \ isAmaze INT NOT NULL,\
-                                   \ isTxt INT NOT NULL,\
-                                   \ isNaysay INT NOT NULL,\
-                                   \ isApostrophe INT NOT NULL,\
-                                   \ isCaps Int NOT NULL,\
-                                   \ q1 INT NOT NULL,\
-                                   \ q2 INT NOT NULL,\
-                                   \ q3 INT NOT NULL,\
-                                   \ q4 INT NOT NULL,\
+                                   \ timesMentioned MEDIUMINT UNSIGNED NOT NULL,\
+                                   \ timesMentioning MEDIUMINT UNSIGNED NOT NULL,\
+                                   \ isExclamation MEDIUMINT UNSIGNED NOT NULL,\
+                                   \ isQuestion MEDIUMINT UNSIGNED NOT NULL,\
+                                   \ isAmaze MEDIUMINT UNSIGNED NOT NULL,\
+                                   \ isTxt MEDIUMINT UNSIGNED NOT NULL,\
+                                   \ isNaysay MEDIUMINT UNSIGNED NOT NULL,\
+                                   \ isApostrophe MEDIUMINT UNSIGNED NOT NULL,\
+                                   \ isCaps MEDIUMINT UNSIGNED NOT NULL,\
+                                   \ isWelcoming MEDIUMINT UNSIGNED NOT NULL,\
+                                   \ q1 MEDIUMINT UNSIGNED NOT NULL,\
+                                   \ q2 MEDIUMINT UNSIGNED NOT NULL,\
+                                   \ q3 MEDIUMINT UNSIGNED NOT NULL,\
+                                   \ q4 MEDIUMINT UNSIGNED NOT NULL,\
                                    \ PRIMARY KEY (name));"
     let unique = "CREATE TABLE uniquenicks(id INT NOT NULL AUTO_INCREMENT,\
                                          \ name VARCHAR(36) NOT NULL,\
@@ -413,6 +429,7 @@ createDbs con = do
                                  , urls
                                  , totals
                                  , activeusers
+                                 , joins
                                  ]
     return ()
 
