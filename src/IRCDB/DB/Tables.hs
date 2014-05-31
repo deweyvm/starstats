@@ -128,24 +128,24 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
 
     countQ <- prepare con qq
     force <$> execute countQ [ sqlName, sqlTime, sqlTime
-                   , sqlTime
-                   , sqlTime
-                   , sqlTime
-                   , toSql wordcount
-                   , toSql charcount
-                   , sqlMsg
-                   , sqlMsg
-                   , sqlMsg, sqlMsg
-                   , sqlMsg
-                   , sqlMsg, sqlMsg
-                   , sqlMsg
-                   , sqlMsg, sqlMsg
-                   , sqlMsg
-                   , sqlTime
-                   , sqlTime
-                   , sqlTime
-                   , sqlTime
-                   ]
+                             , sqlTime
+                             , sqlTime
+                             , sqlTime
+                             , toSql wordcount
+                             , toSql charcount
+                             , sqlMsg
+                             , sqlMsg
+                             , sqlMsg, sqlMsg
+                             , sqlMsg
+                             , sqlMsg, sqlMsg
+                             , sqlMsg
+                             , sqlMsg, sqlMsg
+                             , sqlMsg
+                             , sqlTime
+                             , sqlTime
+                             , sqlTime
+                             , sqlTime
+                             ]
 
     let qt1 = "INSERT INTO totals (dummy, msgcount, wordcount, startDate, endDate)\
              \ VALUES (1,1,?,?,?)\
@@ -176,11 +176,11 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
                     \ CRC32(?));"
     message <- prepare con qm
     force <$> execute message [ sqlName, sqlType
-                    , sqlName
-                    , wordcount, charcount, sqlMsg, sqlPre, sqlTime
-                    , sqlTime
-                    , sqlTime
-                    , sqlMsg]
+                              , sqlName
+                              , wordcount, charcount, sqlMsg, sqlPre, sqlTime
+                              , sqlTime
+                              , sqlTime
+                              , sqlMsg]
 
 
     let qp = "INSERT INTO mentions (mentioner, mentionee, count)\
