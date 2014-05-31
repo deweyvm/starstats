@@ -210,25 +210,6 @@ getRelationships con = do
                               , (fromSql x ++ " mentioned " ++ fromSql w, fromSql z)]
     concat <$> getAndExtract con [] extract q
 
-
-
-getAloof :: IConnection c => c -> IO [(String,String)]
-getAloof con =
-    let q = "SELECT\
-           \    u.name,\
-           \    COUNT(*) as c,\
-           \    v.name\
-           \ FROM uniquenicks AS u\
-           \ JOIN uniquenicks AS v\
-           \ ON u.id < v.id\
-           \ GROUP BY u.name\
-           \ HAVING IFNULL((SELECT count\
-                          \ FROM mentions\
-                          \ WHERE mentioner = u.name AND mentionee = v.name LIMIT 1), 0) = 0\
-                  \ AND c > 10\
-           \ ORDER BY c DESC;" in
-    getAndExtract con [] extractTup q
-
 getNaysayers :: IConnection c => c -> IO [(String,Double)]
 getNaysayers con =
     let q = "SELECT m.name, isNaysay/msgcount as c\

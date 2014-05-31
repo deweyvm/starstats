@@ -60,7 +60,6 @@ generate con = do
     !text       <- timeGet "Q txt spk"          getTextSpeakers
     !apos       <- timeGet "Q ''s"              getApostrophes
     !rltships   <- timeGet "Q Relationships"    getRelationships
-    !aloof      <- timeGet "Q Aloof"            getAloof
     !amaze      <- timeGet "Q Amaze"            getAmazed
     !excite     <- timeGet "Q Excite"           getExcited
     !yell       <- timeGet "Q Yell"             getYell
@@ -100,10 +99,6 @@ generate con = do
                                "Name"
                                "Times Dumbfounded"
                                amaze
-                 , headerTable "Aloof"
-                               "Name"
-                               "Has No Interest In This Number of Individuals"
-                               aloof
                  , headerTable "Apostrophe Users"
                                "Name"
                                "Percent of Messages with ''s"
