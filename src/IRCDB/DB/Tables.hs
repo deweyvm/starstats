@@ -25,7 +25,7 @@ getIndex con name = do
 
 getCount :: IConnection c => c -> IO Int
 getCount con = do
-    m <- quickQuery con "SELECT COUNT(*) FROM counts;" []
+    m <- quickQuery con "SELECT COUNT(*) FROM activeusers;" []
     case m of
         [(x:_)] -> return $ fromSql x
         _ -> return 0
@@ -94,6 +94,9 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
     msgQ <- prepare con qa
     execute msgQ [sqlMsg, sqlMsg, len, sqlMsg, sqlMsg, sqlMsg, len]
 
+    quickQuery con "INSERT INTO activeusers (name) \
+                  \ VALUES (?)\
+                  \ ON DUPLICATE KEY UPDATE name=name" [sqlName]
 
     let qq = "INSERT INTO counts (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, isNaysay, isApostrophe, isCaps, q1, q2, q3, q4, timesMentioned, timesMentioning) \
             \ VALUES (?, 0, 0, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)\
@@ -173,22 +176,6 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
                     , sqlTime
                     , sqlMsg]
 
-    let qMention = "UPDATE counts AS mentioner\
-                  \ JOIN (SELECT \
-                  \           name as mentionee,\
-                  \           (? LIKE CONCAT('%', name, '%')\
-                  \            AND ? REGEXP CONCAT('[[:<:]]',\
-                  \                                name,\
-                  \                                '[[:>:]]')) AS mmatch\
-                  \       FROM counts) as c1\
-                  \ SET \
-                  \     timesMentioned=timesMentioned+IF(mentioner.name=mentionee, 1, 0),\
-                  \     timesMentioning=timesMentioning+IF(mentionee=?, 1, 0)\
-                  \ WHERE\
-                  \     mmatch AND (mentioner.name = mentionee OR mentionee = ?)"
-    mentionQ <- prepare con qMention
-    execute mentionQ [sqlMsg, sqlMsg, sqlName, sqlName, sqlName]
-
 
     let qp = "INSERT INTO mentions (mentioner, mentionee, count)\
             \ (SELECT ?, name, 0 FROM counts)\
@@ -196,16 +183,39 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
     mention <- prepare con qp
     execute mention [sqlName]
 
-    let qqp = "UPDATE mentions\
-             \ JOIN (SELECT * FROM counts ORDER BY msgcount DESC LIMIT 10) AS u\
-             \ SET count=count+IF(? LIKE CONCAT('%', u.name, '%')\
-             \                AND ? REGEXP CONCAT('[[:<:]]',\
-             \                                    REPLACE(u.name, '|', '\\|'),\
-             \                                    '[[:>:]]'), 1, 0)\
-             \ WHERE mentioner=? AND mentionee = u.name\
-             \                   AND mentioner != mentionee"
-    mention2 <- prepare con qqp
-    execute mention2 [sqlMsg, sqlMsg, sqlName]
+    let qMention = "UPDATE counts AS mentioner, mentions\
+                  \ JOIN (SELECT \
+                  \           name AS m,\
+                  \           (? LIKE CONCAT('%', name, '%')\
+                  \            AND ? REGEXP CONCAT('[[:<:]]',\
+                  \                                name,\
+                  \                                '[[:>:]]')) AS mmatch\
+                  \       FROM activeusers) AS c1\
+                  \ ON mentionee = m\
+                  \ SET \
+                  \     timesMentioned=timesMentioned+IF(mentioner.name=m, 1, 0),\
+                  \     timesMentioning=timesMentioning+IF(m=?, 1, 0),\
+                  \     count=count+IF(mentions.mentioner=?, 1, 0)\
+                  \ WHERE\
+                  \     mmatch AND (mentioner.name = m OR m = ? OR mentions.mentioner=?)"
+    mentionQ <- prepare con qMention
+    execute mentionQ [sqlMsg, sqlMsg, sqlName, sqlName, sqlName, sqlName, sqlName]
+
+    quickQuery con "DELETE a FROM activeusers AS a\
+                  \ JOIN counts AS u\
+                  \ ON u.name = a.name\
+                  \ WHERE DATEDIFF(?, u.firstseen) >= 5" [sqlTime]
+    commit con
+    --let qqp = "UPDATE mentions\
+    --         \ JOIN (SELECT * FROM counts) AS u\
+    --         \ SET count=count+IF(? LIKE CONCAT('%', u.name, '%')\
+    --         \                AND ? REGEXP CONCAT('[[:<:]]',\
+    --         \                                    REPLACE(u.name, '|', '\\|'),\
+    --         \                                    '[[:>:]]'), 1, 0)\
+    --         \ WHERE mentioner=? AND mentionee = u.name\
+    --         \                   AND mentioner != mentionee"
+    --mention2 <- prepare con qqp
+    --execute mention2 [sqlMsg, sqlMsg, sqlName]
 
     return (DbInsert newT (ct+1) (Just name) newRep)
 insert (DbInsert t ct prevName repCt) (Nick time old new) con = do
@@ -287,6 +297,7 @@ deleteDbs con = do
                                  , "DROP TABLE IF EXISTS seqcount;"
                                  , "DROP TABLE IF EXISTS urls;"
                                  , "DROP TABLE IF EXISTS totals;"
+                                 , "DROP TABLE IF EXISTS activeusers;"
                                  ]
     return ()
 
@@ -305,10 +316,7 @@ createDbs con = do
                                         \ quartile TINYINT UNSIGNED NOT NULL,\
                                         \ hash INT UNSIGNED NOT NULL,\
                                         \ PRIMARY KEY (id),\
-                                        \ KEY (hash),\
-                                        \ INDEX (contentspre),\
-                                        \ INDEX (name, hour, quartile),\
-                                        \ INDEX (name, userindex))\
+                                        \ KEY (hash))\
                   \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let seqcount = "CREATE TABLE seqcount(id INT NOT NULL AUTO_INCREMENT,\
                                         \ name VARCHAR(36) NOT NULL,\
@@ -347,8 +355,8 @@ createDbs con = do
                                    \ msgcount INT NOT NULL,\
                                    \ wordcount INT NOT NULL,\
                                    \ charcount INT NOT NULL,\
-                                   \ lastseen TIME NOT NULL,\
-                                   \ firstseen TIME NOT NULL,\
+                                   \ lastseen DATETIME NOT NULL,\
+                                   \ firstseen DATETIME NOT NULL,\
                                    \ timesMentioned INT NOT NULL,\
                                    \ timesMentioning INT NOT NULL,\
                                    \ isExclamation INT NOT NULL,\
@@ -367,6 +375,8 @@ createDbs con = do
                                          \ name VARCHAR(36) NOT NULL,\
                                          \ count INT NOT NULL,\
                                          \ PRIMARY KEY (id));"
+    let activeusers = "CREATE TABLE activeusers(name VARCHAR(36) NOT NULL,\
+                                              \ PRIMARY KEY (name));"
     let allmsgs = "CREATE TABLE allmsgs(contents VARCHAR(500) NOT NULL,\
                                       \ count INT NOT NULL,\
                                       \ length INT NOT NULL,\
@@ -405,6 +415,7 @@ createDbs con = do
                                  , seqcount
                                  , urls
                                  , totals
+                                 , activeusers
                                  ]
     return ()
 
