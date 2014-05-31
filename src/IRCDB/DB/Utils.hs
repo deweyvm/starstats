@@ -181,3 +181,6 @@ time' msg action = do
     let whitespace = printf ("%" ++ show (27 - len) ++ "s") " " ++ "\t"
     putStrLn ("@" ++ msg ++ ": " ++ whitespace ++ printf "%.3fs" s)
     return res
+
+timeSimple :: NFData a => IO a -> IO (Double, a)
+timeSimple = time

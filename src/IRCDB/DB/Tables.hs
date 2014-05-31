@@ -3,6 +3,7 @@ module IRCDB.DB.Tables where
 import Prelude hiding (readFile)
 import Control.Applicative
 import Control.Exception
+import qualified Criterion.Measurement as M
 import Data.ByteString(readFile)
 import Data.Foldable(foldlM)
 import Data.List(isInfixOf)
@@ -10,18 +11,12 @@ import Data.Time.LocalTime
 import Data.Text(unpack)
 import Data.Text.Encoding(decodeUtf8)
 import Database.HDBC
+import Text.Printf
 import System.IO hiding (readFile)
 
 import IRCDB.DB.Utils
 import IRCDB.Parser
 import IRCDB.Time
-
-getIndex :: IConnection c => c -> SqlValue -> IO SqlValue
-getIndex con name = do
-    m <- quickQuery con "SELECT msgcount FROM counts WHERE name=?;" [name]
-    case m of
-        [(x:_)] -> return x
-        _ -> return $ toSql (0 :: Int)
 
 getCount :: IConnection c => c -> IO Int
 getCount con = do
@@ -34,30 +29,31 @@ data DbInsert = DbInsert LocalTime Int (Maybe String) Int
 
 processOne :: IConnection c
            => c
-           -> DbInsert
+           -> (Double, DbInsert)
            -> Either DbParseError DataLine
-           -> IO DbInsert
-processOne _ (DbInsert t ct prevName repCt) (Left (DbParseError ln s err)) = do
+           -> IO (Double, DbInsert)
+processOne _ (d, (DbInsert t ct prevName repCt)) (Left (DbParseError ln s err)) = do
     putStrLn ("Line " ++ show ln)
     print s
     print err
-    return (DbInsert t (ct+1) prevName repCt)
-processOne con dbi@(DbInsert t ct _ _) (Right l) = do
-    if ct `mod` 100 == 0
-        then do count <- getCount con
-                putStrLn (show ct ++ "  " ++ show count)
-        else return ()
+    return (d, (DbInsert t (ct+1) prevName repCt))
+processOne con (d, dbi@(DbInsert t ct _ _)) (Right l) = do
+    newD <- if ct `mod` 1000 == 0
+                then do
+                        count <- getCount con
+                        putStrLn (show ct ++ " " ++ show count ++ " " ++ (printf "%0.2f" d))
+                        return 0
+                else return d
     hFlush stdout
-    e <- try (insert dbi l con) :: IO (Either SqlError DbInsert)
+    e <- try (M.time $ insert dbi l con) :: IO (Either SqlError (Double, DbInsert))
     case e of
         Left l' -> do
             if (isInfixOf "Data too long" (show l'))
-                then do print l'
-                        return (DbInsert t (ct + 1) Nothing 1)
+                then do return (newD, DbInsert t (ct + 1) Nothing 1)
                 else do print l'
                         error "error"
                         --return (t, ct + 1, Nothing, 1)
-        Right r -> return r
+        Right (tt, r) -> return (newD+tt, r)
 
 insert :: IConnection c
        => DbInsert
@@ -94,9 +90,11 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
     msgQ <- prepare con qa
     execute msgQ [sqlMsg, sqlMsg, len, sqlMsg, sqlMsg, sqlMsg, len]
 
-    quickQuery con "INSERT INTO activeusers (name) \
-                  \ VALUES (?)\
-                  \ ON DUPLICATE KEY UPDATE name=name" [sqlName]
+    quickQuery con "INSERT INTO activeusers (name, lastspoke)\
+                  \ VALUES (?,?)\
+                  \ ON DUPLICATE KEY UPDATE\
+                  \ name=name,\
+                  \ lastspoke=?" [sqlName, sqlTime, sqlTime]
 
     let qq = "INSERT INTO counts (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, isNaysay, isApostrophe, isCaps, q1, q2, q3, q4, timesMentioned, timesMentioning) \
             \ VALUES (?, 0, 0, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)\
@@ -164,26 +162,28 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
     urlQ <- prepare con qurl
     execute urlQ [sqlName, sqlMsg, sqlMsg]
 
-    index <- getIndex con sqlName
     let qm = "INSERT INTO messages (name, type, userindex, wordcount, charcount, contents, contentspre, time, hour, quartile, hash)\
-            \ VALUES (?,?,?,?,?,?,?,?,\
+            \ VALUES (?,?,\
+                    \ IFNULL((SELECT msgcount FROM counts WHERE name=VALUES(name)), 0),\
+                    \ ?,?,?,?,?,\
                     \ HOUR(?),\
                     \ HOUR(?)/6,\
                     \ CRC32(?));"
     message <- prepare con qm
-    execute message [sqlName, sqlType, index, wordcount, charcount, sqlMsg, sqlPre, sqlTime
+    execute message [ sqlName, sqlType
+                    , wordcount, charcount, sqlMsg, sqlPre, sqlTime
                     , sqlTime
                     , sqlTime
                     , sqlMsg]
 
 
     let qp = "INSERT INTO mentions (mentioner, mentionee, count)\
-            \ (SELECT ?, name, 0 FROM counts)\
+            \ (SELECT ?, name, 0 FROM activeusers)\
             \ ON DUPLICATE KEY UPDATE count=count"
     mention <- prepare con qp
     execute mention [sqlName]
 
-    let qMention = "UPDATE counts AS mentioner, mentions\
+    let qMention = "UPDATE counts AS mentioner\
                   \ JOIN (SELECT \
                   \           name AS m,\
                   \           (? LIKE CONCAT('%', name, '%')\
@@ -191,31 +191,27 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
                   \                                name,\
                   \                                '[[:>:]]')) AS mmatch\
                   \       FROM activeusers) AS c1\
-                  \ ON mentionee = m\
                   \ SET \
                   \     timesMentioned=timesMentioned+IF(mentioner.name=m, 1, 0),\
-                  \     timesMentioning=timesMentioning+IF(m=?, 1, 0),\
-                  \     count=count+IF(mentions.mentioner=?, 1, 0)\
+                  \     timesMentioning=timesMentioning+IF(m=?, 1, 0)\
                   \ WHERE\
-                  \     mmatch AND (mentioner.name = m OR m = ? OR mentions.mentioner=?)"
+                  \     mmatch AND (mentioner.name = m OR m = ?)"
     mentionQ <- prepare con qMention
     execute mentionQ [sqlMsg, sqlMsg, sqlName, sqlName, sqlName, sqlName, sqlName]
 
-    quickQuery con "DELETE a FROM activeusers AS a\
-                  \ JOIN counts AS u\
-                  \ ON u.name = a.name\
-                  \ WHERE DATEDIFF(?, u.firstseen) >= 5" [sqlTime]
-    commit con
-    --let qqp = "UPDATE mentions\
-    --         \ JOIN (SELECT * FROM counts) AS u\
-    --         \ SET count=count+IF(? LIKE CONCAT('%', u.name, '%')\
-    --         \                AND ? REGEXP CONCAT('[[:<:]]',\
-    --         \                                    REPLACE(u.name, '|', '\\|'),\
-    --         \                                    '[[:>:]]'), 1, 0)\
-    --         \ WHERE mentioner=? AND mentionee = u.name\
-    --         \                   AND mentioner != mentionee"
-    --mention2 <- prepare con qqp
-    --execute mention2 [sqlMsg, sqlMsg, sqlName]
+    quickQuery con "DELETE FROM activeusers\
+                  \ WHERE DATEDIFF(?, lastspoke) >= 5" [sqlTime]
+
+    let qqp = "UPDATE mentions\
+             \ JOIN (SELECT * FROM activeusers) AS u\
+             \ SET count=count+IF(? LIKE CONCAT('%', u.name, '%')\
+             \                AND ? REGEXP CONCAT('[[:<:]]',\
+             \                                    REPLACE(u.name, '|', '\\|'),\
+             \                                    '[[:>:]]'), 1, 0)\
+             \ WHERE mentioner=? AND mentionee = u.name\
+             \                   AND mentioner != mentionee"
+    mention2 <- prepare con qqp
+    execute mention2 [sqlMsg, sqlMsg, sqlName]
 
     return (DbInsert newT (ct+1) (Just name) newRep)
 insert (DbInsert t ct prevName repCt) (Nick time old new) con = do
@@ -376,6 +372,7 @@ createDbs con = do
                                          \ count INT NOT NULL,\
                                          \ PRIMARY KEY (id));"
     let activeusers = "CREATE TABLE activeusers(name VARCHAR(36) NOT NULL,\
+                                              \ lastspoke DATETIME NOT NULL,\
                                               \ PRIMARY KEY (name));"
     let allmsgs = "CREATE TABLE allmsgs(contents VARCHAR(500) NOT NULL,\
                                       \ count INT NOT NULL,\
@@ -427,7 +424,7 @@ populateDbs con = do
     let contents = lines utf8'
     let parsed = parseLine <$> zip [1..] contents
     let time = undefined
-    let seed = DbInsert time 0 Nothing 1
+    let seed = (0, DbInsert time 0 Nothing 1)
     foldlM (processOne con) seed parsed
     commit con
 
