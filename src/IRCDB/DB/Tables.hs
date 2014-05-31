@@ -3,6 +3,7 @@ module IRCDB.DB.Tables where
 import Prelude hiding (readFile)
 import Control.Applicative
 import Control.Exception
+import Control.DeepSeq
 import qualified Criterion.Measurement as M
 import Data.ByteString(readFile)
 import Data.Foldable(foldlM)
@@ -77,7 +78,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
 
     case (prevName, newRep) of
         (Just n, 1) | repCt > 5 -> do seqQ <- prepare con qs
-                                      execute seqQ [toSql n, toSql repCt]
+                                      force <$> execute seqQ [toSql n, toSql repCt]
         _ -> return 1
 
 
@@ -87,13 +88,16 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
 
     let len = toSql $ length msg
     msgQ <- prepare con qa
-    execute msgQ [sqlMsg, sqlMsg, len, sqlMsg, sqlMsg, len]
+    force <$> execute msgQ [sqlMsg, sqlMsg, len, sqlMsg, sqlMsg, len]
 
-    quickQuery con "INSERT INTO activeusers (name, lastspoke)\
-                  \ VALUES (?,?)\
-                  \ ON DUPLICATE KEY UPDATE\
-                  \ name=name,\
-                  \ lastspoke=?" [sqlName, sqlTime, sqlTime]
+    let qact = "INSERT INTO activeusers (name, lastspoke)\
+                            \ VALUES (?,?)\
+                            \ ON DUPLICATE KEY UPDATE\
+                            \ name=name,\
+                            \ lastspoke=?"
+    activeQ <- prepare con qact
+    force <$> execute activeQ  [sqlName, sqlTime, sqlTime]
+
 
     let qq = "INSERT INTO counts (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, isNaysay, isApostrophe, isCaps, isWelcoming, q1, q2, q3, q4, timesMentioned, timesMentioning) \
             \ VALUES (?, 0, 0, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)\
@@ -123,7 +127,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
             \     q4=q4+(IF(FLOOR(HOUR(?)/6) = 3, 1, 0))"
 
     countQ <- prepare con qq
-    execute countQ [ sqlName, sqlTime, sqlTime
+    force <$> execute countQ [ sqlName, sqlTime, sqlTime
                    , sqlTime
                    , sqlTime
                    , sqlTime
@@ -147,13 +151,13 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
              \ VALUES (1,1,?,?,?)\
              \ ON DUPLICATE KEY UPDATE endDate=?"
     totalsQ1 <- prepare con qt1
-    execute totalsQ1 [wordcount, sqlTime, sqlTime, sqlTime]
+    force <$> execute totalsQ1 [wordcount, sqlTime, sqlTime, sqlTime]
 
     let qt2 = "UPDATE totals\
              \ SET wordcount=wordcount+?,\
              \     msgcount=msgcount+1"
     totalsQ2 <- prepare con qt2
-    execute totalsQ2 [wordcount]
+    force <$> execute totalsQ2 [wordcount]
 
     let qurl = "INSERT INTO urls (name, contents)\
               \ (SELECT ?, ?\
@@ -161,7 +165,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
               \  WHERE ? LIKE '%http://%'\
               \ LIMIT 1);"
     urlQ <- prepare con qurl
-    execute urlQ [sqlName, sqlMsg, sqlMsg]
+    force <$> execute urlQ [sqlName, sqlMsg, sqlMsg]
 
     let qm = "INSERT INTO messages (name, type, userindex, wordcount, charcount, contents, contentspre, time, hour, quartile, hash)\
             \ VALUES (?,?,\
@@ -171,7 +175,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
                     \ HOUR(?)/6,\
                     \ CRC32(?));"
     message <- prepare con qm
-    execute message [ sqlName, sqlType
+    force <$> execute message [ sqlName, sqlType
                     , sqlName
                     , wordcount, charcount, sqlMsg, sqlPre, sqlTime
                     , sqlTime
@@ -183,7 +187,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
             \ (SELECT ?, name, 0 FROM activeusers)\
             \ ON DUPLICATE KEY UPDATE count=count"
     mention <- prepare con qp
-    execute mention [sqlName]
+    force <$> execute mention [sqlName]
 
     let qMention = "UPDATE counts AS mentioner\
                   \ JOIN (SELECT \
@@ -199,10 +203,14 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
                   \ WHERE\
                   \     mmatch AND (mentioner.name = m OR m = ?)"
     mentionQ <- prepare con qMention
-    execute mentionQ [sqlMsg, sqlMsg, sqlName, sqlName, sqlName, sqlName, sqlName]
+    force <$> execute mentionQ [sqlMsg, sqlMsg, sqlName, sqlName, sqlName, sqlName, sqlName]
 
-    quickQuery con "DELETE FROM activeusers\
-                  \ WHERE LENGTH(name) < 3 OR DATEDIFF(?, lastspoke) >= 5" [sqlTime]
+
+    let qdel = "DELETE FROM activeusers\
+              \ WHERE LENGTH(name) < 3 OR DATEDIFF(?, lastspoke) >= 5"
+    deleteQ <- prepare con qdel
+
+    force <$> execute deleteQ [sqlTime]
 
     let qqp = "UPDATE mentions\
              \ JOIN (SELECT * FROM activeusers) AS u\
@@ -213,7 +221,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
              \ WHERE mentioner=? AND mentionee = u.name\
              \                   AND mentioner != mentionee"
     mention2 <- prepare con qqp
-    execute mention2 [sqlMsg, sqlMsg, sqlName]
+    force <$> execute mention2 [sqlMsg, sqlMsg, sqlName]
 
     return (DbInsert newT (ct+1) (Just name) newRep)
 insert (DbInsert t ct prevName repCt) (Nick time old new) con = do
@@ -223,7 +231,7 @@ insert (DbInsert t ct prevName repCt) (Nick time old new) con = do
     let sqlOld = toSql old
     let sqlMsg = toSql new
     let sqlTime = toSql newT
-    execute prepared [sqlOld, sqlMsg, sqlTime]
+    force <$> execute prepared [sqlOld, sqlMsg, sqlTime]
     return (DbInsert newT (ct+1) prevName repCt)
 insert (DbInsert t ct prevName repCt) (Kick time kickee kicker reason) con = do
     let newT = setHoursMinutes t time
@@ -233,7 +241,7 @@ insert (DbInsert t ct prevName repCt) (Kick time kickee kicker reason) con = do
     let sqlKickee = toSql kickee
     let sqlReason = toSql reason
     let sqlTime = toSql newT
-    execute prepared [sqlKicker, sqlKickee, sqlReason, sqlTime]
+    force <$> execute prepared [sqlKicker, sqlKickee, sqlReason, sqlTime]
     return (DbInsert newT (ct+1) prevName repCt)
 insert (DbInsert t ct prevName repCt) (Topic time setter topic) con = do
     let newT = setHoursMinutes t time
@@ -242,7 +250,7 @@ insert (DbInsert t ct prevName repCt) (Topic time setter topic) con = do
     let sqlName = toSql setter
     let sqlTopic = toSql topic
     let sqlTime = toSql newT
-    execute prepared [sqlName, sqlTopic, sqlTime]
+    force <$> execute prepared [sqlName, sqlTopic, sqlTime]
     return (DbInsert newT (ct+1) prevName repCt)
 insert (DbInsert t ct prevName repCt) (Join time name) con = do
     let newT = setHoursMinutes t time
@@ -251,11 +259,14 @@ insert (DbInsert t ct prevName repCt) (Join time name) con = do
                            \ ON DUPLICATE KEY UPDATE\
                            \     num = num+1"
     let sqlName = toSql name
-    execute prepared [sqlName]
-    return (DbInsert newT ct prevName repCt)
-insert (DbInsert _ ct prevName repCt) (Day date) _ = return (DbInsert date (ct+1) prevName repCt)
-insert (DbInsert _ ct prevName repCt) (Open date) _ = return (DbInsert date (ct+1) prevName repCt)
-insert (DbInsert t ct prevName repCt) _ _ = return (DbInsert t (ct+1) prevName repCt)
+    force <$> execute prepared [sqlName]
+    return (DbInsert newT (ct+1) prevName repCt)
+insert (DbInsert _ ct prevName repCt) (Day date) _ =
+    return (DbInsert date (ct+1) prevName repCt)
+insert (DbInsert _ ct prevName repCt) (Open date) _ =
+    return (DbInsert date (ct+1) prevName repCt)
+insert (DbInsert t ct prevName repCt) _ _ =
+    return (DbInsert t (ct+1) prevName repCt)
 
 populateTop :: IConnection c => c -> IO ()
 populateTop con = do
@@ -324,7 +335,8 @@ createDbs con = do
                                         \ quartile TINYINT UNSIGNED NOT NULL,\
                                         \ hash INT UNSIGNED NOT NULL,\
                                         \ PRIMARY KEY (id),\
-                                        \ KEY (hash))\
+                                        \ KEY (hash),\
+                                        \ INDEX(userindex))\
                   \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let seqcount = "CREATE TABLE seqcount(id INT NOT NULL AUTO_INCREMENT,\
                                         \ name VARCHAR(36) NOT NULL,\

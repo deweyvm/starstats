@@ -83,7 +83,7 @@ generate con = do
                                "Name"
                                "Times"
                                welcoming
-                 , headerTable "Idlers"
+                 , headerTable "Champion Idlers"
                                "Name"
                                "Idle Quotient"
                                idlers
@@ -91,7 +91,7 @@ generate con = do
                                "Name"
                                "YELLING"
                                yell
-                 , headerTable "Overexcited"
+                 , headerTable "Excitable"
                                "Name"
                                "!!!!!!!!!!!!!!"
                                excite
@@ -103,7 +103,7 @@ generate con = do
                                "Name"
                                "Percent of Messages with ''s"
                                apos
-                 , headerTable "Can't English"
+                 , headerTable "Redefining English"
                                "Name"
                                "Text Speak Count"
                                text
@@ -123,7 +123,7 @@ generate con = do
                                "Phrase"
                                "Times Repeated"
                                repComplex
-                 , headerTable "Clueless"
+                 , headerTable "Inquisitive"
                                "Name"
                                "Number Of Questions Asked"
                                questions
@@ -131,7 +131,7 @@ generate con = do
                                "Mention"
                                "Times"
                                rltships
-                 , headerTable "Clingy"
+                 , headerTable "Sociable"
                                "Name"
                                "Times Mentioning Someone"
                                needy
@@ -139,7 +139,7 @@ generate con = do
                                "Name"
                                "Times Mentioned"
                                popular
-                 , headerTable "Lonely Chatters"
+                 , headerTable "A Lot to Say"
                                "Name"
                                "Times Talking to Self"
                                self
