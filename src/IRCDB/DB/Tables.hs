@@ -97,7 +97,34 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
     activeQ <- prepare con qact
     force <$> execute activeQ  [sqlName, sqlTime, sqlTime]
 
-
+    let qoact = "UPDATE activity\
+               \ SET \
+               \     h0=h0+IF(FLOOR(HOUR(?))/24 = 0, 1, 0),\
+               \     h1=h1+IF(FLOOR(HOUR(?))/24 = 1, 1, 0),\
+               \     h2=h2+IF(FLOOR(HOUR(?))/24 = 2, 1, 0),\
+               \     h3=h3+IF(FLOOR(HOUR(?))/24 = 3, 1, 0),\
+               \     h4=h4+IF(FLOOR(HOUR(?))/24 = 4, 1, 0),\
+               \     h5=h5+IF(FLOOR(HOUR(?))/24 = 5, 1, 0),\
+               \     h6=h6+IF(FLOOR(HOUR(?))/24 = 6, 1, 0),\
+               \     h7=h7+IF(FLOOR(HOUR(?))/24 = 7, 1, 0),\
+               \     h8=h8+IF(FLOOR(HOUR(?))/24 = 8, 1, 0),\
+               \     h9=h9+IF(FLOOR(HOUR(?))/24 = 9, 1, 0),\
+               \     h10=h10+IF(FLOOR(HOUR(?))/24 = 10, 1, 0),\
+               \     h11=h11+IF(FLOOR(HOUR(?))/24 = 11, 1, 0),\
+               \     h12=h12+IF(FLOOR(HOUR(?))/24 = 12, 1, 0),\
+               \     h13=h13+IF(FLOOR(HOUR(?))/24 = 13, 1, 0),\
+               \     h14=h14+IF(FLOOR(HOUR(?))/24 = 14, 1, 0),\
+               \     h15=h15+IF(FLOOR(HOUR(?))/24 = 15, 1, 0),\
+               \     h16=h16+IF(FLOOR(HOUR(?))/24 = 16, 1, 0),\
+               \     h17=h17+IF(FLOOR(HOUR(?))/24 = 17, 1, 0),\
+               \     h18=h18+IF(FLOOR(HOUR(?))/24 = 18, 1, 0),\
+               \     h19=h19+IF(FLOOR(HOUR(?))/24 = 19, 1, 0),\
+               \     h20=h20+IF(FLOOR(HOUR(?))/24 = 20, 1, 0),\
+               \     h21=h21+IF(FLOOR(HOUR(?))/24 = 21, 1, 0),\
+               \     h22=h22+IF(FLOOR(HOUR(?))/24 = 22, 1, 0),\
+               \     h23=h23+IF(FLOOR(HOUR(?))/24 = 23, 1, 0);"
+    overallActiveQ <- prepare con qoact
+    force <$> execute overallActiveQ [sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime]
     let qq = "INSERT INTO counts (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, isNaysay, isApostrophe, isCaps, isWelcoming, q1, q2, q3, q4, timesMentioned, timesMentioning) \
             \ VALUES (?, 0, 0, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)\
             \ ON DUPLICATE KEY UPDATE\
@@ -198,9 +225,9 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
                   \       FROM activeusers) AS c1\
                   \ SET \
                   \     timesMentioned=timesMentioned+IF(mentioner.name=m, 1, 0),\
-                  \     timesMentioning=timesMentioning+IF(m=?, 1, 0)\
+                  \     timesMentioning=timesMentioning+IF(mentioner.name=?, 1, 0)\
                   \ WHERE\
-                  \     mmatch AND (mentioner.name = m OR m = ?)"
+                  \     mmatch AND (mentioner.name = m OR mentioner.name = ?)"
     mentionQ <- prepare con qMention
     force <$> execute mentionQ [sqlMsg, sqlMsg, sqlName, sqlName, sqlName, sqlName, sqlName]
 
@@ -316,6 +343,7 @@ deleteDbs con = do
                                  , "DROP TABLE IF EXISTS totals;"
                                  , "DROP TABLE IF EXISTS activeusers;"
                                  , "DROP TABLE IF EXISTS joins;"
+                                 , "DROP TABLE IF EXISTS activity;"
                                  ]
     return ()
 
@@ -373,6 +401,31 @@ createDbs con = do
                               \ msgs INT NOT NULL,\
                               \ PRIMARY KEY (id))\
              \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    let activity = "CREATE TABLE activity(name VARCHAR(36) NOT NULL,\
+                                        \ h0 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h1 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h2 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h3 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h4 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h5 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h6 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h7 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h8 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h9 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h10 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h11 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h12 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h13 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h14 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h15 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h16 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h17 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h18 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h19 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h20 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h21 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h22 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
+                                        \ h23 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0);"
     let count = "CREATE TABLE counts(name VARCHAR(36) NOT NULL,\
                                    \ msgcount MEDIUMINT UNSIGNED NOT NULL,\
                                    \ wordcount MEDIUMINT UNSIGNED NOT NULL,\
@@ -407,7 +460,8 @@ createDbs con = do
                                       \ hasURL BOOL NOT NULL,\
                                       \ isComplex BOOL NOT NULL,\
                                       \ hash CHAR(50) NOT NULL,\
-                                      \ PRIMARY KEY (hash))\
+                                      \ PRIMARY KEY (hash),\
+                                      \ INDEX (count))\
                  \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
     let mentions = "CREATE TABLE mentions(id INT NOT NULL AUTO_INCREMENT,\
@@ -441,6 +495,7 @@ createDbs con = do
                                  , totals
                                  , activeusers
                                  , joins
+                                 , activity
                                  ]
     return ()
 

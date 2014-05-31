@@ -16,10 +16,8 @@ getUniqueNicks con =
 
 getOverallActivity :: IConnection c => c -> IO [(Int,Int)]
 getOverallActivity con = do
-    let q = "SELECT hour AS h, COUNT(*)\
-           \ FROM messages\
-           \ GROUP BY h\
-           \ ORDER BY h;"
+    let q = "SELECT h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14, h15, h16, h17, h18, h19, h20, h21, h22, h23\
+           \ FROM activity;"
     let extract (_:y:_) = fromSql y
     times <- runQuery con q
     return $ zip [0..] (extract <$> times)
@@ -44,7 +42,7 @@ getRandTopTen con = do
            \           name, \
            \           msgs\
            \       FROM top) AS t\
-           \ ON m.name = t.name AND m.userindex = r;"
+           \ ON m.userindex = r AND m.name = t.name;"
 
     getAndExtract con [] extractTup q
 
