@@ -72,10 +72,9 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
     let wordcount = toSql $ length words'
     let stripped = words $ replace urlRegexp "" msg
     let charcount = toSql $ sum $ length <$> stripped -- fixme : this could be more precise
+
     let qs = "INSERT INTO seqcount (name, num)\
             \ VALUES (?, ?);"
-
-
     case (prevName, newRep) of
         (Just n, 1) | repCt > 5 -> do seqQ <- prepare con qs
                                       force <$> execute seqQ [toSql n, toSql repCt]
@@ -91,10 +90,10 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
     force <$> execute msgQ [sqlMsg, sqlMsg, len, sqlMsg, sqlMsg, len]
 
     let qact = "INSERT INTO activeusers (name, lastspoke)\
-                            \ VALUES (?,?)\
-                            \ ON DUPLICATE KEY UPDATE\
-                            \ name=name,\
-                            \ lastspoke=?"
+              \ VALUES (?,?)\
+              \ ON DUPLICATE KEY UPDATE\
+              \ name=name,\
+              \ lastspoke=?"
     activeQ <- prepare con qact
     force <$> execute activeQ  [sqlName, sqlTime, sqlTime]
 
@@ -169,11 +168,11 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
 
     let qm = "INSERT INTO messages (name, type, userindex, wordcount, charcount, contents, contentspre, time, hour, quartile, hash)\
             \ VALUES (?,?,\
-                    \ IFNULL((SELECT msgcount FROM counts WHERE name=?), 0),\
-                    \ ?,?,?,?,?,\
-                    \ HOUR(?),\
-                    \ HOUR(?)/6,\
-                    \ CRC32(?));"
+            \         IFNULL((SELECT msgcount FROM counts WHERE name=?), 0),\
+            \         ?,?,?,?,?,\
+            \         HOUR(?),\
+            \         HOUR(?)/6,\
+            \         CRC32(?));"
     message <- prepare con qm
     force <$> execute message [ sqlName, sqlType
                               , sqlName
