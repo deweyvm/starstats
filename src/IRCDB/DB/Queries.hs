@@ -16,11 +16,20 @@ getUniqueNicks con =
 
 getOverallActivity :: IConnection c => c -> IO [(Int,Int)]
 getOverallActivity con = do
-    let q = "SELECT h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14, h15, h16, h17, h18, h19, h20, h21, h22, h23\
+    let q = "SELECT h0,  h1,  h2,  h3,   h4,  h5,\
+           \        h6,  h7,  h8,  h9,  h10, h11,\
+           \        h12, h13, h14, h15, h16, h17,\
+           \        h18, h19, h20, h21, h22, h23\
            \ FROM activity;"
-    let extract (_:y:_) = fromSql y
+    let extract (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:x13:x14:x15:x16:x17:x18:x19:x20:x21:x22:x23:_) = [fromSql x0, fromSql x1, fromSql x2, fromSql x3
+                     ,fromSql x4, fromSql x5, fromSql x6, fromSql x7
+                     ,fromSql x8, fromSql x9, fromSql x10, fromSql x11
+                     ,fromSql x12, fromSql x13, fromSql x14, fromSql x15
+                     ,fromSql x16, fromSql x17, fromSql x18, fromSql x19
+                     ,fromSql x20, fromSql x21, fromSql x22, fromSql x23]
     times <- runQuery con q
-    return $ zip [0..] (extract <$> times)
+    print times
+    return $ zip [0..] (concat $ extract <$> times)
 
 getRandMessages :: IConnection c => c -> IO [(String, String)]
 getRandMessages con =
@@ -97,7 +106,7 @@ getAverageWordCount con =
            \           name,\
            \           msgcount as mc,\
            \           wordcount as wc\
-           \       FROM counts) AS m\
+           \       FROM users) AS m\
            \ ON t.name = m.name\
            \ GROUP BY m.name\
            \ ORDER BY avg DESC;" in
@@ -111,7 +120,7 @@ getAverageWordLength con =
            \           name,\
            \           wordcount as wc,\
            \           charcount as cc\
-           \       FROM counts) AS m\
+           \       FROM users) AS m\
            \ ON t.name = m.name\
            \ GROUP BY m.name\
            \ ORDER BY avg DESC;" in
@@ -127,25 +136,25 @@ getTimes :: IConnection c
          => c
          -> IO [(String, Int, Int, Int, Int)]
 getTimes con = do
-    let all' = "(SELECT counts.name, 0, q1 \
-              \ FROM counts\
+    let all' = "(SELECT users.name, 0, q1 \
+              \ FROM users\
               \ JOIN top as t\
-              \ ON t.name = counts.name)\
+              \ ON t.name = users.name)\
               \ UNION\
-              \(SELECT counts.name, 1, q2 \
-              \ FROM counts\
+              \(SELECT users.name, 1, q2 \
+              \ FROM users\
               \ JOIN top as t\
-              \ ON t.name = counts.name)\
+              \ ON t.name = users.name)\
               \ UNION\
-              \(SELECT counts.name, 2, q3 \
-              \ FROM counts\
+              \(SELECT users.name, 2, q3 \
+              \ FROM users\
               \ JOIN top as t\
-              \ ON t.name = counts.name)\
+              \ ON t.name = users.name)\
               \ UNION\
-              \(SELECT counts.name, 3, q4 \
-              \ FROM counts\
+              \(SELECT users.name, 3, q4 \
+              \ FROM users\
               \ JOIN top as t\
-              \ ON t.name = counts.name);"
+              \ ON t.name = users.name);"
     let extract (x:y:z:_) = (fromSql x, fromSql y, fromSql z) :: (String, Int, Int)
     xs <- getAndExtract con [] extract all'
     let xs' = sortBy cmp xs
@@ -175,7 +184,7 @@ getSelfTalk con =
 getWelcomers :: IConnection c => c -> IO [(String, Int)]
 getWelcomers con =
     let q = "SELECT name, isWelcoming AS c\
-           \ FROM counts\
+           \ FROM users\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
@@ -184,7 +193,7 @@ getIdlers :: IConnection c => c -> IO [(String,String)]
 getIdlers con =
     let q = "SELECT joins.name, IFNULL(num/msgcount, 'Infinity') as c\
            \ FROM joins \
-           \ JOIN counts as c \
+           \ JOIN users as c \
            \ ON c.name = joins.name\
            \ WHERE num > msgcount/10 AND num > 10\
            \ ORDER BY c DESC\
@@ -210,8 +219,8 @@ getRelationships con = do
 
 getNaysayers :: IConnection c => c -> IO [(String,Double)]
 getNaysayers con =
-    let q = "SELECT m.name, isNaysay/msgcount as c\
-           \ FROM counts as m\
+    let q = "SELECT m.name, IFNULL(isNaysay/msgcount, 0) as c\
+           \ FROM users as m\
            \ JOIN uniquenicks as u\
            \ ON u.name = m.name\
            \ WHERE isNaysay \
@@ -223,20 +232,20 @@ getNaysayers con =
 
 getPopular :: IConnection c => c -> IO [(String, String)]
 getPopular con =
-    let q = "SELECT counts.name, timesMentioned AS c\
-           \ FROM counts\
+    let q = "SELECT users.name, timesMentioned AS c\
+           \ FROM users\
            \ JOIN uniquenicks AS u\
-           \ ON u.name = counts.name\
+           \ ON u.name = users.name\
            \ ORDER BY c DESC\
            \ LIMIT 10;"  in
     getAndExtract con [] extractTup q
 
 getNeedy :: IConnection c => c -> IO [(String, String)]
 getNeedy con =
-    let q = "SELECT counts.name, timesMentioning AS c\
-           \ FROM counts\
+    let q = "SELECT users.name, timesMentioning AS c\
+           \ FROM users\
            \ JOIN uniquenicks AS u\
-           \ ON u.name = counts.name\
+           \ ON u.name = users.name\
            \ ORDER BY c DESC\
            \ LIMIT 10;"  in
     getAndExtract con [] extractTup q
@@ -261,17 +270,17 @@ getRepeatedComplex con = do
 getTextSpeakers :: IConnection c => c -> IO [(String, Int)]
 getTextSpeakers con =
     let q = "SELECT name, isTxt AS c\
-           \ FROM counts\
+           \ FROM users\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
 
 getApostrophes :: IConnection c => c -> IO [(String,String)]
 getApostrophes con = do
-    let q1 = "SELECT counts.name, 100*(isApostrophe/msgcount) AS c\
-            \ FROM counts\
+    let q1 = "SELECT users.name, IFNULL(100*(isApostrophe/msgcount), 0) AS c\
+            \ FROM users\
             \ JOIN uniquenicks\
-            \ ON uniquenicks.name = counts.name\
+            \ ON uniquenicks.name = users.name AND users.msgcount > 100\
             \ ORDER BY c;"
 
     let showDouble d = printf "%.2f" (d :: Double)
@@ -285,7 +294,7 @@ getApostrophes con = do
 getQuestions :: IConnection c => c -> IO [(String, Int)]
 getQuestions con =
     let q = "SELECT name, isQuestion AS c\
-           \ FROM counts\
+           \ FROM users\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
@@ -293,7 +302,7 @@ getQuestions con =
 getAmazed :: IConnection c => c -> IO [(String,Int)]
 getAmazed con =
     let q = "SELECT name, isAmaze as c\
-           \ FROM counts\
+           \ FROM users\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
@@ -301,7 +310,7 @@ getAmazed con =
 getExcited :: IConnection c => c -> IO [(String, Int)]
 getExcited con =
     let q = "SELECT name, isExclamation as c\
-           \ FROM counts\
+           \ FROM users\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
@@ -309,7 +318,7 @@ getExcited con =
 getYell :: IConnection c => c -> IO [(String, Int)]
 getYell con =
     let q = "SELECT name, isCaps AS c\
-           \ FROM counts\
+           \ FROM users\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
@@ -319,7 +328,7 @@ getWellSpoken con =
     let q = "SELECT \
            \     name,\
            \     IFNULL(wordcount/msgcount + charcount/wordcount, 0) as c\
-           \ FROM counts\
+           \ FROM users\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q

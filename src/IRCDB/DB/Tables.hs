@@ -42,7 +42,7 @@ processOne con (d, dbi@(DbInsert t ct _ _)) (Right l) = do
     newD <- if ct `mod` 1000 == 0
                 then do
                         count <- getCount con
-                        putStrLn (show ct ++ " " ++ show count ++ " " ++ (printf "%0.2f" d))
+                        putStrLn (">" ++ show ct ++ " " ++ show count ++ " " ++ (printf "%0.2f" d))
                         return 0
                 else return d
     hFlush stdout
@@ -97,32 +97,33 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
     activeQ <- prepare con qact
     force <$> execute activeQ  [sqlName, sqlTime, sqlTime]
 
-    let qoact = "UPDATE activity\
-               \ SET \
-               \     h0=h0+IF(FLOOR(HOUR(?))/24 = 0, 1, 0),\
-               \     h1=h1+IF(FLOOR(HOUR(?))/24 = 1, 1, 0),\
-               \     h2=h2+IF(FLOOR(HOUR(?))/24 = 2, 1, 0),\
-               \     h3=h3+IF(FLOOR(HOUR(?))/24 = 3, 1, 0),\
-               \     h4=h4+IF(FLOOR(HOUR(?))/24 = 4, 1, 0),\
-               \     h5=h5+IF(FLOOR(HOUR(?))/24 = 5, 1, 0),\
-               \     h6=h6+IF(FLOOR(HOUR(?))/24 = 6, 1, 0),\
-               \     h7=h7+IF(FLOOR(HOUR(?))/24 = 7, 1, 0),\
-               \     h8=h8+IF(FLOOR(HOUR(?))/24 = 8, 1, 0),\
-               \     h9=h9+IF(FLOOR(HOUR(?))/24 = 9, 1, 0),\
-               \     h10=h10+IF(FLOOR(HOUR(?))/24 = 10, 1, 0),\
-               \     h11=h11+IF(FLOOR(HOUR(?))/24 = 11, 1, 0),\
-               \     h12=h12+IF(FLOOR(HOUR(?))/24 = 12, 1, 0),\
-               \     h13=h13+IF(FLOOR(HOUR(?))/24 = 13, 1, 0),\
-               \     h14=h14+IF(FLOOR(HOUR(?))/24 = 14, 1, 0),\
-               \     h15=h15+IF(FLOOR(HOUR(?))/24 = 15, 1, 0),\
-               \     h16=h16+IF(FLOOR(HOUR(?))/24 = 16, 1, 0),\
-               \     h17=h17+IF(FLOOR(HOUR(?))/24 = 17, 1, 0),\
-               \     h18=h18+IF(FLOOR(HOUR(?))/24 = 18, 1, 0),\
-               \     h19=h19+IF(FLOOR(HOUR(?))/24 = 19, 1, 0),\
-               \     h20=h20+IF(FLOOR(HOUR(?))/24 = 20, 1, 0),\
-               \     h21=h21+IF(FLOOR(HOUR(?))/24 = 21, 1, 0),\
-               \     h22=h22+IF(FLOOR(HOUR(?))/24 = 22, 1, 0),\
-               \     h23=h23+IF(FLOOR(HOUR(?))/24 = 23, 1, 0);"
+    let qoact = "INSERT INTO activity (dummy,h0,h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15,h16,h17,h18,h19,h20,h21,h22,h23)\
+               \ VALUES (1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)\
+               \ ON DUPLICATE KEY UPDATE\
+               \     h0=h0+IF(HOUR(?) = 0, 1, 0),\
+               \     h1=h1+IF(HOUR(?) = 1, 1, 0),\
+               \     h2=h2+IF(HOUR(?) = 2, 1, 0),\
+               \     h3=h3+IF(HOUR(?) = 3, 1, 0),\
+               \     h4=h4+IF(HOUR(?) = 4, 1, 0),\
+               \     h5=h5+IF(HOUR(?) = 5, 1, 0),\
+               \     h6=h6+IF(HOUR(?) = 6, 1, 0),\
+               \     h7=h7+IF(HOUR(?) = 7, 1, 0),\
+               \     h8=h8+IF(HOUR(?) = 8, 1, 0),\
+               \     h9=h9+IF(HOUR(?) = 9, 1, 0),\
+               \     h10=h10+IF(HOUR(?) = 10, 1, 0),\
+               \     h11=h11+IF(HOUR(?) = 11, 1, 0),\
+               \     h12=h12+IF(HOUR(?) = 12, 1, 0),\
+               \     h13=h13+IF(HOUR(?) = 13, 1, 0),\
+               \     h14=h14+IF(HOUR(?) = 14, 1, 0),\
+               \     h15=h15+IF(HOUR(?) = 15, 1, 0),\
+               \     h16=h16+IF(HOUR(?) = 16, 1, 0),\
+               \     h17=h17+IF(HOUR(?) = 17, 1, 0),\
+               \     h18=h18+IF(HOUR(?) = 18, 1, 0),\
+               \     h19=h19+IF(HOUR(?) = 19, 1, 0),\
+               \     h20=h20+IF(HOUR(?) = 20, 1, 0),\
+               \     h21=h21+IF(HOUR(?) = 21, 1, 0),\
+               \     h22=h22+IF(HOUR(?) = 22, 1, 0),\
+               \     h23=h23+IF(HOUR(?) = 23, 1, 0);"
     overallActiveQ <- prepare con qoact
     force <$> execute overallActiveQ [sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime]
     let qq = "INSERT INTO counts (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, isNaysay, isApostrophe, isCaps, isWelcoming, q1, q2, q3, q4, timesMentioned, timesMentioning) \
@@ -146,7 +147,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
             \                       AND ? REGEXP '[[:<:]]no[[:>:]]', 1, 0)),\
             \     isApostrophe=isApostrophe+(IF(? LIKE '%''%', 1, 0)),\
             \     isCaps=isCaps+(IF(? = BINARY UPPER(?), 1, 0)),\
-            \     isWelcoming=isWelcoming+(IF(? REGEXP '[[:<:]](welcome|hi|hello|good morning)[[:>:]]', 1, 2)),\
+            \     isWelcoming=isWelcoming+(IF(? REGEXP '[[:<:]](welcome|hi|hello|good morning)[[:>:]]', 1, 0)),\
             \     q1=q1+(IF(FLOOR(HOUR(?)/6) = 0, 1, 0)),\
             \     q2=q2+(IF(FLOOR(HOUR(?)/6) = 1, 1, 0)),\
             \     q3=q3+(IF(FLOOR(HOUR(?)/6) = 2, 1, 0)),\
@@ -213,7 +214,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
             \ (SELECT ?, name, 0 FROM activeusers)\
             \ ON DUPLICATE KEY UPDATE count=count"
     mention <- prepare con qp
-    force <$> execute mention [sqlName]
+    --force <$> execute mention [sqlName]
 
     let qMention = "UPDATE counts AS mentioner\
                   \ JOIN (SELECT \
@@ -229,14 +230,14 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
                   \ WHERE\
                   \     mmatch AND (mentioner.name = m OR mentioner.name = ?)"
     mentionQ <- prepare con qMention
-    force <$> execute mentionQ [sqlMsg, sqlMsg, sqlName, sqlName, sqlName, sqlName, sqlName]
+    --force <$> execute mentionQ [sqlMsg, sqlMsg, sqlName, sqlName, sqlName, sqlName, sqlName]
 
 
     let qdel = "DELETE FROM activeusers\
               \ WHERE LENGTH(name) < 3 OR DATEDIFF(?, lastspoke) >= 5"
     deleteQ <- prepare con qdel
 
-    force <$> execute deleteQ [sqlTime]
+    --force <$> execute deleteQ [sqlTime]
 
     let qqp = "UPDATE mentions\
              \ JOIN (SELECT * FROM activeusers) AS u\
@@ -247,7 +248,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
              \ WHERE mentioner=? AND mentionee = u.name\
              \                   AND mentioner != mentionee"
     mention2 <- prepare con qqp
-    force <$> execute mention2 [sqlMsg, sqlMsg, sqlName]
+    --force <$> execute mention2 [sqlMsg, sqlMsg, sqlName]
 
     return (DbInsert newT (ct+1) (Just name) newRep)
 insert (DbInsert t ct prevName repCt) (Nick time old new) con = do
@@ -294,34 +295,30 @@ insert (DbInsert _ ct prevName repCt) (Open date) _ =
 insert (DbInsert t ct prevName repCt) _ _ =
     return (DbInsert t (ct+1) prevName repCt)
 
+deleteTemps :: IConnection c => c -> IO ()
+deleteTemps con = do
+    runQuery con "TRUNCATE uniquenicks;"
+    runQuery con "TRUNCATE top;"
+    return ()
+
 populateTop :: IConnection c => c -> IO ()
 populateTop con = do
-    runQuery con "TRUNCATE top;"
     runQuery con "INSERT INTO top (name, msgs)\
-                \ (SELECT name, msgcount\
-                 \ FROM counts\
-                 \ ORDER BY msgcount DESC\
-                 \ LIMIT 10);"
+                 \ (SELECT name, msgcount\
+                 \  FROM counts\
+                 \  ORDER BY msgcount DESC\
+                 \  LIMIT 10);"
     return ()
 
 -- a nick is "unique" if it has over N messages and doesnt have an oldnick such that
 -- numMessages(oldNick) => numMessages(nick)
 populateUnique :: IConnection c => c -> IO ()
 populateUnique con = do
-    runQuery con "TRUNCATE uniquenicks;"
     let q = "INSERT INTO uniquenicks (name, count)\
-           \ (SELECT DISTINCT newname, c.msgcount\
-           \ FROM nickchanges AS v\
-           \ INNER JOIN counts AS c\
-           \ ON c.msgcount > 100 AND c.name = v.newname\
-           \ WHERE (ISNULL((SELECT newname\
-                          \ FROM nickchanges\
-                          \ WHERE newname = v.oldname\
-                          \ LIMIT 1))\
-               \ OR ISNULL((SELECT msgcount AS cc\
-                          \ FROM counts\
-                          \ WHERE name = v.oldname\
-                          \ HAVING cc / 10 < c.msgcount))))"
+           \ (SELECT activeusers.name, counts.msgcount\
+           \  FROM activeusers\
+           \  INNER JOIN counts\
+           \  ON counts.name = activeusers.name)"
     runQuery con q
     return ()
 
@@ -401,31 +398,32 @@ createDbs con = do
                               \ msgs INT NOT NULL,\
                               \ PRIMARY KEY (id))\
              \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    let activity = "CREATE TABLE activity(name VARCHAR(36) NOT NULL,\
-                                        \ h0 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h1 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h2 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h3 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h4 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h5 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h6 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h7 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h8 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h9 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h10 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h11 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h12 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h13 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h14 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h15 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h16 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h17 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h18 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h19 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h20 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h21 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h22 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0,\
-                                        \ h23 MEDIUMINT UNSIGNED NOT NULL DEFAULT 0);"
+    let activity = "CREATE TABLE activity(dummy TINYINT NOT NULL,\
+                                        \ h0 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h1 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h2 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h3 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h4 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h5 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h6 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h7 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h8 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h9 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h10 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h11 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h12 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h13 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h14 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h15 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h16 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h17 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h18 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h19 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h20 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h21 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h22 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ h23 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ PRIMARY KEY (dummy));"
     let count = "CREATE TABLE counts(name VARCHAR(36) NOT NULL,\
                                    \ msgcount MEDIUMINT UNSIGNED NOT NULL,\
                                    \ wordcount MEDIUMINT UNSIGNED NOT NULL,\

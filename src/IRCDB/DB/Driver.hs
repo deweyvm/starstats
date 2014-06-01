@@ -34,6 +34,7 @@ generate con = do
     setFileSystemEncoding utf8
     setForeignEncoding utf8
     let timeGet s f = time' s $ f con
+    _           <- timeGet "P Delete Temp"      deleteTemps
     _           <- timeGet "P Top"              populateTop
     _           <- timeGet "P Unique"           populateUnique
     _           <- timeGet "P Commit"           commit
