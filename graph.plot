@@ -1,4 +1,3 @@
-set zeroaxis
 set term png size 400,400
 set xlabel 'Lines of Data Processed (thousands)'
 set ylabel 'Time (seconds per thousand data lines)'

@@ -51,8 +51,7 @@ processOne con (d, dbi@(DbInsert t ct _ _)) (Right l) = do
         Left l' -> do
             if (isInfixOf "Data too long" (show l'))
                 then do return (newD, DbInsert t (ct + 1) Nothing 1)
-                else do print l'
-                        error "Fatal SQL error"
+                else do error (show l')
         Right (tt, r) -> return (newD+tt, r)
 
 insert :: IConnection c
@@ -126,7 +125,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
                \     h23=h23+IF(HOUR(?) = 23, 1, 0);"
     overallActiveQ <- prepare con qoact
     force <$> execute overallActiveQ [sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime]
-    let qq = "INSERT INTO counts (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, isNaysay, isApostrophe, isCaps, isWelcoming, q1, q2, q3, q4, timesMentioned, timesMentioning) \
+    let qq = "INSERT INTO users (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, isNaysay, isApostrophe, isCaps, isWelcoming, q1, q2, q3, q4, timesMentioned, timesMentioning) \
             \ VALUES (?, 0, 0, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)\
             \ ON DUPLICATE KEY UPDATE\
             \     msgcount=msgcount+1, \
@@ -196,7 +195,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
 
     let qm = "INSERT INTO messages (name, type, userindex, wordcount, charcount, contents, contentspre, time, hour, quartile, hash)\
             \ VALUES (?,?,\
-            \         IFNULL((SELECT msgcount FROM counts WHERE name=?), 0),\
+            \         IFNULL((SELECT msgcount FROM users WHERE name=?), 0),\
             \         ?,?,?,?,?,\
             \         HOUR(?),\
             \         HOUR(?)/6,\
@@ -210,13 +209,12 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
                               , sqlMsg]
 
 
-    let qp = "INSERT INTO mentions (mentioner, mentionee, count)\
-            \ (SELECT ?, name, 0 FROM activeusers)\
-            \ ON DUPLICATE KEY UPDATE count=count"
+    let qp = "INSERT IGNORE INTO mentions (mentioner, mentionee, count)\
+            \ (SELECT ?, name, 0 FROM activeusers)"
     mention <- prepare con qp
-    --force <$> execute mention [sqlName]
+    force <$> execute mention [sqlName]
 
-    let qMention = "UPDATE counts AS mentioner\
+    let qMention = "UPDATE users AS mentioner\
                   \ JOIN (SELECT \
                   \           name AS m,\
                   \           (? LIKE CONCAT('%', name, '%')\
@@ -230,14 +228,14 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
                   \ WHERE\
                   \     mmatch AND (mentioner.name = m OR mentioner.name = ?)"
     mentionQ <- prepare con qMention
-    --force <$> execute mentionQ [sqlMsg, sqlMsg, sqlName, sqlName, sqlName, sqlName, sqlName]
+    force <$> execute mentionQ [sqlMsg, sqlMsg, sqlName, sqlName, sqlName, sqlName, sqlName]
 
 
     let qdel = "DELETE FROM activeusers\
               \ WHERE LENGTH(name) < 3 OR DATEDIFF(?, lastspoke) >= 5"
     deleteQ <- prepare con qdel
 
-    --force <$> execute deleteQ [sqlTime]
+    force <$> execute deleteQ [sqlTime]
 
     let qqp = "UPDATE mentions\
              \ JOIN (SELECT * FROM activeusers) AS u\
@@ -248,7 +246,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
              \ WHERE mentioner=? AND mentionee = u.name\
              \                   AND mentioner != mentionee"
     mention2 <- prepare con qqp
-    --force <$> execute mention2 [sqlMsg, sqlMsg, sqlName]
+    force <$> execute mention2 [sqlMsg, sqlMsg, sqlName]
 
     return (DbInsert newT (ct+1) (Just name) newRep)
 insert (DbInsert t ct prevName repCt) (Nick time old new) con = do
@@ -305,7 +303,7 @@ populateTop :: IConnection c => c -> IO ()
 populateTop con = do
     runQuery con "INSERT INTO top (name, msgs)\
                  \ (SELECT name, msgcount\
-                 \  FROM counts\
+                 \  FROM users\
                  \  ORDER BY msgcount DESC\
                  \  LIMIT 10);"
     return ()
@@ -315,10 +313,10 @@ populateTop con = do
 populateUnique :: IConnection c => c -> IO ()
 populateUnique con = do
     let q = "INSERT INTO uniquenicks (name, count)\
-           \ (SELECT activeusers.name, counts.msgcount\
+           \ (SELECT activeusers.name, users.msgcount\
            \  FROM activeusers\
-           \  INNER JOIN counts\
-           \  ON counts.name = activeusers.name)"
+           \  INNER JOIN users\
+           \  ON users.name = activeusers.name)"
     runQuery con q
     return ()
 
@@ -330,7 +328,7 @@ deleteDbs con = do
                                  , "DROP TABLE IF EXISTS topics;"
                                  , "DROP TABLE IF EXISTS kicks;"
                                  , "DROP TABLE IF EXISTS top;"
-                                 , "DROP TABLE IF EXISTS counts;"
+                                 , "DROP TABLE IF EXISTS users;"
                                  , "DROP TABLE IF EXISTS uniquenicks;"
                                  , "DROP TABLE IF EXISTS mentions;"
                                  , "DROP TABLE IF EXISTS allusers;"
@@ -353,7 +351,7 @@ createDbs con = do
                                         \ userindex INT NOT NULL,\
                                         \ wordcount INT NOT NULL,\
                                         \ charcount INT NOT NULL,\
-                                        \ name VARCHAR(36) NOT NULL,\
+                                        \ name CHAR(21) NOT NULL,\
                                         \ time DATETIME NOT NULL,\
                                         \ hour TINYINT UNSIGNED NOT NULL,\
                                         \ quartile TINYINT UNSIGNED NOT NULL,\
@@ -363,42 +361,42 @@ createDbs con = do
                                         \ INDEX(userindex))\
                   \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let seqcount = "CREATE TABLE seqcount(id INT NOT NULL AUTO_INCREMENT,\
-                                        \ name VARCHAR(36) NOT NULL,\
+                                        \ name CHAR(21) NOT NULL,\
                                         \ num INT NOT NULL,\
                                         \ PRIMARY KEY (id));"
     let statuses = "CREATE TABLE statuses(id INT NOT NULL AUTO_INCREMENT,\
                                         \ contents VARCHAR(500) NOT NULL,\
-                                        \ name VARCHAR(36) NOT NULL,\
+                                        \ name CHAR(21) NOT NULL,\
                                         \ time DATETIME NOT NULL,\
                                         \ PRIMARY KEY (id))\
                   \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let nickchanges = "CREATE TABLE nickchanges(id INT NOT NULL AUTO_INCREMENT,\
-                                              \ oldname VARCHAR(36) NOT NULL,\
-                                              \ newname VARCHAR(36) NOT NULL,\
+                                              \ oldname CHAR(21) NOT NULL,\
+                                              \ newname CHAR(21) NOT NULL,\
                                               \ time DATETIME NOT NULL,\
                                               \ PRIMARY KEY (id));"
     let topics = "CREATE TABLE topics(id INT NOT NULL AUTO_INCREMENT,\
-                                    \ name VARCHAR(36) NOT NULL,\
+                                    \ name CHAR(21) NOT NULL,\
                                     \ topic VARCHAR(500) NOT NULL,\
                                     \ time DATETIME NOT NULL,\
                                     \ PRIMARY KEY (id))\
                 \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let kicks = "CREATE TABLE kicks(id INT NOT NULL AUTO_INCREMENT,\
-                                  \ kicker VARCHAR(36) NOT NULL,\
-                                  \ kickee VARCHAR(36) NOT NULL,\
+                                  \ kicker CHAR(21) NOT NULL,\
+                                  \ kickee CHAR(21) NOT NULL,\
                                   \ reason VARCHAR(500) NOT NULL,\
                                   \ time DATETIME NOT NULL,\
                                   \ PRIMARY KEY (id))\
                \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    let joins = "CREATE TABLE joins(name VARCHAR(36) NOT NULL,\
+    let joins = "CREATE TABLE joins(name CHAR(21) NOT NULL,\
                                   \ num MEDIUMINT UNSIGNED NOT NULL,\
                                   \ PRIMARY KEY (name));"
     let top = "CREATE TABLE top(id INT NOT NULL AUTO_INCREMENT,\
-                              \ name VARCHAR(36) NOT NULL,\
+                              \ name CHAR(21) NOT NULL,\
                               \ msgs INT NOT NULL,\
                               \ PRIMARY KEY (id))\
              \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-    let activity = "CREATE TABLE activity(dummy TINYINT NOT NULL,\
+    let activity = "CREATE TABLE activity(dummy BOOL NOT NULL,\
                                         \ h0 MEDIUMINT UNSIGNED NOT NULL,\
                                         \ h1 MEDIUMINT UNSIGNED NOT NULL,\
                                         \ h2 MEDIUMINT UNSIGNED NOT NULL,\
@@ -424,32 +422,32 @@ createDbs con = do
                                         \ h22 MEDIUMINT UNSIGNED NOT NULL,\
                                         \ h23 MEDIUMINT UNSIGNED NOT NULL,\
                                         \ PRIMARY KEY (dummy));"
-    let count = "CREATE TABLE counts(name VARCHAR(36) NOT NULL,\
-                                   \ msgcount MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ wordcount MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ charcount MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ lastseen DATETIME NOT NULL,\
-                                   \ firstseen DATETIME NOT NULL,\
-                                   \ timesMentioned MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ timesMentioning MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ isExclamation MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ isQuestion MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ isAmaze MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ isTxt MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ isNaysay MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ isApostrophe MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ isCaps MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ isWelcoming MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ q1 MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ q2 MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ q3 MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ q4 MEDIUMINT UNSIGNED NOT NULL,\
-                                   \ PRIMARY KEY (name));"
+    let count = "CREATE TABLE users(name CHAR(21) NOT NULL,\
+                                  \ msgcount MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ wordcount MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ charcount MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ lastseen DATETIME NOT NULL,\
+                                  \ firstseen DATETIME NOT NULL,\
+                                  \ timesMentioned MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ timesMentioning MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ isExclamation MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ isQuestion MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ isAmaze MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ isTxt MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ isNaysay MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ isApostrophe MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ isCaps MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ isWelcoming MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ q1 MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ q2 MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ q3 MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ q4 MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ PRIMARY KEY (name));"
     let unique = "CREATE TABLE uniquenicks(id INT NOT NULL AUTO_INCREMENT,\
-                                         \ name VARCHAR(36) NOT NULL,\
+                                         \ name CHAR(21) NOT NULL,\
                                          \ count INT NOT NULL,\
                                          \ PRIMARY KEY (id));"
-    let activeusers = "CREATE TABLE activeusers(name VARCHAR(36) NOT NULL,\
+    let activeusers = "CREATE TABLE activeusers(name CHAR(21) NOT NULL,\
                                               \ lastspoke DATETIME NOT NULL,\
                                               \ PRIMARY KEY (name));"
     let allmsgs = "CREATE TABLE allmsgs(contents VARCHAR(500) NOT NULL,\
@@ -462,17 +460,15 @@ createDbs con = do
                                       \ INDEX (count))\
                  \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
-    let mentions = "CREATE TABLE mentions(id INT NOT NULL AUTO_INCREMENT,\
-                                        \ mentioner VARCHAR(36) NOT NULL,\
-                                        \ mentionee VARCHAR(36) NOT NULL,\
+    let mentions = "CREATE TABLE mentions(mentioner CHAR(21) NOT NULL,\
+                                        \ mentionee CHAR(21) NOT NULL,\
                                         \ count INT NOT NULL,\
-                                        \ PRIMARY KEY (mentioner, mentionee),\
-                                        \ KEY (id));"
+                                        \ PRIMARY KEY (mentioner, mentionee));"
     let urls = "CREATE TABLE urls(id INT NOT NULL AUTO_INCREMENT,\
-                                \ name VARCHAR(36) NOT NULL,\
+                                \ name CHAR(21) NOT NULL,\
                                 \ contents VARCHAR(500) NOT NULL,\
                                 \ PRIMARY KEY (id));"
-    let totals = "CREATE TABLE totals(dummy INT NOT NULL,\
+    let totals = "CREATE TABLE totals(dummy BOOL NOT NULL,\
                                     \ wordcount INT NOT NULL,\
                                     \ msgcount INT NOT NULL,\
                                     \ startDate DATETIME NOT NULL,\
