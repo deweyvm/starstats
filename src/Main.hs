@@ -9,6 +9,6 @@ main = do
     let driver = args !! 0
     let actions = if elem "-g" args then [Repopulate, Generate] else [Generate]
     sequence_ $ doAction driver <$> actions
-
+    print "Finished"
 
 
