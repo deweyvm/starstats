@@ -80,9 +80,9 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
         _ -> return 1
 
 
-    let qa = "INSERT INTO allmsgs (hash, contents, count, length, hasURL, isComplex)\
+    let qa = "INSERT INTO allmsgs (hash, contents, repcount, length, hasURL, isComplex)\
             \ VALUES (CRC32(?), ?, 1, ?, ? LIKE '%http://%', ? NOT LIKE '%http://%' AND ? > 12)\
-            \ ON DUPLICATE KEY UPDATE count=count+1;"
+            \ ON DUPLICATE KEY UPDATE repcount=repcount+1;"
 
     let len = toSql $ length msg
     msgQ <- prepare con qa
@@ -209,7 +209,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
                               , sqlMsg]
 
 
-    let qp = "INSERT IGNORE INTO mentions (mentioner, mentionee, count)\
+    let qp = "INSERT IGNORE INTO mentions (mentioner, mentionee, num)\
             \ (SELECT ?, name, 0 FROM activeusers)"
     mention <- prepare con qp
     force <$> execute mention [sqlName]
@@ -239,7 +239,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
 
     let qqp = "UPDATE mentions\
              \ JOIN (SELECT * FROM activeusers) AS u\
-             \ SET count=count+IF(? LIKE CONCAT('%', u.name, '%')\
+             \ SET num=num+IF(? LIKE CONCAT('%', u.name, '%')\
              \                AND ? REGEXP CONCAT('[[:<:]]',\
              \                                    REPLACE(u.name, '|', '\\|'),\
              \                                    '[[:>:]]'), 1, 0)\
@@ -301,7 +301,7 @@ deleteTemps con = do
 
 populateTop :: IConnection c => c -> IO ()
 populateTop con = do
-    runQuery con "INSERT INTO top (name, msgs)\
+    runQuery con "INSERT INTO top (name, msgcount)\
                  \ (SELECT name, msgcount\
                  \  FROM users\
                  \  ORDER BY msgcount DESC\
@@ -312,7 +312,7 @@ populateTop con = do
 -- numMessages(oldNick) => numMessages(nick)
 populateUnique :: IConnection c => c -> IO ()
 populateUnique con = do
-    let q = "INSERT INTO uniquenicks (name, count)\
+    let q = "INSERT INTO uniquenicks (name, msgcount)\
            \ (SELECT activeusers.name, users.msgcount\
            \  FROM activeusers\
            \  INNER JOIN users\
@@ -393,7 +393,7 @@ createDbs con = do
                                   \ PRIMARY KEY (name));"
     let top = "CREATE TABLE top(id INT NOT NULL AUTO_INCREMENT,\
                               \ name CHAR(21) NOT NULL,\
-                              \ msgs INT NOT NULL,\
+                              \ msgcount INT NOT NULL,\
                               \ PRIMARY KEY (id))\
              \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let activity = "CREATE TABLE activity(dummy BOOL NOT NULL,\
@@ -445,24 +445,24 @@ createDbs con = do
                                   \ PRIMARY KEY (name));"
     let unique = "CREATE TABLE uniquenicks(id INT NOT NULL AUTO_INCREMENT,\
                                          \ name CHAR(21) NOT NULL,\
-                                         \ count INT NOT NULL,\
+                                         \ msgcount INT NOT NULL,\
                                          \ PRIMARY KEY (id));"
     let activeusers = "CREATE TABLE activeusers(name CHAR(21) NOT NULL,\
                                               \ lastspoke DATETIME NOT NULL,\
                                               \ PRIMARY KEY (name));"
     let allmsgs = "CREATE TABLE allmsgs(contents VARCHAR(500) NOT NULL,\
-                                      \ count INT NOT NULL,\
+                                      \ repcount INT NOT NULL,\
                                       \ length INT NOT NULL,\
                                       \ hasURL BOOL NOT NULL,\
                                       \ isComplex BOOL NOT NULL,\
                                       \ hash CHAR(50) NOT NULL,\
                                       \ PRIMARY KEY (hash),\
-                                      \ INDEX (count))\
+                                      \ INDEX (repcount))\
                  \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
     let mentions = "CREATE TABLE mentions(mentioner CHAR(21) NOT NULL,\
                                         \ mentionee CHAR(21) NOT NULL,\
-                                        \ count INT NOT NULL,\
+                                        \ num INT NOT NULL,\
                                         \ PRIMARY KEY (mentioner, mentionee));"
     let urls = "CREATE TABLE urls(id INT NOT NULL AUTO_INCREMENT,\
                                 \ name CHAR(21) NOT NULL,\

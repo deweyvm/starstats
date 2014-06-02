@@ -22,6 +22,9 @@ td {
 tr {
   white-space: nowrap;
 }
+tr:first-child * {
+  background-color:red;
+}
 a:link {
   color:#6978FF;
 }

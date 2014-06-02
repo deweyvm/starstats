@@ -9,9 +9,9 @@ import IRCDB.DB.Utils
 
 getUniqueNicks :: IConnection c => c -> IO [(String,Int)]
 getUniqueNicks con =
-    let q = "SELECT name, count\
+    let q = "SELECT name, msgcount\
            \ FROM uniquenicks\
-           \ ORDER BY count DESC;" in
+           \ ORDER BY msgcount DESC;" in
     getAndExtract con [] extractTup q
 
 getOverallActivity :: IConnection c => c -> IO [(Int,Int)]
@@ -47,9 +47,9 @@ getRandTopTen con = do
     let q = "SELECT m.name, contents\
            \ FROM messages AS m\
            \ JOIN (SELECT \
-           \           FLOOR(RAND() * msgs) AS r, \
+           \           FLOOR(RAND() * msgcount) AS r, \
            \           name, \
-           \           msgs\
+           \           msgcount\
            \       FROM top) AS t\
            \ ON m.userindex = r AND m.name = t.name;"
 
@@ -75,7 +75,7 @@ getKickees con =
 
 getMessageCount :: IConnection c => c -> IO [(String, Int)]
 getMessageCount con =
-    let q = "SELECT name, msgs FROM top;" in
+    let q = "SELECT name, msgcount FROM top;" in
     getAndExtract con [] extractTup q
 
 getNicks :: IConnection c => c -> IO [(String, Int)]
@@ -191,11 +191,11 @@ getWelcomers con =
 
 getIdlers :: IConnection c => c -> IO [(String,String)]
 getIdlers con =
-    let q = "SELECT joins.name, IFNULL(num/msgcount, 'Infinity') as c\
+    let q = "SELECT joins.name, IFNULL(num/c.msgcount, 'Infinity') as c\
            \ FROM joins \
            \ JOIN users as c \
            \ ON c.name = joins.name\
-           \ WHERE num > msgcount/10 AND num > 10\
+           \ WHERE num > c.msgcount/10 AND num > 10\
            \ ORDER BY c DESC\
            \ LIMIT 10" in
     getAndExtract con [] extractTup q
@@ -205,8 +205,8 @@ getRelationships con = do
     let q = "SELECT \
                \ u.name, \
                \ v.name, \
-               \ IFNULL((SELECT count FROM mentions WHERE mentioner = u.name AND mentionee = v.name LIMIT 1), 0) AS c1,\
-               \ IFNULL((SELECT count FROM mentions WHERE mentioner = v.name AND mentionee = u.name LIMIT 1), 0) AS c2\
+               \ IFNULL((SELECT num FROM mentions WHERE mentioner = u.name AND mentionee = v.name LIMIT 1), 0) AS c1,\
+               \ IFNULL((SELECT num FROM mentions WHERE mentioner = v.name AND mentionee = u.name LIMIT 1), 0) AS c2\
            \ FROM uniquenicks AS u\
            \ INNER JOIN uniquenicks AS v\
            \ ON u.id < v.id\
@@ -219,7 +219,7 @@ getRelationships con = do
 
 getNaysayers :: IConnection c => c -> IO [(String,Double)]
 getNaysayers con =
-    let q = "SELECT m.name, IFNULL(isNaysay/msgcount, 0) as c\
+    let q = "SELECT m.name, IFNULL(isNaysay/m.msgcount, 0) as c\
            \ FROM users as m\
            \ JOIN uniquenicks as u\
            \ ON u.name = m.name\
@@ -252,18 +252,18 @@ getNeedy con =
 
 getRepeatedSimple :: IConnection c => c -> IO [(String, Int)]
 getRepeatedSimple con =
-    let q = "SELECT contents, count\
+    let q = "SELECT contents, repcount\
            \ FROM allmsgs\
-           \ ORDER BY count DESC\
+           \ ORDER BY repcount DESC\
            \ LIMIT 5;" in
     getAndExtract con [] extractTup q
 
 getRepeatedComplex :: IConnection c => c -> IO [(String, Int)]
 getRepeatedComplex con = do
-    let q = "SELECT contents, count\
+    let q = "SELECT contents, repcount\
            \ FROM allmsgs\
-           \ WHERE isComplex AND count > 1\
-           \ ORDER BY count DESC\
+           \ WHERE isComplex AND repcount > 1\
+           \ ORDER BY repcount DESC\
            \ LIMIT 10;"
     getAndExtract con [] (mapFst escapeHtml . extractTup) q
 
@@ -277,7 +277,7 @@ getTextSpeakers con =
 
 getApostrophes :: IConnection c => c -> IO [(String,String)]
 getApostrophes con = do
-    let q1 = "SELECT users.name, IFNULL(100*(isApostrophe/msgcount), 0) AS c\
+    let q1 = "SELECT users.name, IFNULL(100*(isApostrophe/users.msgcount), 0) AS c\
             \ FROM users\
             \ JOIN uniquenicks\
             \ ON uniquenicks.name = users.name AND users.msgcount > 100\
