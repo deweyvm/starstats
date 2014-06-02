@@ -506,10 +506,6 @@ populateDbs con = do
     foldlM (processOne con) seed parsed
     commit con
 
---insert all lines from x onward
-insertFrom :: IConnection c => c -> Int -> IO ()
-insertFrom
-
 repopulateDb :: IConnection c => c -> IO ()
 repopulateDb con = do
     deleteDbs con
