@@ -23,7 +23,7 @@ tr {
   white-space: nowrap;
 }
 tr:first-child * {
-  background-color:red;
+  background-color:#404040;
 }
 a:link {
   color:#6978FF;
