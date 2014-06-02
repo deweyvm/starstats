@@ -11,6 +11,7 @@ import Data.List(isInfixOf)
 import Data.Time.LocalTime
 import Data.Text(unpack)
 import Data.Text.Encoding(decodeUtf8)
+import Data.Maybe(fromMaybe)
 import Database.HDBC
 import Text.Printf
 import System.IO hiding (readFile)
@@ -26,19 +27,19 @@ getCount con = do
         [(x:_)] -> return $ fromSql x
         _ -> return 0
 
-data DbInsert = DbInsert LocalTime Int (Maybe String) Int
+data DbInsert = DbInsert Int
 
 processOne :: IConnection c
            => c
            -> (Double, DbInsert)
            -> Either DbParseError DataLine
            -> IO (Double, DbInsert)
-processOne _ (d, (DbInsert t ct prevName repCt)) (Left (DbParseError ln s err)) = do
+processOne _ (d, (DbInsert ct)) (Left (DbParseError ln s err)) = do
     putStrLn ("Line " ++ show ln)
     print s
     print err
-    return (d, (DbInsert t (ct+1) prevName repCt))
-processOne con (d, dbi@(DbInsert t ct _ _)) (Right l) = do
+    return (d, (DbInsert (ct+1)))
+processOne con (d, dbi@(DbInsert ct)) (Right l) = do
     newD <- if ct `mod` 1000 == 0
                 then do
                         commit con
@@ -51,7 +52,7 @@ processOne con (d, dbi@(DbInsert t ct _ _)) (Right l) = do
     case e of
         Left l' -> do
             if (isInfixOf "Data too long" (show l'))
-                then do return (newD, DbInsert t (ct + 1) Nothing 1)
+                then do return (newD, DbInsert (ct + 1))
                 else do error (show l')
         Right (tt, r) -> return (newD+tt, r)
 
@@ -60,9 +61,9 @@ insert :: IConnection c
        -> DataLine
        -> c
        -> IO DbInsert
-insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
+insert (DbInsert ct) (Message time typ name msg) con = do
+    t <- getDate con
     let newT = setHoursMinutes t time
-    let newRep = if (prevName == Just name) then repCt + 1 else 1
     let sqlName = toSql name
     let sqlType = toSql typ
     let sqlPre = toSql (take 24 msg)
@@ -75,10 +76,19 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
 
     let qs = "INSERT INTO seqcount (name, num)\
             \ VALUES (?, ?);"
-    case (prevName, newRep) of
-        (Just n, 1) | repCt > 5 -> do seqQ <- prepare con qs
-                                      force <$> execute seqQ [toSql n, toSql repCt]
-        _ -> return 1
+    prevName <- getRepName con
+
+    if (prevName /= Just name)
+        then do count <- fromMaybe (return 0) ((\p -> getRepCount con p) <$> prevName)
+                if (count > 5)
+                    then do quickQuery con qs [toSql prevName, toSql count]
+                            return ()
+                    else return ()
+        else updateRep con name <* return ()
+    --case (prevName, newRep) of
+    --    (Just n, 1) | repCt > 5 -> do seqQ <- prepare con qs
+    --                                  force <$> execute seqQ [toSql n, toSql repCt]
+    --    _ -> return 1
 
 
     let qa = "INSERT INTO allmsgs (hash, contents, repcount, length, hasURL, isComplex)\
@@ -248,9 +258,10 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
              \                   AND mentioner != mentionee"
     mention2 <- prepare con qqp
     force <$> execute mention2 [sqlMsg, sqlMsg, sqlName]
-
-    return (DbInsert newT (ct+1) (Just name) newRep)
-insert (DbInsert t ct prevName repCt) (Nick time old new) con = do
+    updateDate con newT
+    return (DbInsert (ct+1))
+insert (DbInsert ct) (Nick time old new) con = do
+    t <- getDate con
     let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO nickchanges (oldname, newname, time)\
                            \ VALUES (?,?,?);"
@@ -258,8 +269,10 @@ insert (DbInsert t ct prevName repCt) (Nick time old new) con = do
     let sqlMsg = toSql new
     let sqlTime = toSql newT
     force <$> execute prepared [sqlOld, sqlMsg, sqlTime]
-    return (DbInsert newT (ct+1) prevName repCt)
-insert (DbInsert t ct prevName repCt) (Kick time kickee kicker reason) con = do
+    updateDate con newT
+    return (DbInsert (ct+1))
+insert (DbInsert ct) (Kick time kickee kicker reason) con = do
+    t <- getDate con
     let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO kicks (kicker, kickee, reason, time)\
                            \ VALUES (?,?,?, ?);"
@@ -268,8 +281,10 @@ insert (DbInsert t ct prevName repCt) (Kick time kickee kicker reason) con = do
     let sqlReason = toSql reason
     let sqlTime = toSql newT
     force <$> execute prepared [sqlKicker, sqlKickee, sqlReason, sqlTime]
-    return (DbInsert newT (ct+1) prevName repCt)
-insert (DbInsert t ct prevName repCt) (Topic time setter topic) con = do
+    updateDate con newT
+    return (DbInsert (ct+1))
+insert (DbInsert ct) (Topic time setter topic) con = do
+    t <- getDate con
     let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO topics (name, topic, time)\
                            \ VALUES (?,?,?);"
@@ -277,8 +292,10 @@ insert (DbInsert t ct prevName repCt) (Topic time setter topic) con = do
     let sqlTopic = toSql topic
     let sqlTime = toSql newT
     force <$> execute prepared [sqlName, sqlTopic, sqlTime]
-    return (DbInsert newT (ct+1) prevName repCt)
-insert (DbInsert t ct prevName repCt) (Join time name) con = do
+    updateDate con newT
+    return (DbInsert (ct+1))
+insert (DbInsert ct) (Join time name) con = do
+    t <- getDate con
     let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO joins (name, num)\
                            \ VALUES (?, 1)\
@@ -286,13 +303,61 @@ insert (DbInsert t ct prevName repCt) (Join time name) con = do
                            \     num = num+1"
     let sqlName = toSql name
     force <$> execute prepared [sqlName]
-    return (DbInsert newT (ct+1) prevName repCt)
-insert (DbInsert _ ct prevName repCt) (Day date) _ =
-    return (DbInsert date (ct+1) prevName repCt)
-insert (DbInsert _ ct prevName repCt) (Open date) _ =
-    return (DbInsert date (ct+1) prevName repCt)
-insert (DbInsert t ct prevName repCt) _ _ =
-    return (DbInsert t (ct+1) prevName repCt)
+    updateDate con newT
+    return (DbInsert (ct+1))
+insert (DbInsert ct) (Day date) con = do
+    updateDate con date
+    return (DbInsert (ct+1))
+insert (DbInsert ct) (Open date) con = do
+    updateDate con date
+    return (DbInsert (ct+1))
+insert (DbInsert ct) _ _ =
+    return (DbInsert (ct+1))
+
+updateDate :: IConnection c => c -> LocalTime -> IO ()
+updateDate con date = do
+    let sqlDate = toSql date
+    quickQuery con "INSERT INTO savedate (date) VALUES (?)\
+                  \ ON DUPLICATE KEY UPDATE date=?" [sqlDate, sqlDate]
+    return ()
+
+getDate :: IConnection c => c -> IO LocalTime
+getDate con = do
+    val <- quickQuery con "SELECT date\
+                         \ FROM savedate\
+                         \ LIMIT 1" []
+    let extract ((x:_):_) = fromSql x
+        extract _         = anyTime
+    return $ extract val
+
+updateRep :: IConnection c => c -> String -> IO ()
+updateRep con s = do
+    let sqlName = toSql s
+    quickQuery con "INSERT INTO repuser (name, num)\
+                  \ VALUES (?, 0)\
+                  \ ON DUPLICATE KEY UPDATE \
+                  \     name=?,\
+                  \     num=1" [sqlName, sqlName]
+    return ()
+
+getRepCount :: IConnection c => c -> String -> IO Int
+getRepCount con s = do
+    let sqlName = toSql s
+    val <- quickQuery con "IFNULL(SELECT num \
+                      \        FROM repuser \
+                      \        WHERE name=? \
+                      \        LIMIT 1, \
+                      \        0)" [sqlName]
+    let extract ((x:_):_) = fromSql x :: Int
+        extract [] = 0
+    return $ extract val
+
+getRepName :: IConnection c => c -> IO (Maybe String)
+getRepName con = do
+    val <- quickQuery con "SELECT name FROM repuser" []
+    let extract ((x:_):_) = Just $ fromSql x :: Maybe String
+        extract [] = Nothing
+    return $ extract val
 
 deleteTemps :: IConnection c => c -> IO ()
 deleteTemps con = do
@@ -340,6 +405,8 @@ deleteDbs con = do
                                  , "DROP TABLE IF EXISTS activeusers;"
                                  , "DROP TABLE IF EXISTS joins;"
                                  , "DROP TABLE IF EXISTS activity;"
+                                 , "DROP TABLE IF EXISTS savedate;"
+                                 , "DROP TABLE IF EXISTS repuser;"
                                  ]
     return ()
 
@@ -475,6 +542,11 @@ createDbs con = do
                                     \ startDate DATETIME NOT NULL,\
                                     \ endDate DATETIME NOT NULL,\
                                     \ PRIMARY KEY (dummy));"
+    let savedate = "CREATE TABLE savedate(date DATETIME NOT NULL,\
+                                       \ PRIMARY KEY (date));"
+    let repuser = "CREATE TABLE repuser(name CHAR(21) NOT NULL,\
+                                      \ num INT NOT NULL,\
+                                      \ PRIMARY KEY (name));"
     sequence_ $ runQuery con <$> [ messages
                                  , statuses
                                  , nickchanges
@@ -491,8 +563,18 @@ createDbs con = do
                                  , activeusers
                                  , joins
                                  , activity
+                                 , savedate
+                                 , repuser
                                  ]
     return ()
+
+--doRead :: IConnection c => c -> IO ()
+--doRead con =
+--    line <- readLn :: IO String
+--    let parsed = parseLine line
+--    case parsed of
+--        Left err ->
+--        Right line -> insert
 
 populateDbs :: IConnection c => c -> IO ()
 populateDbs con = do
@@ -501,8 +583,7 @@ populateDbs con = do
     let utf8' = unpack $ decodeUtf8 bytestring
     let contents = lines utf8'
     let parsed = parseLine <$> zip [1..] contents
-    let time = undefined
-    let seed = (0, DbInsert time 0 Nothing 1)
+    let seed = (0, DbInsert 0)
     foldlM (processOne con) seed parsed
     commit con
 
