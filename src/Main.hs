@@ -6,8 +6,9 @@ import IRCDB.DB.Driver
 main :: IO ()
 main = do
     args <- getArgs
+    let driver = args !! 0
     let actions = if elem "-g" args then [Repopulate, Generate] else [Generate]
-    sequence_ $ doAction <$> actions
+    sequence_ $ doAction driver <$> actions
 
 
 

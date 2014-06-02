@@ -14,10 +14,10 @@ import IRCDB.DB.Queries
 
 data Action = Repopulate | Generate
 
-connect :: IO Connection
-connect = do
+connect :: String -> IO Connection
+connect driver = do
     let connectionString = "DSN=name32;\
-                          \ Driver={MySQL ODBC 5.3 ANSI Driver};\
+                          \ Driver={" ++ driver ++ "};\
                           \ Server=localhost;\
                           \ Port=3306;\
                           \ Database=testdb;\
@@ -216,9 +216,9 @@ makeFooter con = do
                       ]
     return $ genTag "div" [("id", "footer")] desc
 
-doAction :: Action -> IO ()
-doAction action = do
-    con <- connect
+doAction :: String -> Action -> IO ()
+doAction driver action = do
+    con <- connect driver
     case action of
         Repopulate -> repopulateDb con
         Generate -> generate con
