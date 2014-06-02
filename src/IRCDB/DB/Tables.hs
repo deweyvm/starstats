@@ -41,6 +41,7 @@ processOne _ (d, (DbInsert t ct prevName repCt)) (Left (DbParseError ln s err)) 
 processOne con (d, dbi@(DbInsert t ct _ _)) (Right l) = do
     newD <- if ct `mod` 1000 == 0
                 then do
+                        commit con
                         count <- getCount con
                         putStrLn (">" ++ show ct ++ " " ++ show count ++ " " ++ (printf "%0.2f" d))
                         return 0
@@ -126,7 +127,7 @@ insert (DbInsert t ct prevName repCt) (Message time typ name msg) con = do
     overallActiveQ <- prepare con qoact
     force <$> execute overallActiveQ [sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime]
     let qq = "INSERT INTO users (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, isNaysay, isApostrophe, isCaps, isWelcoming, q1, q2, q3, q4, timesMentioned, timesMentioning) \
-            \ VALUES (?, 0, 0, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)\
+            \ VALUES (?, 1, 0, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)\
             \ ON DUPLICATE KEY UPDATE\
             \     msgcount=msgcount+1, \
             \     firstseen=(\
@@ -504,6 +505,10 @@ populateDbs con = do
     let seed = (0, DbInsert time 0 Nothing 1)
     foldlM (processOne con) seed parsed
     commit con
+
+--insert all lines from x onward
+insertFrom :: IConnection c => c -> Int -> IO ()
+insertFrom
 
 repopulateDb :: IConnection c => c -> IO ()
 repopulateDb con = do
