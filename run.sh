@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-EXE=./dist/build/ircdb/ircdb.exe
+EXE=./dist/build/ircdb/ircdb
 
 pushd src &> /dev/null && \
 #echo "Generating documentation..." &&\
