@@ -33,6 +33,7 @@ def main():
         lines = [line for line in open(filename)]
         for line in lines:
             print(line, end="")
+            sys.stdout.flush()
             ct += 1
             checkCt(ct)
         if killeof:
