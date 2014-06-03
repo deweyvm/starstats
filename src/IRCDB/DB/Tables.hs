@@ -567,7 +567,7 @@ populateStdIn con = do
     get' <- try getLine :: IO (Either IOError String)
     case get' of
         Left l -> error $ show l
-        Right line -> do hPutStr stderr $ "Adding line: " ++ show line
+        Right line -> do hPutStr stderr $ "Adding line: " ++ show line ++ "\n"
                          if line == ""
                          then do print "Finished Here"
                                  commit con
