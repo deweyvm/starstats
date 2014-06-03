@@ -43,6 +43,7 @@ def main():
         newSize = getSize(filename)
         if newSize > size:
             print(getEnd(filename, newSize - size)[:-1])
+            sys.stdout.flush()
             ct += 1
             checkCt(ct)
             size = newSize
