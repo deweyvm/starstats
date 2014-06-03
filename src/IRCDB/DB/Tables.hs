@@ -582,7 +582,7 @@ populateStdIn con = do
 
 insertFromStdIn :: IConnection c => c -> DataLine -> IO ()
 insertFromStdIn con data' = do
-    e <- try (insert data' con) :: IO (Either SqlError ())
+    e <- try (withTransaction con (insert data')) :: IO (Either SqlError ())
     case e of
         Left l' -> do
             if (isInfixOf "Data too long" (show l'))
