@@ -4,9 +4,9 @@ import Prelude hiding (readFile)
 import Control.Applicative
 import Control.Exception
 import Control.DeepSeq
+import Control.Monad(foldM_)
 import qualified Criterion.Measurement as M
 import Data.ByteString(readFile)
-import Data.Foldable(foldlM)
 import Data.List(isInfixOf)
 import Data.Time.LocalTime
 import Data.Text(unpack)
@@ -317,8 +317,10 @@ insert (DbInsert ct) _ _ =
 updateDate :: IConnection c => c -> LocalTime -> IO ()
 updateDate con date = do
     let sqlDate = toSql date
-    quickQuery con "INSERT INTO savedate (date) VALUES (?)\
-                  \ ON DUPLICATE KEY UPDATE date=?" [sqlDate, sqlDate]
+    quickQuery con "INSERT INTO savedate (dummy, date)\
+                  \ VALUES (1, ?)\
+                  \ ON DUPLICATE KEY UPDATE\
+                  \     date=?" [sqlDate, sqlDate]
     return ()
 
 getDate :: IConnection c => c -> IO LocalTime
@@ -327,8 +329,9 @@ getDate con = do
                          \ FROM savedate\
                          \ LIMIT 1" []
     let extract ((x:_):_) = fromSql x
-        extract _         = anyTime
-    return $ extract val
+        extract _         = error "anyTime" --anyTime
+    let result = extract val
+    return $ result
 
 updateRep :: IConnection c => c -> String -> IO ()
 updateRep con s = do
@@ -541,8 +544,9 @@ createDbs con = do
                                     \ startDate DATETIME NOT NULL,\
                                     \ endDate DATETIME NOT NULL,\
                                     \ PRIMARY KEY (dummy));"
-    let savedate = "CREATE TABLE savedate(date DATETIME NOT NULL,\
-                                        \ PRIMARY KEY (date));"
+    let savedate = "CREATE TABLE savedate(dummy BOOL NOT NULL,\
+                                        \ date DATETIME NOT NULL,\
+                                        \ PRIMARY KEY (dummy));"
     let repuser = "CREATE TABLE repuser(name CHAR(21) NOT NULL,\
                                       \ num INT NOT NULL,\
                                       \ PRIMARY KEY (name));"
@@ -583,7 +587,7 @@ populateDbs con = do
     let contents = lines utf8'
     let parsed = parseLine <$> zip [1..] contents
     let seed = (0, DbInsert 0)
-    foldlM (processOne con) seed parsed
+    foldM_ (processOne con) seed parsed
     commit con
 
 repopulateDb :: IConnection c => c -> IO ()
