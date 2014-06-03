@@ -584,9 +584,8 @@ insertFromStdIn con data' = do
         Left l' -> do
             if (isInfixOf "Data too long" (show l'))
                 then do return ()
-                else do error (show l')
+                else do insertFromStdIn con data'
         Right _ -> return ()
-    commit con
 
 --populateDbs :: IConnection c => c -> IO ()
 --populateDbs con = do
