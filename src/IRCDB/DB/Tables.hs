@@ -574,7 +574,8 @@ populateStdIn con = do
                          else case parseLine line of
                                   Left err -> do commit con
                                                  error $ show err
-                                  Right dl -> insertFromStdIn con dl
+                                  Right dl -> do commit con
+                                                 insertFromStdIn con dl
     populateStdIn con
 
 insertFromStdIn :: IConnection c => c -> DataLine -> IO ()
