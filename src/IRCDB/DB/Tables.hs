@@ -582,9 +582,10 @@ insertFromStdIn con data' = do
     e <- try (withTransaction con (insert data')) :: IO (Either SqlError ())
     case e of
         Left l' -> do
-            if (isInfixOf "Data too long" (show l'))
-                then do return ()
-                else do insertFromStdIn con data'
+            case () of
+              ()| isInfixOf "Data too long" (show l') -> return ()
+                | isInfixOf "Deadlock" (show l') -> insertFromStdIn con data'
+                | otherwise -> error $ show l'
         Right _ -> return ()
 
 --populateDbs :: IConnection c => c -> IO ()
