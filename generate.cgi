@@ -5,7 +5,7 @@ env = {'MYSQL_UNIX_PORT':'/var/run/mysqld/mysqld.sock'}
 p = subprocess.Popen(["/home/dogue/ircdb/dist/build/ircdb/ircdb", "MySql ODBC 5.1 Driver", "-g"],
                      stdout=subprocess.PIPE,
                      env=env)
-print("Content-type: text/html\n")
+print("Content-type: text/html\n\n")
 t = time.clock()
 print(p.stdout.read())
 duration = time.clock() - t
