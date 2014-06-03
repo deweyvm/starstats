@@ -14,13 +14,13 @@ import IRCDB.DB.Queries
 
 data Action = Repopulate | Generate
 
-connect :: String -> IO Connection
-connect driver = do
+connect :: String -> String ->IO Connection
+connect driver dbName = do
     let connectionString = "DSN=name32;\
                           \ Driver={" ++ driver ++ "};\
                           \ Server=localhost;\
                           \ Port=3306;\
-                          \ Database=testdb;\
+                          \ Database=" ++ dbName ++ ";\
                           \ User=root;\
                           \ Password=password;\
                           \ Option=3;"
@@ -202,9 +202,9 @@ makeHeading con = do
                      ]
 
 
-doAction :: String -> Action -> IO ()
-doAction driver action = do
-    con <- connect driver
+doAction :: String -> String -> Action -> IO ()
+doAction driver dbName action = do
+    con <- connect driver dbName
     case action of
         Repopulate -> repopulateDb con
         Generate -> generate con
