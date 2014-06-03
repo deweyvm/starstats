@@ -35,6 +35,9 @@ case $1 in
     "-s")
       $EXE $driver +RTS -K100M -M3.9G > generated.html # | tee temp | (egrep '^>' || true)
       ;;
+    "-pc")
+      cat "$log" | $EXE $driver +RTS -K100M -M3.9G > generated.html
+      ;;
 esac
 
 if [[ $? -ne 0 ]] ; then
