@@ -162,7 +162,7 @@ generate con = do
                                nicks
                  , headerTable "Prolific Kickers"
                                "Name"
-                               "Times kicking"
+                               "Times Kicking"
                                kickers
                  , headerTable "Trouble Makers"
                                "Name"
@@ -177,7 +177,7 @@ generate con = do
     let contents = unlines tables
     heading <- makeHeading con
     footer <- makeFooter con
-    putStrLn "Content-type: text/html "
+
     putStrLn $ makeFile (heading ++ (linkLinks contents) ++ footer) "css.css" ["util.js"]
 
 makeHeading :: IConnection c => c -> IO String
