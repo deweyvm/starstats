@@ -24,7 +24,7 @@ if [[ $? -ne 0 ]] ; then
 fi
 echo "Running ircdb... "  &&\
 rm -f temp && \
-time $EXE $driver "$@" +RTS -K100M -M3.9G | tee temp | (egrep '^>' || true)
+time $EXE $driver "$@" +RTS -K100M -M3.9G # | tee temp | (egrep '^>' || true)
 if [[ $? -ne 0 ]] ; then
     echo "exe failed"
     exit 1

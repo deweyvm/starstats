@@ -11,11 +11,10 @@ import Data.List(isInfixOf)
 import Data.Time.LocalTime
 import Data.Text(unpack)
 import Data.Text.Encoding(decodeUtf8)
-import Data.Maybe(fromMaybe)
+import Data.Maybe(fromMaybe, isJust)
 import Database.HDBC
 import Text.Printf
 import System.IO hiding (readFile)
-
 import IRCDB.DB.Utils
 import IRCDB.Parser
 import IRCDB.Time
@@ -77,18 +76,19 @@ insert (DbInsert ct) (Message time typ name msg) con = do
     let qs = "INSERT INTO seqcount (name, num)\
             \ VALUES (?, ?);"
     prevName <- getRepName con
-
-    if (prevName /= Just name)
-        then do count <- fromMaybe (return 0) ((\p -> getRepCount con p) <$> prevName)
+    --print (">" ++ (show prevName))
+    if (prevName /= Just name && isJust prevName)
+        then do count <- fromMaybe (return 0) ((getRepCount con) <$> prevName)
                 if (count > 5)
                     then do quickQuery con qs [toSql prevName, toSql count]
+                            quickQuery con "DELETE FROM repuser" []
+                            updateRep con name
                             return ()
-                    else return ()
+                    else do quickQuery con "DELETE FROM repuser" []
+                            updateRep con name
+                            return ()
         else updateRep con name <* return ()
-    --case (prevName, newRep) of
-    --    (Just n, 1) | repCt > 5 -> do seqQ <- prepare con qs
-    --                                  force <$> execute seqQ [toSql n, toSql repCt]
-    --    _ -> return 1
+
 
 
     let qa = "INSERT INTO allmsgs (hash, contents, repcount, length, hasURL, isComplex)\
@@ -335,34 +335,33 @@ updateRep con s = do
     let sqlName = toSql s
     quickQuery con "INSERT INTO repuser (name, num)\
                   \ VALUES (?, 0)\
-                  \ ON DUPLICATE KEY UPDATE \
-                  \     name=?,\
-                  \     num=1" [sqlName, sqlName]
+                  \ ON DUPLICATE KEY UPDATE\
+                  \     num=num+1" [sqlName]
     return ()
 
 getRepCount :: IConnection c => c -> String -> IO Int
 getRepCount con s = do
     let sqlName = toSql s
-    val <- quickQuery con "IFNULL(SELECT num \
-                      \        FROM repuser \
-                      \        WHERE name=? \
-                      \        LIMIT 1, \
-                      \        0)" [sqlName]
+    val <- quickQuery con "SELECT IFNULL((SELECT num \
+                      \            FROM repuser \
+                      \            WHERE name=? \
+                      \            LIMIT 1), \
+                      \           0)" [sqlName]
     let extract ((x:_):_) = fromSql x :: Int
         extract [] = 0
     return $ extract val
 
 getRepName :: IConnection c => c -> IO (Maybe String)
 getRepName con = do
-    val <- quickQuery con "SELECT name FROM repuser" []
+    val <- quickQuery con "SELECT name FROM repuser LIMIT 1" []
     let extract ((x:_):_) = Just $ fromSql x :: Maybe String
         extract [] = Nothing
     return $ extract val
 
 deleteTemps :: IConnection c => c -> IO ()
 deleteTemps con = do
-    runQuery con "TRUNCATE uniquenicks;"
-    runQuery con "TRUNCATE top;"
+    runQuery con "DELETE FROM uniquenicks;"
+    runQuery con "DELETE FROM top;"
     return ()
 
 populateTop :: IConnection c => c -> IO ()
@@ -543,7 +542,7 @@ createDbs con = do
                                     \ endDate DATETIME NOT NULL,\
                                     \ PRIMARY KEY (dummy));"
     let savedate = "CREATE TABLE savedate(date DATETIME NOT NULL,\
-                                       \ PRIMARY KEY (date));"
+                                        \ PRIMARY KEY (date));"
     let repuser = "CREATE TABLE repuser(name CHAR(21) NOT NULL,\
                                       \ num INT NOT NULL,\
                                       \ PRIMARY KEY (name));"

@@ -28,7 +28,6 @@ getOverallActivity con = do
                      ,fromSql x16, fromSql x17, fromSql x18, fromSql x19
                      ,fromSql x20, fromSql x21, fromSql x22, fromSql x23]
     times <- runQuery con q
-    print times
     return $ zip [0..] (concat $ extract <$> times)
 
 getRandMessages :: IConnection c => c -> IO [(String, String)]
