@@ -1,20 +1,20 @@
+{-# LANGUAGE DoAndIfThenElse #-}
 module IRCDB.DB.Tables where
 
 import Prelude hiding (readFile)
 import Control.Applicative
 import Control.Exception
 import Control.DeepSeq
-import Control.Monad(foldM_)
-import qualified Criterion.Measurement as M
-import Data.ByteString(readFile)
+--import Data.ByteString(readFile)
 import Data.List(isInfixOf)
 import Data.Time.LocalTime
-import Data.Text(unpack)
-import Data.Text.Encoding(decodeUtf8)
+--import Data.Text(unpack)
+--import Data.Text.Encoding(decodeUtf8)
 import Data.Maybe(fromMaybe, isJust)
 import Database.HDBC
-import Text.Printf
+--import Text.Printf
 import System.IO hiding (readFile)
+import System.Exit
 import IRCDB.DB.Utils
 import IRCDB.Parser
 import IRCDB.Time
@@ -30,37 +30,27 @@ data DbInsert = DbInsert Int
 
 processOne :: IConnection c
            => c
-           -> (Double, DbInsert)
            -> Either DbParseError DataLine
-           -> IO (Double, DbInsert)
-processOne _ (d, (DbInsert ct)) (Left (DbParseError ln s err)) = do
-    putStrLn ("Line " ++ show ln)
+           -> IO ()
+processOne _ (Left (DbParseError s err)) = do
     print s
     print err
-    return (d, (DbInsert (ct+1)))
-processOne con (d, dbi@(DbInsert ct)) (Right l) = do
-    newD <- if ct `mod` 1000 == 0
-                then do
-                        commit con
-                        count <- getCount con
-                        putStrLn (">" ++ show ct ++ " " ++ show count ++ " " ++ (printf "%0.2f" d))
-                        return 0
-                else return d
+    return ()
+processOne con (Right l) = do
     hFlush stdout
-    e <- try (M.time $ insert dbi l con) :: IO (Either SqlError (Double, DbInsert))
+    e <- try (insert l con) :: IO (Either SqlError ())
     case e of
         Left l' -> do
             if (isInfixOf "Data too long" (show l'))
-                then do return (newD, DbInsert (ct + 1))
+                then do return ()
                 else do error (show l')
-        Right (tt, r) -> return (newD+tt, r)
+        Right _ -> return ()
 
 insert :: IConnection c
-       => DbInsert
-       -> DataLine
+       => DataLine
        -> c
-       -> IO DbInsert
-insert (DbInsert ct) (Message time typ name msg) con = do
+       -> IO ()
+insert (Message time typ name msg) con = do
     t <- getDate con
     let newT = setHoursMinutes t time
     let sqlName = toSql name
@@ -259,8 +249,8 @@ insert (DbInsert ct) (Message time typ name msg) con = do
     mention2 <- prepare con qqp
     force <$> execute mention2 [sqlMsg, sqlMsg, sqlName]
     updateDate con newT
-    return (DbInsert (ct+1))
-insert (DbInsert ct) (Nick time old new) con = do
+    return ()
+insert (Nick time old new) con = do
     t <- getDate con
     let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO nickchanges (oldname, newname, time)\
@@ -270,8 +260,8 @@ insert (DbInsert ct) (Nick time old new) con = do
     let sqlTime = toSql newT
     force <$> execute prepared [sqlOld, sqlMsg, sqlTime]
     updateDate con newT
-    return (DbInsert (ct+1))
-insert (DbInsert ct) (Kick time kickee kicker reason) con = do
+    return ()
+insert (Kick time kickee kicker reason) con = do
     t <- getDate con
     let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO kicks (kicker, kickee, reason, time)\
@@ -282,8 +272,8 @@ insert (DbInsert ct) (Kick time kickee kicker reason) con = do
     let sqlTime = toSql newT
     force <$> execute prepared [sqlKicker, sqlKickee, sqlReason, sqlTime]
     updateDate con newT
-    return (DbInsert (ct+1))
-insert (DbInsert ct) (Topic time setter topic) con = do
+    return ()
+insert (Topic time setter topic) con = do
     t <- getDate con
     let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO topics (name, topic, time)\
@@ -293,8 +283,8 @@ insert (DbInsert ct) (Topic time setter topic) con = do
     let sqlTime = toSql newT
     force <$> execute prepared [sqlName, sqlTopic, sqlTime]
     updateDate con newT
-    return (DbInsert (ct+1))
-insert (DbInsert ct) (Join time name) con = do
+    return ()
+insert (Join time name) con = do
     t <- getDate con
     let newT = setHoursMinutes t time
     prepared <- prepare con "INSERT INTO joins (name, num)\
@@ -304,15 +294,15 @@ insert (DbInsert ct) (Join time name) con = do
     let sqlName = toSql name
     force <$> execute prepared [sqlName]
     updateDate con newT
-    return (DbInsert (ct+1))
-insert (DbInsert ct) (Day date) con = do
+    return ()
+insert (Day date) con = do
     updateDate con date
-    return (DbInsert (ct+1))
-insert (DbInsert ct) (Open date) con = do
+    return ()
+insert (Open date) con = do
     updateDate con date
-    return (DbInsert (ct+1))
-insert (DbInsert ct) _ _ =
-    return (DbInsert (ct+1))
+    return ()
+insert  _ _ =
+    return ()
 
 updateDate :: IConnection c => c -> LocalTime -> IO ()
 updateDate con date = do
@@ -571,27 +561,45 @@ createDbs con = do
                                  ]
     return ()
 
---doRead :: IConnection c => c -> IO ()
---doRead con =
---    line <- readLn :: IO String
---    let parsed = parseLine line
---    case parsed of
---        Left err ->
---        Right line -> insert
 
-populateDbs :: IConnection c => c -> IO ()
-populateDbs con = do
-    logfile <- readConfig
-    bytestring <- readFile logfile
-    let utf8' = unpack $ decodeUtf8 bytestring
-    let contents = lines utf8'
-    let parsed = parseLine <$> zip [1..] contents
-    let seed = (0, DbInsert 0)
-    foldM_ (processOne con) seed parsed
-    commit con
+populateStdIn :: IConnection c => c -> IO ()
+populateStdIn con = do
+    get' <- try getLine :: IO (Either IOError String)
+    case get' of
+        Left l -> error $ show l
+        Right line -> do if line == ""
+                         then do print "Finished Here"
+                                 commit con
+                                 exitWith ExitSuccess
+                         else case parseLine line of
+                                  Left err -> do commit con
+                                                 error $ show err
+                                  Right dl -> insertFromStdIn con dl
+    populateStdIn con
+
+insertFromStdIn :: IConnection c => c -> DataLine -> IO ()
+insertFromStdIn con data' = do
+    e <- try (insert data' con) :: IO (Either SqlError ())
+    case e of
+        Left l' -> do
+            if (isInfixOf "Data too long" (show l'))
+                then do return ()
+                else do error (show l')
+        Right _ -> return ()
+
+--populateDbs :: IConnection c => c -> IO ()
+--populateDbs con = do
+--    logfile <- readConfig
+--    bytestring <- readFile logfile
+--    let utf8' = unpack $ decodeUtf8 bytestring
+--    let contents = lines utf8'
+--    let parsed = parseLine <$> zip [1..] contents
+--    let seed = (0, DbInsert 0)
+--    foldM_ (processOne con) seed parsed
+--    commit con
 
 repopulateDb :: IConnection c => c -> IO ()
 repopulateDb con = do
     deleteDbs con
     createDbs con
-    populateDbs con
+    populateStdIn con

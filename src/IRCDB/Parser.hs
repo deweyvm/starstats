@@ -168,10 +168,11 @@ get = fromMaybe anyTime
 parseDateString :: Parser LocalTime
 parseDateString = (get . stringToLocalTime) <$> eatLine
 
-data DbParseError = DbParseError Int String String
-
-parseLine :: (Int, String) -> Either DbParseError DataLine
-parseLine (ln, s) =
+data DbParseError = DbParseError String -- line attempted to parse
+                                 String -- error message
+    deriving Show
+parseLine :: String -> Either DbParseError DataLine
+parseLine s =
     case parse parseDataLine "" s of
-        Left err -> Left (DbParseError ln s (show err))
+        Left err -> Left (DbParseError s (show err))
         Right success -> Right success

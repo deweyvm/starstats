@@ -22,20 +22,31 @@ if [[ $? -ne 0 ]] ; then
     echo "Build Failed"
     exit 1
 fi
+log=`cat config`
 echo "Running ircdb... "  &&\
 rm -f temp && \
-time $EXE $driver "$@" +RTS -K100M -M3.9G # | tee temp | (egrep '^>' || true)
+case $1 in
+    "-p")
+      python watch.py "$log" "-r" "-k" | $EXE $driver "$@" +RTS -K100M -M3.9G #
+      ;;
+    "-g")
+      $EXE $driver +RTS -K100M -M3.9G | tee temp | (egrep '^>' || true)
+      ;;
+esac
+
 if [[ $? -ne 0 ]] ; then
     echo "exe failed"
     exit 1
 fi
-cat temp | egrep '^@' | sort -k2 -t '	' &&\
-cat temp | egrep '^>' | sed 's/.* .* \(.*\)/\1/g' > "in.csv" &&\
-lines=`cat "in.csv" | wc -l`
-if [[ "$lines" -gt 0 ]] ; then
-    gnuplot graph.plot
+if [[ -f temp ]] ; then
+    cat temp | egrep '^@' | sort -k2 -t '	' &&\
+    cat temp | egrep '^>' | sed 's/.* .* \(.*\)/\1/g' > "in.csv" &&\
+    lines=`cat "in.csv" | wc -l`
+    if [[ "$lines" -gt 0 ]] ; then
+        gnuplot graph.plot
+    fi
+    rm -f temp
 fi
-rm -f temp
 if [[ $? -ne 0 ]] ; then
     echo "failed"
     exit 1
