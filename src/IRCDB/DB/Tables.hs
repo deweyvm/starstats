@@ -570,14 +570,11 @@ populateStdIn con = do
         Right line -> do hPutStr stderr $ "Adding line: " ++ show line ++ "\n"
                          if line == ""
                          then do print "Finished Here"
-                                 commit con
                                  exitWith ExitSuccess
                          else case parseLine line of
                                   Left err -> do commit con
                                                  error $ show err
                                   Right dl -> do insertFromStdIn con dl
-                                                 commit con
-
     populateStdIn con
 
 insertFromStdIn :: IConnection c => c -> DataLine -> IO ()
@@ -589,6 +586,7 @@ insertFromStdIn con data' = do
                 then do return ()
                 else do error (show l')
         Right _ -> return ()
+    commit con
 
 --populateDbs :: IConnection c => c -> IO ()
 --populateDbs con = do
