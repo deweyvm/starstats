@@ -235,7 +235,7 @@ getPopular con =
            \ FROM users\
            \ JOIN uniquenicks AS u\
            \ ON u.name = users.name\
-           \ WHERE c > 0\
+           \ WHERE timesMentioned > 0\
            \ ORDER BY c DESC\
            \ LIMIT 10;"  in
     getAndExtract con [] extractTup q
@@ -271,8 +271,8 @@ getTextSpeakers :: IConnection c => c -> IO [(String, Int)]
 getTextSpeakers con =
     let q = "SELECT name, isTxt AS c\
            \ FROM users\
+           \ WHERE isTxt > 0\
            \ ORDER BY c DESC\
-           \ WHERE c > 0\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
 
@@ -296,7 +296,7 @@ getQuestions :: IConnection c => c -> IO [(String, Int)]
 getQuestions con =
     let q = "SELECT name, isQuestion AS c\
            \ FROM users\
-           \ WHERE c > 0\
+           \ WHERE isQuestion > 0\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
@@ -305,7 +305,7 @@ getAmazed :: IConnection c => c -> IO [(String,Int)]
 getAmazed con =
     let q = "SELECT name, isAmaze as c\
            \ FROM users\
-           \ WHERE c > 0\
+           \ WHERE isAmaze > 0\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
@@ -314,7 +314,7 @@ getExcited :: IConnection c => c -> IO [(String, Int)]
 getExcited con =
     let q = "SELECT name, isExclamation as c\
            \ FROM users\
-           \ WHERE c > 0\
+           \ WHERE isExclamation > 0\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
@@ -323,7 +323,7 @@ getYell :: IConnection c => c -> IO [(String, Int)]
 getYell con =
     let q = "SELECT name, isCaps AS c\
            \ FROM users\
-           \ WHERE c > 0\
+           \ WHERE isCaps > 0\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
