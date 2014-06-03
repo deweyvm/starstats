@@ -27,7 +27,7 @@ echo "Running ircdb... "  &&\
 rm -f temp && \
 case $1 in
     "-p")
-      python watch.py "$log" "-r" | $EXE $driver "$@" +RTS -K100M -M3.9G #
+      python3 watch.py "$log" "-r" | $EXE $driver "$@" +RTS -K100M -M3.9G #
       ;;
     "-g")
       $EXE $driver +RTS -K100M -M3.9G # | tee temp | (egrep '^>' || true)
