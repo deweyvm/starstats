@@ -28,8 +28,8 @@ connect driver dbName = do
     return conn
 
 
-generate :: IConnection c => c -> IO ()
-generate con = do
+generate :: IConnection c => String -> c -> IO ()
+generate dbName con = do
     setLocaleEncoding utf8
     setFileSystemEncoding utf8
     setForeignEncoding utf8
@@ -175,13 +175,15 @@ generate con = do
                  ]
 
     let contents = unlines tables
-    heading <- makeHeading con
+    heading <- makeHeading dbName con
 
-    putStrLn $ makeFile (heading ++ (linkLinks contents)) "/css.css" ["/util.js"]
+    putStrLn $ makeFile (heading ++ (linkLinks contents)) "/css.css" (getTitle dbName) ["/util.js"]
 
-makeHeading :: IConnection c => c -> IO String
-makeHeading con = do
-    let channel = "<channel>"
+getTitle :: String -> String
+getTitle s = tag "title" ("Stats for #" ++ s)
+
+makeHeading :: IConnection c => String -> c -> IO String
+makeHeading channel con = do
     !words' <- time' "H Get Words" $ getTotalWords con
     !msgs <- time' "H Get Messages" $ getTotalMessages con
     !start <- time' "H Get Start" $ getStartDate con
@@ -207,5 +209,5 @@ doAction driver dbName action = do
     con <- connect driver dbName
     case action of
         Repopulate -> repopulateDb con
-        Generate -> generate con
+        Generate -> generate dbName con
     disconnect con

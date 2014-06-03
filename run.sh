@@ -23,20 +23,21 @@ if [[ $? -ne 0 ]] ; then
     exit 1
 fi
 log=`cat config`
+db=`cat config | sed 's/.*\/#\(.*\)[.]log/\1/'`
 echo "Running ircdb... "  &&\
 rm -f temp && \
 case $1 in
 "-p")
-    python3 watch.py "$log" "-r" | $EXE $driver "$@" +RTS -K100M -M3.9G #
+    python3 watch.py "$log" "-r" | $EXE "$driver" "$db" "$@" +RTS -K100M -M3.9G #
 ;;
 "-g")
-    $EXE $driver +RTS -K100M -M3.9G
+    $EXE "$driver" "$db" +RTS -K100M -M3.9G
 ;;
 "-s")
-    $EXE $driver +RTS -K100M -M3.9G > generated.html
+    $EXE "$driver" "$db" +RTS -K100M -M3.9G > generated.html
 ;;
 "-pc")
-    cat "$log" | $EXE $driver +RTS -K100M -M3.9G > generated.html
+    cat "$log" | $EXE "$driver" "$db" +RTS -K100M -M3.9G > generated.html
 ;;
 esac
 if [[ $? -ne 0 ]] ; then

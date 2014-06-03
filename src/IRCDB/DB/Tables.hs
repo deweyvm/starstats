@@ -28,23 +28,6 @@ getCount con = do
 
 data DbInsert = DbInsert Int
 
-processOne :: IConnection c
-           => c
-           -> Either DbParseError DataLine
-           -> IO ()
-processOne _ (Left (DbParseError s err)) = do
-    print s
-    print err
-    return ()
-processOne con (Right l) = do
-    hFlush stdout
-    e <- try (insert l con) :: IO (Either SqlError ())
-    case e of
-        Left l' -> do
-            if (isInfixOf "Data too long" (show l'))
-                then do return ()
-                else do error (show l')
-        Right _ -> return ()
 
 insert :: IConnection c
        => DataLine

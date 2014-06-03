@@ -140,13 +140,13 @@ headerTable h c1 c2 xs =
              let mapped = (second print') <$> xs in
              withHeading h $ simpleTable ((pairMap (tag "b") s):mapped)
 
-makeFile :: String -> String -> [String] -> String
-makeFile x file scripts =
+makeFile :: String -> String -> String -> [String] -> String
+makeFile x file head' scripts =
     let scriptSrc src = genTag "script" [("language", "javascript"), ("src", src)] "" in
     let css = voidTag "link" [("href",file),("rel", "stylesheet"), ("type", "text/css")] in
     let s :: [String]
         s = scriptSrc <$> scripts in
-    tag "html" $ tag "head" (css ++ (concat $ s)) ++ tag "body" x
+    tag "html" $ tag "head" (css ++ (concat $ s) ++ head') ++ tag "body" x
 
 simpleTable :: Print a => [(String,a)] -> String
 simpleTable xs = tag "table" $ concat $ format <$> xs
