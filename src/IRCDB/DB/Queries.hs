@@ -184,6 +184,7 @@ getWelcomers :: IConnection c => c -> IO [(String, Int)]
 getWelcomers con =
     let q = "SELECT name, isWelcoming AS c\
            \ FROM users\
+           \ WHERE isWelcoming > 0 \
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
