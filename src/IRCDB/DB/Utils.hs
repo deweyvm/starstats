@@ -179,5 +179,5 @@ time' msg action = do
     (s, res) <- time $ force <$> action
     let len = length msg
     let whitespace = printf ("%" ++ show (27 - len) ++ "s") " " ++ "\t"
-    putStrLn ("@" ++ msg ++ ": " ++ whitespace ++ printf "%.3fs" s)
+    --putStrLn ("@" ++ msg ++ ": " ++ whitespace ++ printf "%.3fs" s)
     return res

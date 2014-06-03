@@ -30,7 +30,10 @@ case $1 in
       python watch.py "$log" "-r" "-k" | $EXE $driver "$@" +RTS -K100M -M3.9G #
       ;;
     "-g")
-      $EXE $driver +RTS -K100M -M3.9G | tee temp | (egrep '^>' || true)
+      $EXE $driver +RTS -K100M -M3.9G # | tee temp | (egrep '^>' || true)
+      ;;
+    "-s")
+      $EXE $driver +RTS -K100M -M3.9G > generated.html # | tee temp | (egrep '^>' || true)
       ;;
 esac
 
