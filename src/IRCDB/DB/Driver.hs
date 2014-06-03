@@ -178,7 +178,7 @@ generate con = do
     heading <- makeHeading con
     footer <- makeFooter con
 
-    writeFile "generated.html" $ makeFile (heading ++ (linkLinks contents) ++ footer) "css.css" ["util.js"]
+    putStrLn $ makeFile (heading ++ (linkLinks contents) ++ footer) "css.css" ["util.js"]
 
 makeHeading :: IConnection c => c -> IO String
 makeHeading con = do
