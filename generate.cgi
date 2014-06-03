@@ -2,6 +2,8 @@
 import subprocess
 import datetime
 import time
+import cgitb
+cgitb.enable()
 t = time.clock()
 env = {'MYSQL_UNIX_PORT':'/var/run/mysqld/mysqld.sock'}
 p = subprocess.Popen(["./ircdb \"MySql ODBC 5.1 Driver\" -g"],

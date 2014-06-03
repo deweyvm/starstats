@@ -7,7 +7,8 @@ main :: IO ()
 main = do
     args <- getArgs
     let driver = args !! 0
+    let chanName = args !! 1
     let actions = if elem "-p" args then [Repopulate, Generate] else [Generate]
-    sequence_ $ doAction driver <$> actions
+    sequence_ $ doAction driver chanName <$> actions
 
 

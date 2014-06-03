@@ -144,7 +144,7 @@ generate con = do
                                "Name"
                                "Times Talking to Self"
                                self
-                 , headerTable "Unique Nicks"
+                 , headerTable "Recently Active Users"
                                "Name"
                                "Messages"
                                unique

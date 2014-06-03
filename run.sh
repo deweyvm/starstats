@@ -26,34 +26,20 @@ log=`cat config`
 echo "Running ircdb... "  &&\
 rm -f temp && \
 case $1 in
-    "-p")
-      python3 watch.py "$log" "-r" | $EXE $driver "$@" +RTS -K100M -M3.9G #
-      ;;
-    "-g")
-      $EXE $driver +RTS -K100M -M3.9G # | tee temp | (egrep '^>' || true)
-      ;;
-    "-s")
-      $EXE $driver +RTS -K100M -M3.9G > generated.html # | tee temp | (egrep '^>' || true)
-      ;;
-    "-pc")
-      cat "$log" | $EXE $driver +RTS -K100M -M3.9G > generated.html
-      ;;
+"-p")
+    python3 watch.py "$log" "-r" | $EXE $driver "$@" +RTS -K100M -M3.9G #
+;;
+"-g")
+    $EXE $driver +RTS -K100M -M3.9G
+;;
+"-s")
+    $EXE $driver +RTS -K100M -M3.9G > generated.html
+;;
+"-pc")
+    cat "$log" | $EXE $driver +RTS -K100M -M3.9G > generated.html
+;;
 esac
-
 if [[ $? -ne 0 ]] ; then
     echo "exe failed"
-    exit 1
-fi
-if [[ -f temp ]] ; then
-    cat temp | egrep '^@' | sort -k2 -t '	' &&\
-    cat temp | egrep '^>' | sed 's/.* .* \(.*\)/\1/g' > "in.csv" &&\
-    lines=`cat "in.csv" | wc -l`
-    if [[ "$lines" -gt 0 ]] ; then
-        gnuplot graph.plot
-    fi
-    rm -f temp
-fi
-if [[ $? -ne 0 ]] ; then
-    echo "failed"
     exit 1
 fi
