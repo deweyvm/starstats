@@ -288,7 +288,7 @@ getApostrophes con = do
     let extract :: [SqlValue] -> (String, String)
         extract = mapSnd showDouble . extractTup
     r1 <- reverse <$> getAndExtract con []  extract q1
-    let (xs, ys) = (getTopBottom 5 r1)
+    let (xs, ys) = (getTopBottom (length r1 `quot` 2) r1)
     let res = xs  ++ [("...", "...")] ++ ys
     return $ res
 
