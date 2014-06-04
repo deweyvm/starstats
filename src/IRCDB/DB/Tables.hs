@@ -526,6 +526,7 @@ createDbs con = do
                                       \ PRIMARY KEY (name));"
     let lastmsg = "CREATE TABLE lastmsg(dummy BOOL NOT NULL,\
                                       \ msg TEXT,\
+                                      \ date DATETIME,\
                                       \ PRIMARY KEY (dummy));"
     sequence_ $ runQuery con <$> [ messages
                                  , statuses
@@ -549,13 +550,20 @@ createDbs con = do
                                  ]
     return ()
 
-insertMessage :: IConnection c => c -> String -> IO ()
-insertMessage con s = do
+insertMessage :: IConnection c => String -> LocalTime ->  c -> IO ()
+insertMessage s t con = do
+    let sqlMsg = toSql s
+    let sqlTime = toSql t
     quickQuery con "INSERT INTO lastmsg (dummy, msg)\
-                  \ VALUES (1, ?)\
+                  \ VALUES (1, ?, ?)\
                   \ ON DUPLICATE KEY UPDATE\
-                  \     msg=?;" [toSql s, toSql s]
+                  \     msg=?,\
+                  \     date=?;" [sqlMsg, sqlTime, sqlMsg, sqlTime]
     return ()
+
+--getLatest :: IConnection c => c -> Maybe (String, LocalTime)
+--getLatest con =
+    --how to return empty set instead of null on no match?
 
 populateStdIn :: IConnection c => c -> IO ()
 populateStdIn con = do
@@ -568,22 +576,24 @@ populateStdIn con = do
             then do print "Finished Here"
                     exitWith ExitSuccess
             else case parseLine line of
-                     Left err -> do commit con
-                                    error $ show err
+                     Left err -> do
+                         commit con
+                         error $ show err
                      Right dl -> do
-                         insertFromStdIn con dl
-                         insertMessage con line
+                         date <- getDate con
+                         insertFromStdIn dl con
+                         insertMessage line date con
     populateStdIn con
 
-insertFromStdIn :: IConnection c => c -> DataLine -> IO ()
-insertFromStdIn con data' = do
+insertFromStdIn :: IConnection c => DataLine -> c -> IO ()
+insertFromStdIn data' con = do
     e <- try (withTransaction con (insert data')) :: IO (Either SqlError ())
     case e of
         Left l' -> do
             let err = show l'
             case () of
               ()| isInfixOf "Data too long" err -> return ()
-                | isInfixOf "Deadlock" err -> insertFromStdIn con data'
+                | isInfixOf "Deadlock" err -> insertFromStdIn data' con
                 | otherwise -> error err
         Right _ -> do
             return ()

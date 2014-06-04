@@ -17,7 +17,7 @@ fi
 popd &> /dev/null
 echo "Building... "
 rm -f $EXE &&\
-cabal build &> /dev/null
+cabal build 2>&1 >/dev/null
 if [[ $? -ne 0 ]] ; then
     echo "Build Failed"
     exit 1
@@ -27,17 +27,19 @@ db=`cat config | sed 's/.*\/#\(.*\)[.]log/\1/'`
 echo "Running ircdb... "  &&\
 rm -f temp && \
 case $1 in
+"-w")
+    $EXE "-w" | $EXE "$driver" "$db" "-p"
 "-p")
-    python3 watch.py "$log" "-r" | $EXE "$driver" "$db" "$@" +RTS -K100M -M3.9G #
+    python3 watch.py "$log" "-r" | $EXE "$driver" "$db" "$@"
 ;;
 "-g")
-    $EXE "$driver" "$db" +RTS -K100M -M3.9G
+    $EXE "$driver" "$db"
 ;;
 "-s")
-    $EXE "$driver" "$db" +RTS -K100M -M3.9G > generated.html
+    $EXE "$driver" "$db" > generated.html
 ;;
 "-pc")
-    cat "$log" | $EXE "$driver" "$db" +RTS -K100M -M3.9G > generated.html
+    cat "$log" | $EXE "$driver" "$db" > generated.html
 ;;
 esac
 if [[ $? -ne 0 ]] ; then
