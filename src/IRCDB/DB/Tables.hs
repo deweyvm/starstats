@@ -554,7 +554,7 @@ insertMessage :: IConnection c => String -> LocalTime ->  c -> IO ()
 insertMessage s t con = do
     let sqlMsg = toSql s
     let sqlTime = toSql t
-    quickQuery con "INSERT INTO lastmsg (dummy, msg)\
+    quickQuery con "INSERT INTO lastmsg (dummy, msg, date)\
                   \ VALUES (1, ?, ?)\
                   \ ON DUPLICATE KEY UPDATE\
                   \     msg=?,\
@@ -580,8 +580,8 @@ populateStdIn con = do
                          commit con
                          error $ show err
                      Right dl -> do
-                         date <- getDate con
                          insertFromStdIn dl con
+                         date <- getDate con
                          insertMessage line date con
     populateStdIn con
 

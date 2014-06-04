@@ -27,8 +27,12 @@ db=`cat config | sed 's/.*\/#\(.*\)[.]log/\1/'`
 echo "Running ircdb... "  &&\
 rm -f temp && \
 case $1 in
+"-tw")
+    $EXE "$log" "-w" "-rp"
+;;
 "-w")
-    $EXE "-w" | $EXE "$driver" "$db" "-p"
+    $EXE "$log" "-w" "-rp" | $EXE "$driver" "$db" "-p"
+;;
 "-p")
     python3 watch.py "$log" "-r" | $EXE "$driver" "$db" "$@"
 ;;

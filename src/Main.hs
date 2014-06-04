@@ -10,7 +10,7 @@ main = do
     args <- getArgs
     if elem "-w" args
     then do let file = args !! 0
-            let repop = args !! 1 == "-rp"
+            let repop = elem "-rp" args
             watch file repop
     else do let driver = args !! 0
             let chanName = args !! 1

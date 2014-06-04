@@ -5,7 +5,7 @@ import Control.Applicative
 import System.Posix.Files
 import System.Posix.Types
 import System.IO
-import Data.ByteString.Char8 hiding (putStrLn, readFile, lines)
+import Data.ByteString.Char8 hiding (putStr, putStrLn, readFile, lines)
 import Data.ByteString.UTF8 hiding (lines)
 import Control.Concurrent
 
@@ -28,7 +28,7 @@ watch :: String -> Bool -> IO ()
 watch file doRepop = do
     exists <- doesFileExist file
     if not exists
-    then print "no file"
+    then error "no file"
     else do if doRepop
             then repopulate file
             else return ()
@@ -45,10 +45,12 @@ watchFile :: String -> FileOffset -> IO ()
 watchFile file size = do
     newSize <- getSize file
     if newSize > size
-    then do _ <- putStrLn <$> getEnd file (newSize - size)
+    then do end <- getEnd file (newSize - size)
+            putStr end
             hFlush stdout
-    else do threadDelay 1000000 --microseconds
-    watchFile file size
+    else return ()
+    threadDelay 1000000 --microseconds
+    watchFile file newSize
 --    while True:
 --        newSize = getSize(filename)
 --        if newSize > size:
