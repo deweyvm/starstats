@@ -51,35 +51,3 @@ watchFile file size = do
     else return ()
     threadDelay 1000000 --microseconds
     watchFile file newSize
---    while True:
---        newSize = getSize(filename)
---        if newSize > size:
---            print(getEnd(filename, newSize - size)[:-1])
---            sys.stdout.flush()
---            ct += 1
---            checkCt(ct)
---            size = newSize
-
---def main():
---    ct = 0
---    t = 0
---    filename = sys.argv[1]
---    if not os.path.isfile(filename):
---        sys.stderr.write('No such file "%s"' % filename)
---        sys.exit(1)
---    size = getSize(filename)
---    repopulate = "-r" in sys.argv
---    killeof = "-k" in sys.argv
---    if repopulate:
---        lines = [line for line in open(filename)]
---        for line in lines:
---            print(line, end="")
---            sys.stdout.flush()
---            ct += 1
---            checkCt(ct)
---        if killeof:
---            print("")
---            sys.exit(1)
-
---        time.sleep(1)
---threadDelay
