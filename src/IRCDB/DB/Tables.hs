@@ -382,6 +382,7 @@ deleteDbs con = do
                                  , "DROP TABLE IF EXISTS activity;"
                                  , "DROP TABLE IF EXISTS savedate;"
                                  , "DROP TABLE IF EXISTS repuser;"
+                                 , "DROP TABLE IF EXISTS lastmsg;"
                                  ]
     return ()
 
@@ -523,6 +524,9 @@ createDbs con = do
     let repuser = "CREATE TABLE repuser(name CHAR(21) NOT NULL,\
                                       \ num INT NOT NULL,\
                                       \ PRIMARY KEY (name));"
+    let lastmsg = "CREATE TABLE lastmsg(dummy BOOL NOT NULL,\
+                                      \ msg TEXT,\
+                                      \ PRIMARY KEY (dummy));"
     sequence_ $ runQuery con <$> [ messages
                                  , statuses
                                  , nickchanges
@@ -541,23 +545,34 @@ createDbs con = do
                                  , activity
                                  , savedate
                                  , repuser
+                                 , lastmsg
                                  ]
     return ()
 
+insertMessage :: IConnection c => c -> String -> IO ()
+insertMessage con s = do
+    quickQuery con "INSERT INTO lastmsg (dummy, msg)\
+                  \ VALUES (1, ?)\
+                  \ ON DUPLICATE KEY UPDATE\
+                  \     msg=?;" [toSql s, toSql s]
+    return ()
 
 populateStdIn :: IConnection c => c -> IO ()
 populateStdIn con = do
     get' <- try getLine :: IO (Either IOError String)
     case get' of
         Left l -> error $ show l
-        Right line -> do hPutStr stderr $ "Adding line: " ++ show line ++ "\n"
-                         if line == ""
-                         then do print "Finished Here"
-                                 exitWith ExitSuccess
-                         else case parseLine line of
-                                  Left err -> do commit con
-                                                 error $ show err
-                                  Right dl -> do insertFromStdIn con dl
+        Right line -> do
+            hPutStr stderr $ "Adding line: " ++ show line ++ "\n"
+            if line == ""
+            then do print "Finished Here"
+                    exitWith ExitSuccess
+            else case parseLine line of
+                     Left err -> do commit con
+                                    error $ show err
+                     Right dl -> do
+                         insertFromStdIn con dl
+                         insertMessage con line
     populateStdIn con
 
 insertFromStdIn :: IConnection c => c -> DataLine -> IO ()
@@ -570,18 +585,8 @@ insertFromStdIn con data' = do
               ()| isInfixOf "Data too long" err -> return ()
                 | isInfixOf "Deadlock" err -> insertFromStdIn con data'
                 | otherwise -> error err
-        Right _ -> return ()
-
---populateDbs :: IConnection c => c -> IO ()
---populateDbs con = do
---    logfile <- readConfig
---    bytestring <- readFile logfile
---    let utf8' = unpack $ decodeUtf8 bytestring
---    let contents = lines utf8'
---    let parsed = parseLine <$> zip [1..] contents
---    let seed = (0, DbInsert 0)
---    foldM_ (processOne con) seed parsed
---    commit con
+        Right _ -> do
+            return ()
 
 repopulateDb :: IConnection c => c -> IO ()
 repopulateDb con = do
