@@ -1,5 +1,5 @@
 {-# LANGUAGE DoAndIfThenElse, NoMonomorphismRestriction, BangPatterns #-}
-module IRCDB.DB.Driver where
+module StarStats.DB.Driver where
 
 import Prelude hiding (foldl, concat, sequence_, sum)
 import Control.Applicative
@@ -7,11 +7,11 @@ import Data.List (concat)
 import Database.HDBC
 import Database.HDBC.ODBC
 import GHC.IO.Encoding hiding (close)
-import IRCDB.Renderer
-import IRCDB.DB.Utils
-import IRCDB.DB.Tables
-import IRCDB.DB.Queries
-import IRCDB.DB.Connection
+import StarStats.Renderer
+import StarStats.DB.Utils
+import StarStats.DB.Tables
+import StarStats.DB.Queries
+import StarStats.DB.Connection
 
 data Action = Repopulate | Generate
 

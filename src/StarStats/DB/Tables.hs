@@ -1,5 +1,5 @@
 {-# LANGUAGE DoAndIfThenElse, BangPatterns #-}
-module IRCDB.DB.Tables where
+module StarStats.DB.Tables where
 
 import Prelude hiding (readFile)
 import Control.Applicative
@@ -11,9 +11,9 @@ import Data.Maybe(fromMaybe, isJust)
 import Database.HDBC
 import System.IO hiding (readFile)
 import System.Exit
-import IRCDB.DB.Utils
-import IRCDB.Parser
-import IRCDB.Time
+import StarStats.DB.Utils
+import StarStats.Parser
+import StarStats.Time
 
 getCount :: IConnection c => c -> IO Int
 getCount con = do

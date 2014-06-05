@@ -1,4 +1,4 @@
-module IRCDB.Parser where
+module StarStats.Parser where
 
 import Control.Applicative((<*>), (<$>), (*>), (<*))
 import Text.Parsec
@@ -8,7 +8,7 @@ import Text.Parsec.Language (emptyDef)
 import Data.Functor.Identity
 import Data.Time.LocalTime
 import Data.Maybe
-import IRCDB.Time
+import StarStats.Time
 
 type Name = String
 type Contents = String

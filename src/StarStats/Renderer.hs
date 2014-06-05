@@ -1,5 +1,5 @@
 {-# LANGUAGE DoAndIfThenElse, BangPatterns, FlexibleInstances, ExistentialQuantification, ImpredicativeTypes #-}
-module IRCDB.Renderer where
+module StarStats.Renderer where
 
 import Control.Arrow
 import Control.Applicative
@@ -8,7 +8,7 @@ import Data.Maybe
 import qualified Data.Map as M
 import Text.Printf
 
-import IRCDB.DB.Utils
+import StarStats.DB.Utils
 
 data TimeBar = TimeBar String Int Int Int Int
 

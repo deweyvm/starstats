@@ -1,5 +1,6 @@
 {-# LANGUAGE DoAndIfThenElse, FlexibleContexts, FlexibleInstances, TypeSynonymInstances #-}
-module IRCDB.DB.Utils where
+module StarStats.DB.Utils where
+
 import Control.DeepSeq
 import Control.Applicative
 import Criterion.Measurement
@@ -9,7 +10,6 @@ import Data.Maybe
 import Database.HDBC
 import Text.Printf
 import System.Directory
-import Debug.Trace
 
 linkLinks :: String -> String
 linkLinks s = replaceUrls s (\x -> "<a href=\"" ++ x ++ "\">" ++ x ++ "</a>")

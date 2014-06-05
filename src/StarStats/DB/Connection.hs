@@ -1,5 +1,5 @@
 {-# LANGUAGE DoAndIfThenElse, NoMonomorphismRestriction, BangPatterns #-}
-module IRCDB.DB.Connection where
+module StarStats.DB.Connection where
 
 import Database.HDBC
 import Database.HDBC.ODBC

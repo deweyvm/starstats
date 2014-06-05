@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-EXE=./dist/build/ircdb/ircdb
+EXE=./dist/build/starstats/starstats
 
 pushd src &> /dev/null && \
 #echo "Generating documentation..." &&\
@@ -24,7 +24,7 @@ if [[ $? -ne 0 ]] ; then
 fi
 log=`cat config`
 db=`cat config | sed 's/.*\/#\(.*\)[.]log/\1/'`
-echo "Running ircdb... "  &&\
+echo "Running starstats... "  &&\
 rm -f temp && \
 case $1 in
 # recover

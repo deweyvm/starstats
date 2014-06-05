@@ -1,5 +1,5 @@
 {-# LANGUAGE DoAndIfThenElse, BangPatterns #-}
-module IRCDB.Watcher where
+module StarStats.Watcher where
 
 
 import Control.Applicative
@@ -13,10 +13,10 @@ import System.Posix.Types
 import System.Directory
 import System.IO
 import Debug.Trace
-import IRCDB.Parser
-import IRCDB.Time
-import IRCDB.DB.Tables
-import IRCDB.DB.Connection
+import StarStats.Parser
+import StarStats.Time
+import StarStats.DB.Tables
+import StarStats.DB.Connection
 
 getSize :: String -> IO FileOffset
 getSize file = do

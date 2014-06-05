@@ -3,8 +3,8 @@
 import System.Environment
 import Control.Applicative
 import System.IO
-import IRCDB.DB.Driver
-import IRCDB.Watcher
+import StarStats.DB.Driver
+import StarStats.Watcher
 
 main :: IO ()
 main = do

@@ -1,11 +1,11 @@
-module IRCDB.DB.Queries where
+module StarStats.DB.Queries where
 
 import Control.Arrow(second)
 import Control.Applicative
 import Database.HDBC
 import Data.List (sortBy)
 import Text.Printf
-import IRCDB.DB.Utils
+import StarStats.DB.Utils
 
 getUniqueNicks :: IConnection c => c -> IO [(String,Int)]
 getUniqueNicks con =

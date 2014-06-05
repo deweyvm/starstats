@@ -1,14 +1,16 @@
+NAME=starstats
+HOST=olivine
 pushd ../ &> /dev/null &&\
-echo "Remove local ircbd.zip" &&\
-rm -rf ircdb.zip &&\
+echo "Remove local $NAME.zip" &&\
+rm -rf $NAME.zip &&\
 echo "Zip new files" &&\
-zip -r  --exclude=*.git* --exclude=*.cabal-sandbox* --exclude=*dist* --exclude=*cabal.sandbox.config* ircdb.zip ircdb &> /dev/null &&\
-echo "Delete olivine zip" &&\
-ssh olivine "rm -rf ~/ircdb.zip ~/ircdb" &&\
-echo "Upload to olivine" &&\
-scp ircdb.zip olivine:. &&\
+zip -r  --exclude=*.git* --exclude=*.cabal-sandbox* --exclude=*dist* --exclude=*cabal.sandbox.config* $NAME.zip $NAME &> /dev/null &&\
+echo "Delete $HOST zip" &&\
+ssh $HOST "rm -rf ~/$NAME.zip ~/$NAME" &&\
+echo "Upload to $HOST" &&\
+scp $NAME.zip $HOST:. &&\
 echo "Run sync command" &&\
-ssh -t olivine "unzip -qq ircdb.zip && cd ircdb && cabal configure && sh run.sh && sudo sh sync.sh"
+ssh -t $HOST "unzip -qq $NAME.zip && cd $NAME && cabal configure && sh run.sh && sudo sh sync.sh"
 if [[ $? -ne 0 ]] ; then
     echo "Failure-------------------------------------------------------------------------"
 else

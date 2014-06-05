@@ -1,4 +1,4 @@
-module IRCDB.Time where
+module StarStats.Time where
 
 import qualified Data.Time.Format as Time
 import Data.Time.Lens
