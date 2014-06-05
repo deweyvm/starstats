@@ -171,6 +171,7 @@ parseDateString = (get . stringToLocalTime) <$> eatLine
 data DbParseError = DbParseError String -- line attempted to parse
                                  String -- error message
     deriving Show
+
 parseLine :: String -> Either DbParseError DataLine
 parseLine s =
     case parse parseDataLine "" s of

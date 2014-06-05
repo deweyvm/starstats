@@ -6,26 +6,14 @@ import Control.Applicative
 import Data.List (concat)
 import Database.HDBC
 import Database.HDBC.ODBC
-import GHC.IO.Encoding
+import GHC.IO.Encoding hiding (close)
 import IRCDB.Renderer
 import IRCDB.DB.Utils
 import IRCDB.DB.Tables
 import IRCDB.DB.Queries
+import IRCDB.DB.Connection
 
 data Action = Repopulate | Generate
-
-connect :: String -> String ->IO Connection
-connect driver dbName = do
-    let connectionString = "DSN=name32;\
-                          \ Driver={" ++ driver ++ "};\
-                          \ Server=localhost;\
-                          \ Port=3306;\
-                          \ Database=" ++ dbName ++ ";\
-                          \ User=root;\
-                          \ Password=password;\
-                          \ Option=3;"
-    conn <- connectODBC connectionString
-    return conn
 
 
 generate :: IConnection c => String -> c -> IO ()
@@ -210,4 +198,4 @@ doAction driver dbName action = do
     case action of
         Repopulate -> repopulateDb con
         Generate -> generate dbName con
-    disconnect con
+    close con

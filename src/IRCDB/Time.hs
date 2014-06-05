@@ -31,5 +31,8 @@ setHoursMinutes t (h, m) = setL hours h $ setL minutes m t
 subHours :: LocalTime -> (Int->Int) -> LocalTime
 subHours t h = (modL hours h) t
 
+deleteSeconds :: LocalTime -> LocalTime
+deleteSeconds t = (setL seconds 0) t
+
 anyTime :: LocalTime
 anyTime = (LocalTime (fromGregorian 0 0 0) (TimeOfDay 0 0 0))

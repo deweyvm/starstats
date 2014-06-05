@@ -1,18 +1,14 @@
-{-# LANGUAGE DoAndIfThenElse #-}
+{-# LANGUAGE DoAndIfThenElse, BangPatterns #-}
 module IRCDB.DB.Tables where
 
 import Prelude hiding (readFile)
 import Control.Applicative
 import Control.Exception
 import Control.DeepSeq
---import Data.ByteString(readFile)
 import Data.List(isInfixOf)
 import Data.Time.LocalTime
---import Data.Text(unpack)
---import Data.Text.Encoding(decodeUtf8)
 import Data.Maybe(fromMaybe, isJust)
 import Database.HDBC
---import Text.Printf
 import System.IO hiding (readFile)
 import System.Exit
 import IRCDB.DB.Utils
@@ -40,7 +36,7 @@ insert (Message time typ name msg) con = do
     let sqlType = toSql typ
     let sqlPre = toSql (take 24 msg)
     let sqlMsg = toSql (take 500 msg)
-    let sqlTime = toSql (subHours newT (subtract 3))
+    let sqlTime = toSql newT --(subHours newT (subtract 3))
     let words' = words msg
     let wordcount = toSql $ length words'
     let stripped = words $ replace urlRegexp "" msg
@@ -301,10 +297,14 @@ getDate con = do
     val <- quickQuery con "SELECT date\
                          \ FROM savedate\
                          \ LIMIT 1" []
-    let extract ((x:_):_) = fromSql x
-        extract _         = error "anyTime" --anyTime
+    let extract ((x:_):_) = return $ fromSql x
+        extract _         = do
+            c <- getLatestMessage con "talkhaus"
+            case c of
+                Just (msg, t) -> return t
+                Nothing -> return anyTime
     let result = extract val
-    return $ result
+    result
 
 updateRep :: IConnection c => c -> String -> IO ()
 updateRep con s = do
@@ -550,6 +550,8 @@ createDbs con = do
                                  ]
     return ()
 
+
+
 insertMessage :: IConnection c => String -> LocalTime ->  c -> IO ()
 insertMessage s t con = do
     let sqlMsg = toSql s
@@ -561,19 +563,30 @@ insertMessage s t con = do
                   \     date=?;" [sqlMsg, sqlTime, sqlMsg, sqlTime]
     return ()
 
---getLatest :: IConnection c => c -> Maybe (String, LocalTime)
---getLatest con =
-    --how to return empty set instead of null on no match?
+getLatestMessage :: IConnection c => c -> String -> IO (Maybe (String, LocalTime))
+getLatestMessage con dbName = do
+    exists <- quickQuery con ("SELECT *\
+                            \ FROM information_schema.tables\
+                            \ WHERE table_schema = '" ++ dbName ++ "'\
+                            \   AND table_name = 'lastmsg'\
+                            \ LIMIT 1;") []
+    if (length $ concat exists) == 0
+    then do return Nothing
+    else do val <- quickQuery con "SELECT msg, date FROM lastmsg LIMIT 1" []
+            let extract ((x:y:_):_) = return $ Just (fromSql x, fromSql y)
+                extract _ = return Nothing
+            extract val
+
 
 populateStdIn :: IConnection c => c -> IO ()
 populateStdIn con = do
-    get' <- try getLine :: IO (Either IOError String)
+    !get' <- try getLine :: IO (Either IOError String)
     case get' of
         Left l -> error $ show l
         Right line -> do
             hPutStr stderr $ "Adding line: " ++ show line ++ "\n"
             if line == ""
-            then do print "Finished Here"
+            then do hPutStr stderr $ "Got empty line: Exiting\n"
                     exitWith ExitSuccess
             else case parseLine line of
                      Left err -> do
@@ -583,6 +596,7 @@ populateStdIn con = do
                          insertFromStdIn dl con
                          date <- getDate con
                          insertMessage line date con
+                         commit con
     populateStdIn con
 
 insertFromStdIn :: IConnection c => DataLine -> c -> IO ()
@@ -603,3 +617,10 @@ repopulateDb con = do
     deleteDbs con
     createDbs con
     populateStdIn con
+
+
+foo :: IO ()
+foo = do
+    line <- getLine
+    putStrLn line
+    foo

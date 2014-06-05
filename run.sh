@@ -27,14 +27,19 @@ db=`cat config | sed 's/.*\/#\(.*\)[.]log/\1/'`
 echo "Running ircdb... "  &&\
 rm -f temp && \
 case $1 in
+# recover
+"-r")
+    $EXE "$driver" "$db" "$log" "-w" "-rv" | $EXE "$driver" "$db" "-p"
+;;
+"-rv")
+    $EXE "$driver" "$db" "$log" "-w" "-rv"
+;;
 "-tw")
-    $EXE "$log" "-w" "-rp"
+    $EXE "$driver" "$db" "$log" "-w" "-rp"
 ;;
+# repopulate the database
 "-w")
-    $EXE "$log" "-w" "-rp" | $EXE "$driver" "$db" "-p"
-;;
-"-p")
-    python3 watch.py "$log" "-r" | $EXE "$driver" "$db" "$@"
+    $EXE "$driver" "$db" "$log" "-w" "-rp" | $EXE "$driver" "$db" "-p"
 ;;
 "-g")
     $EXE "$driver" "$db"
