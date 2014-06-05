@@ -7,20 +7,45 @@ import Data.Convertible
 import Data.List
 import Data.Maybe
 import Database.HDBC
-import qualified Text.Regex.Posix as REP
-import qualified Text.Regex as RE
 import Text.Printf
 import System.Directory
 import Debug.Trace
 
-replace :: String -> String -> String -> String
-replace x y z = RE.subRegex (RE.mkRegex x) z y
-
 linkLinks :: String -> String
-linkLinks x = replace urlRegexp "<a href=\"\\0\">\\0</a>" x
+linkLinks s = replaceUrls s (\x -> "<a href=\"" ++ x ++ "\">" ++ x ++ "</a>")
 
 escapeHtml :: String -> String
-escapeHtml = replace ">" "&gt;" . replace "<" "&lt;"
+escapeHtml =
+    replaceChar '>' "&gt;" . replaceChar '<' "&lt;"
+
+    --replace ">" "&gt;" . replace "<" "&lt;"
+
+removeUrls :: String -> String
+removeUrls s = replaceUrls s (\x -> "")
+
+
+isUrl :: String -> Bool
+isUrl ('h':'t':'t':'p':':':'/':'/':_) = True
+isUrl ('h':'t':'t':'p':'s':':':'/':'/':_) = True
+isUrl _ = False
+
+replaceUrls :: String -> (String -> String) -> String
+replaceUrls s f =
+    let words' = words s in
+    unwords $ (\x -> (if isUrl x then f else id) x) <$> words'
+
+extractUrl :: String -> String
+extractUrl s =
+    let words' = words s in
+    case filter isUrl words' of
+        (x:_) -> x
+        _ -> "!!Error extracting url!!"
+
+
+
+replaceChar :: Char -> String -> String -> String
+replaceChar c s r =
+    concat $ foldr (\x acc -> (if x == c then r else [x]) : acc) [] s
 
 class Print a where
     print' :: a -> String
@@ -120,13 +145,7 @@ getTopBottom split xs
 urlRegexp :: String
 urlRegexp = "http://[^ ]*"
 
-regexMatch :: String -> String -> Bool
-regexMatch s re = (s REP.=~ re) :: Bool
 
-extractUrl :: String -> String
-extractUrl s = case s REP.=~ urlRegexp :: [[String]] of
-    ((x:_) : _) -> x
-    _ -> trace ("Error extracting : " ++ s) $ "Error extracting url"
 
 extractSingle :: (Convertible SqlValue a, Default a)
               => [[SqlValue]]

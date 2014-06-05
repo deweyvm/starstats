@@ -17,5 +17,5 @@ cabal-version:       >=1.8
 executable ircdb
   main-is:             Main.hs
   hs-source-dirs:      src
-  build-depends:       base >=4.5.0, HDBC, HDBC-odbc, directory, parsec, transformers, time == 1.4.2, old-locale, time-lens, regex-posix, regex-compat, deepseq, convertible, containers, criterion, bytestring, text, unix, utf8-string
+  build-depends:       base >=4.5.0, HDBC, HDBC-odbc, directory, parsec, transformers, time == 1.4.2, old-locale, time-lens, deepseq, convertible, containers, criterion, bytestring, text, unix, utf8-string
   GHC-Options:         -rtsopts

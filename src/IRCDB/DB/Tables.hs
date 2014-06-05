@@ -39,7 +39,7 @@ insert (Message time typ name msg) con = do
     let sqlTime = toSql newT --(subHours newT (subtract 3))
     let words' = words msg
     let wordcount = toSql $ length words'
-    let stripped = words $ replace urlRegexp "" msg
+    let stripped = words $ removeUrls msg
     let charcount = toSql $ sum $ length <$> stripped -- fixme : this could be more precise
 
     let qs = "INSERT INTO seqcount (name, num)\
