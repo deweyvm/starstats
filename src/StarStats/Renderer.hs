@@ -47,7 +47,9 @@ toRow xs = (Row . doMap) <$> xs
 
 makeHeadingRow :: [Column] -> Row
 makeHeadingRow cs =
-    Row $ getHeadingWidth <$> cs
+    let rowData = getHeadingWidth <$> cs in
+    Row $ (\(s, w) -> (tag "b" s, w)) <$> rowData
+
 
 getMap :: Column -> M.Map String String
 getMap (Column m _ _) = m

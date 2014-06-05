@@ -42,8 +42,14 @@ extractUrl s =
 
 
 replaceChar :: Char -> String -> String -> String
-replaceChar c s r =
-    concat $ foldr (\x acc -> (if x == c then r else [x]) : acc) [] s
+replaceChar c r s =
+    concat $ helper c s r
+    where helper :: Char -> String -> String -> [String]
+          helper c (x:xs) r =
+              if c == x
+              then r : helper c xs r
+              else [x] : helper c xs r
+          helper c [] r = [[]]
 
 class Print a where
     print' :: a -> String
@@ -140,11 +146,6 @@ getTopBottom split xs
                   let last' = drop (length xs - split) xs in
                   (first, last')
 
-urlRegexp :: String
-urlRegexp = "http://[^ ]*"
-
-
-
 extractSingle :: (Convertible SqlValue a, Default a)
               => [[SqlValue]]
               -> a
@@ -192,9 +193,9 @@ fromSqlString v =
 
 
 time' :: NFData a => String -> IO a -> IO a
-time' _ action = do
-    (_, res) <- time $ force <$> action
-    --let len = length msg
-    --let whitespace = printf ("%" ++ show (27 - len) ++ "s") " " ++ "\t"
-    --putStrLn ("@" ++ msg ++ ": " ++ whitespace ++ printf "%.3fs" s)
+time' msg action = do
+    (s, res) <- time $ force <$> action
+    let len = length msg
+    let whitespace = printf ("%" ++ show (27 - len) ++ "s") " " ++ "\t"
+    putStrLn ("<!-- " ++ msg ++ ": " ++ whitespace ++ printf "%.3fs" s ++ " -->")
     return res

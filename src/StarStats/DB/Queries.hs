@@ -135,28 +135,32 @@ getTimes :: IConnection c
          => c
          -> IO [(String, Int, Int, Int, Int)]
 getTimes con = do
-    let all' = "(SELECT users.name, 0, q1 \
-              \ FROM users\
-              \ JOIN top as t\
-              \ ON t.name = users.name)\
-              \ UNION\
-              \(SELECT users.name, 1, q2 \
-              \ FROM users\
-              \ JOIN top as t\
-              \ ON t.name = users.name)\
-              \ UNION\
-              \(SELECT users.name, 2, q3 \
-              \ FROM users\
-              \ JOIN top as t\
-              \ ON t.name = users.name)\
-              \ UNION\
-              \(SELECT users.name, 3, q4 \
-              \ FROM users\
-              \ JOIN top as t\
-              \ ON t.name = users.name);"
+    let q1 = "SELECT users.name, 0, q1\
+            \ FROM users\
+            \ JOIN top AS t\
+            \ ON t.name = users.name"
+
+    let q2 = "SELECT users.name, 1, q2\
+            \ FROM users\
+            \ JOIN top AS t\
+            \ ON t.name = users.name"
+
+    let q3 = "SELECT users.name, 2, q3\
+            \ FROM users\
+            \ JOIN top AS t\
+            \ ON t.name = users.name"
+
+    let q4 = "SELECT users.name, 3, q4\
+            \ FROM users\
+            \ JOIN top AS t\
+            \ ON t.name = users.name"
+
     let extract (x:y:z:_) = (fromSql x, fromSql y, fromSql z) :: (String, Int, Int)
-    xs <- getAndExtract con [] extract all'
-    let xs' = sortBy cmp xs
+    q1s <- getAndExtract con [] extract q1
+    q2s <- getAndExtract con [] extract q2
+    q3s <- getAndExtract con [] extract q3
+    q4s <- getAndExtract con [] extract q4
+    let xs' = sortBy cmp (q1s ++ q2s ++ q3s ++ q4s)
     return $ (assemble2 . assemble) xs'
 
 getRandTopics :: IConnection c => c -> IO [(String, String)]
@@ -200,22 +204,22 @@ getIdlers con =
            \ LIMIT 10" in
     getAndExtract con [] extractTup q
 
-getRelationships :: IConnection c => c -> IO [(String, String)]
-getRelationships con = do
-    let q = "SELECT \
-               \ u.name, \
-               \ v.name, \
-               \ IFNULL((SELECT num FROM mentions WHERE mentioner = u.name AND mentionee = v.name LIMIT 1), 0) AS c1,\
-               \ IFNULL((SELECT num FROM mentions WHERE mentioner = v.name AND mentionee = u.name LIMIT 1), 0) AS c2\
-           \ FROM uniquenicks AS u\
-           \ INNER JOIN uniquenicks AS v\
-           \ ON u.id < v.id\
-           \ HAVING c1 > 100 OR c2 > 100\
-           \ LIMIT 20;"
-    let extract :: [SqlValue] -> [(String, String)]
-        extract (w:x:y:z:_) = [ (fromSql w ++ " mentioned " ++ fromSql x, fromSql y)
-                              , (fromSql x ++ " mentioned " ++ fromSql w, fromSql z)]
-    concat <$> getAndExtract con [] extract q
+--getRelationships :: IConnection c => c -> IO [(String, String)]
+--getRelationships con = do
+--    let q = "SELECT \
+--               \ u.name, \
+--               \ v.name, \
+--               \ IFNULL((SELECT num FROM mentions WHERE mentioner = u.name AND mentionee = v.name LIMIT 1), 0) AS c1,\
+--               \ IFNULL((SELECT num FROM mentions WHERE mentioner = v.name AND mentionee = u.name LIMIT 1), 0) AS c2\
+--           \ FROM uniquenicks AS u\
+--           \ INNER JOIN uniquenicks AS v\
+--           \ ON u.id < v.id\
+--           \ HAVING c1 > 100 OR c2 > 100\
+--           \ LIMIT 20;"
+--    let extract :: [SqlValue] -> [(String, String)]
+--        extract (w:x:y:z:_) = [ (fromSql w ++ " mentioned " ++ fromSql x, fromSql y)
+--                              , (fromSql x ++ " mentioned " ++ fromSql w, fromSql z)]
+--    concat <$> getAndExtract con [] extract q
 
 getNaysayers :: IConnection c => c -> IO [(String,Double)]
 getNaysayers con =

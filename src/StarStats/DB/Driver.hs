@@ -22,7 +22,6 @@ generate dbName con = do
     setFileSystemEncoding utf8
     setForeignEncoding utf8
     let timeGet s f = time' s $ f con
-    _           <- timeGet "P Delete Temp"      deleteTemps
     _           <- timeGet "P Top"              populateTop
     _           <- timeGet "P Unique"           populateUnique
     _           <- timeGet "P Commit"           commit
@@ -48,7 +47,7 @@ generate dbName con = do
     !nay        <- timeGet "Q Naysayers"        getNaysayers
     !text       <- timeGet "Q txt spk"          getTextSpeakers
     !apos       <- timeGet "Q ''s"              getApostrophes
-    !rltships   <- timeGet "Q Relationships"    getRelationships
+    -- !rltships   <- timeGet "Q Relationships"    getRelationships
     !amaze      <- timeGet "Q Amaze"            getAmazed
     !excite     <- timeGet "Q Excite"           getExcited
     !yell       <- timeGet "Q Yell"             getYell
@@ -57,12 +56,12 @@ generate dbName con = do
     !idlers     <- timeGet "Q Idlers"           getIdlers
     let printify = (mapSnd print' <$>)
     let bars = (toTimeBars tups)
-    let col1 = toColumn (printify users) "Messages" 10
+    let col1 = toColumn (printify users) "Messages" 15
     let col2 = toColumn (printify bars) "Active" 10
     let col3 = toColumn (printify avgwl) "AWL" 6
     let col4 = toColumn (printify avgwc) "AWC" 6
 
-    let col5 = toColumn randTop "Random Message" 68
+    let col5 = toColumn randTop "Random Message" 63
 
     let us = fst <$> users
     let rows = formatTable us "User" 10 [col1, col2, col3, col4, col5]
@@ -116,10 +115,10 @@ generate dbName con = do
                                "Name"
                                "Number Of Questions Asked"
                                questions
-                 , headerTable "Relationships"
-                               "Mention"
-                               "Times"
-                               rltships
+                 --, headerTable "Relationships"
+                 --              "Mention"
+                 --              "Times"
+                 --              rltships
                  , headerTable "Sociable"
                                "Name"
                                "Times Mentioning Someone"

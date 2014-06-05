@@ -61,7 +61,7 @@ insert (Message time typ name msg) con = do
 
 
     let qa = "INSERT INTO allmsgs (hash, contents, repcount, length, hasURL, isComplex)\
-            \ VALUES (CRC32(?), ?, 1, ?, ? LIKE '%http://%', ? NOT LIKE '%http://%' AND ? > 12)\
+            \ VALUES (CRC32(?), ?, 1, ?, ? REGEXP '.*http://.*|.*https://.*', ? NOT REGEXP 'http://.*|https://.*' AND ? > 12)\
             \ ON DUPLICATE KEY UPDATE repcount=repcount+1;"
 
     let len = toSql $ length msg
@@ -334,14 +334,15 @@ getRepName con = do
         extract [] = Nothing
     return $ extract val
 
-deleteTemps :: IConnection c => c -> IO ()
-deleteTemps con = do
-    runQuery con "DELETE FROM uniquenicks;"
-    runQuery con "DELETE FROM top;"
-    return ()
-
 populateTop :: IConnection c => c -> IO ()
 populateTop con = do
+
+    let top = "CREATE TEMPORARY TABLE top(id INT NOT NULL AUTO_INCREMENT,\
+                                        \ name CHAR(21) NOT NULL,\
+                                        \ msgcount INT NOT NULL,\
+                                        \ PRIMARY KEY (id))\
+             \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    runQuery con top
     runQuery con "INSERT INTO top (name, msgcount)\
                  \ (SELECT name, msgcount\
                  \  FROM users\
@@ -353,6 +354,12 @@ populateTop con = do
 -- numMessages(oldNick) => numMessages(nick)
 populateUnique :: IConnection c => c -> IO ()
 populateUnique con = do
+
+    let unique = "CREATE TEMPORARY TABLE uniquenicks(id INT NOT NULL AUTO_INCREMENT,\
+                                                   \ name CHAR(21) NOT NULL,\
+                                                   \ msgcount INT NOT NULL,\
+                                                   \ PRIMARY KEY (id));"
+    runQuery con unique
     let q = "INSERT INTO uniquenicks (name, msgcount)\
            \ (SELECT activeusers.name, users.msgcount\
            \  FROM activeusers\
@@ -368,9 +375,7 @@ deleteDbs con = do
                                  , "DROP TABLE IF EXISTS nickchanges;"
                                  , "DROP TABLE IF EXISTS topics;"
                                  , "DROP TABLE IF EXISTS kicks;"
-                                 , "DROP TABLE IF EXISTS top;"
                                  , "DROP TABLE IF EXISTS users;"
-                                 , "DROP TABLE IF EXISTS uniquenicks;"
                                  , "DROP TABLE IF EXISTS mentions;"
                                  , "DROP TABLE IF EXISTS allusers;"
                                  , "DROP TABLE IF EXISTS allmsgs;"
@@ -435,11 +440,6 @@ createDbs con = do
     let joins = "CREATE TABLE joins(name CHAR(21) NOT NULL,\
                                   \ num MEDIUMINT UNSIGNED NOT NULL,\
                                   \ PRIMARY KEY (name));"
-    let top = "CREATE TABLE top(id INT NOT NULL AUTO_INCREMENT,\
-                              \ name CHAR(21) NOT NULL,\
-                              \ msgcount INT NOT NULL,\
-                              \ PRIMARY KEY (id))\
-             \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let activity = "CREATE TABLE activity(dummy BOOL NOT NULL,\
                                         \ h0 MEDIUMINT UNSIGNED NOT NULL,\
                                         \ h1 MEDIUMINT UNSIGNED NOT NULL,\
@@ -487,10 +487,6 @@ createDbs con = do
                                   \ q3 MEDIUMINT UNSIGNED NOT NULL,\
                                   \ q4 MEDIUMINT UNSIGNED NOT NULL,\
                                   \ PRIMARY KEY (name));"
-    let unique = "CREATE TABLE uniquenicks(id INT NOT NULL AUTO_INCREMENT,\
-                                         \ name CHAR(21) NOT NULL,\
-                                         \ msgcount INT NOT NULL,\
-                                         \ PRIMARY KEY (id));"
     let activeusers = "CREATE TABLE activeusers(name CHAR(21) NOT NULL,\
                                               \ lastspoke DATETIME NOT NULL,\
                                               \ PRIMARY KEY (name));"
@@ -533,9 +529,7 @@ createDbs con = do
                                  , nickchanges
                                  , topics
                                  , kicks
-                                 , top
                                  , count
-                                 , unique
                                  , mentions
                                  , allmsgs
                                  , seqcount
@@ -617,10 +611,3 @@ repopulateDb con = do
     deleteDbs con
     createDbs con
     populateStdIn con
-
-
-foo :: IO ()
-foo = do
-    line <- getLine
-    putStrLn line
-    foo
