@@ -18,8 +18,6 @@ escapeHtml :: String -> String
 escapeHtml =
     replaceChar '>' "&gt;" . replaceChar '<' "&lt;"
 
-    --replace ">" "&gt;" . replace "<" "&lt;"
-
 removeUrls :: String -> String
 removeUrls s = replaceUrls s (\x -> "")
 

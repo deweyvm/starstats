@@ -39,7 +39,7 @@ watch file doRepop doRecover driver chanName = do
     else do (if doRepop
             then repopulate file
             else return ())
-            (if doRecover && False
+            (if doRecover
             then recover file driver chanName
             else do size <- getSize file
                     watchFile file size)
@@ -97,20 +97,17 @@ recover :: String -> String -> String -> IO ()
 recover file driver chanName = do
     con <- connect driver chanName
     latest <- getLatestMessage con chanName -- \ these two lines
+    close con                               --
     size <- getSize file                    -- / should be atomic together
 
     case latest of
         Nothing -> error "No need to recover"
-        Just (msg, t) -> do hPutStr stderr "Recovering\n"
-                            ls <- lines <$> readFile file
+        Just (msg, t) -> do ls <- lines <$> readFile file
                             let ps = parseGood ls
                             let matchingDate = matchDate t ps
                             let matchingLine = matchLine t msg matchingDate
                             let ss = fst <$> matchingLine
-                            hPutStr stderr $ "Let's do it: " ++ show (length ss) ++ "\n"
-                            !x <- sequence_ $ (\x -> putStrLn x *> hFlush stdout ) <$> ss
-                            hPutStr stderr $ "Done\n"
-    hPutStr stderr $ "Closing connection\n"
-    close con
+                            sequence_ $ (\x -> putStrLn x *> hFlush stdout ) <$> ss
+
     watchFile file size
 
