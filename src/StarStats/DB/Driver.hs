@@ -56,7 +56,7 @@ generate dbName con = do
     !idlers     <- timeGet "Q Idlers"           getIdlers
     let printify = (mapSnd print' <$>)
     let bars = (toTimeBars tups)
-    let col1 = toColumn (printify users) "Messages" 15
+    let col1 = toColumn (printify users) "Messages" 11
     let col2 = toColumn (printify bars) "Active" 10
     let col3 = toColumn (printify avgwl) "AWL" 6
     let col4 = toColumn (printify avgwc) "AWC" 6
@@ -64,7 +64,7 @@ generate dbName con = do
     let col5 = toColumn randTop "Random Message" 63
 
     let us = fst <$> users
-    let rows = formatTable us "User" 10 [col1, col2, col3, col4, col5]
+    let rows = formatTable us "User" 14 [col1, col2, col3, col4, col5]
     let tables = [ makeTimeScript "Activity (UTC)" activity
                  , withHeading "Top Users" $ rows
                  , headerTable "Welcoming"
