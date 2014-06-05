@@ -168,7 +168,7 @@ generate dbName con = do
     putStrLn $ makeFile (heading ++ (linkLinks contents)) "/css.css" (getTitle dbName) ["/util.js"]
 
 getTitle :: String -> String
-getTitle s = tag "title" ("Stats for #" ++ s ++ " -- ircdb")
+getTitle s = tag "title" ("Stats for #" ++ s ++ " -- starstats")
 
 makeHeading :: IConnection c => String -> c -> IO String
 makeHeading channel con = do
