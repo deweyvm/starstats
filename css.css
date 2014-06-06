@@ -48,3 +48,26 @@ html * {
   margin-top: 1em;
   margin-bottom: 1em;
 }
+
+/*thanks to leod for this part!*/
+.overflowtest {
+  position: relative;
+}
+
+.overflowtest input[type=checkbox] {
+  position: absolute;
+  opacity: 0;
+  top: 0;
+  left: 0;
+}
+
+.overflowtest input[type=checkbox] + label div {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overflowtest input[type=checkbox]:checked + label div {
+  white-space: normal;
+  word-wrap:break-word;
+}

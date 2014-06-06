@@ -7,9 +7,10 @@ import Data.List
 import Data.Maybe
 import qualified Data.Map as M
 import Text.Printf
-
+import System.Random
+import System.IO.Unsafe
 import StarStats.DB.Utils
-
+import Data.IORef
 data TimeBar = TimeBar String Int Int Int Int
 
 toTimeBars :: [(String, Int, Int, Int, Int)] -> [(String, TimeBar)]
@@ -154,9 +155,23 @@ simpleTable :: Print a => [(String,a)] -> String
 simpleTable xs = tag "table" $ concat $ format <$> xs
     where format (s, y) = tr $ td "30%" s ++ td "70%" (print' y)
 
+{-# NOINLINE counter #-}
+counter :: IORef Int
+counter = unsafePerformIO $ newIORef 0
+
+{-# NOINLINE makeExpandBox #-}
+makeExpandBox :: String -> String
+makeExpandBox x = unsafePerformIO $ do
+    i <- readIORef counter
+    writeIORef counter (i+1)
+    let id' = "A" ++ (show i)
+    let div' = genTag "div" [("class", "overflowtest")]
+    let label' = genTag "label" [("for", id')]
+    let inputTag = voidTag "input" [("id", id'), ("type", "checkbox")]
+    return $ div' (inputTag ++ label' (tag "div" x))
 
 td :: String -> (String -> String)
-td width =  genTag "td" [("width", width)]
+td width x =   (genTag "td" [("width", width)] (makeExpandBox x))
 
 tr :: String -> String
 tr = tag "tr"
