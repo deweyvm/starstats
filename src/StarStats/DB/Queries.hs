@@ -207,23 +207,6 @@ getIdlers con =
            \ LIMIT 10" in
     getAndExtract con [] extractTup q
 
---getRelationships :: IConnection c => c -> IO [(String, String)]
---getRelationships con = do
---    let q = "SELECT \
---               \ u.name, \
---               \ v.name, \
---               \ IFNULL((SELECT num FROM mentions WHERE mentioner = u.name AND mentionee = v.name LIMIT 1), 0) AS c1,\
---               \ IFNULL((SELECT num FROM mentions WHERE mentioner = v.name AND mentionee = u.name LIMIT 1), 0) AS c2\
---           \ FROM uniquenicks AS u\
---           \ INNER JOIN uniquenicks AS v\
---           \ ON u.id < v.id\
---           \ HAVING c1 > 100 OR c2 > 100\
---           \ LIMIT 20;"
---    let extract :: [SqlValue] -> [(String, String)]
---        extract (w:x:y:z:_) = [ (fromSql w ++ " mentioned " ++ fromSql x, fromSql y)
---                              , (fromSql x ++ " mentioned " ++ fromSql w, fromSql z)]
---    concat <$> getAndExtract con [] extract q
-
 getNaysayers :: IConnection c => c -> IO [(String,Double)]
 getNaysayers con =
     let q = "SELECT m.name, IFNULL(isNaysay/m.msgcount, 0) as c\
