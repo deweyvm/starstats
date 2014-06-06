@@ -79,7 +79,7 @@ formatTable :: Heading
             -> Heading
             -> Width
             -> [Column]
-            -> String
+            -> Maybe String
 formatTable h ns nh nw cs =
     let nameCol = Column (M.fromList $ zip ns ns) nh nw in
     let cs' = nameCol : cs in
@@ -87,8 +87,8 @@ formatTable h ns nh nw cs =
     let formatCell (s, w) = td (printf "%d%%" w) s in
     let formatRow (Row xs) = tr $ concat $ formatCell <$> xs in
     if length rows == 1
-    then ""
-    else withHeading h $ tag "table" $ concat $ formatRow <$> rows
+    then Nothing
+    else Just $ withHeading h $ tag "table" $ concat $ formatRow <$> rows
 
 
 makeCanvas :: String -> Int -> Int -> String
@@ -108,7 +108,7 @@ makeRectScript name w x y z =
     let vals = [show name] ++ (show <$> [w, x, y, z]) in
     tag "script" $ makeCall "drawBar" vals
 
-makeTimeScript :: String -> [(Int,Int)] -> String
+makeTimeScript :: String -> [(Int,Int)] -> Maybe String
 makeTimeScript h hours =
     let canvas = makeCanvas "timegraph" (24*24) 140 in
     let values :: [String]
@@ -116,8 +116,8 @@ makeTimeScript h hours =
     let fmt = (intercalate ", " values) in
     let vals = [show "timegraph"] ++ [("[" ++ fmt ++ "]")] in
     if length values == 0
-    then ""
-    else withHeading h $ canvas ++ (tag "script" $ (makeCall "drawGraph" vals))
+    then Nothing
+    else Just $ withHeading h $ canvas ++ (tag "script" $ (makeCall "drawGraph" vals))
 
 
 makeCall :: String -> [String] -> String
@@ -140,13 +140,14 @@ withHeading h = (++) (tag "h2" h)
 pairMap :: (a -> b) -> (a, a) -> (b, b)
 pairMap f (x, y) = (f x, f y)
 
-headerTable :: Print a => String -> String -> String -> [(String, a)] -> String
+headerTable :: Print a => String -> String -> String -> [(String, a)] -> Maybe String
 headerTable h c1 c2 xs =
+
     if length xs == 0
-        then ""
+        then Nothing
         else let s = (c1, c2) in
              let mapped = (second print') <$> xs in
-             withHeading h $ simpleTable ((pairMap (tag "b") s):mapped)
+             Just $ withHeading h $ simpleTable ((pairMap (tag "b") s):mapped)
 
 makeFile :: String -> String -> String -> [String] -> String
 makeFile x file head' scripts =

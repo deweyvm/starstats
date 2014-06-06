@@ -4,6 +4,7 @@ module StarStats.DB.Driver where
 import Prelude hiding (foldl, concat, sequence_, sum)
 import Control.Applicative
 import Data.List (concat)
+import Data.Maybe
 import Database.HDBC
 import Database.HDBC.ODBC
 import GHC.IO.Encoding hiding (close)
@@ -119,10 +120,6 @@ generate dbName con = do
                                "Name"
                                "Number Of Questions Asked"
                                questions
-                 --, headerTable "Relationships"
-                 --              "Mention"
-                 --              "Times"
-                 --              rltships
                  , headerTable "Sociable"
                                "Name"
                                "Times Mentioning Someone"
@@ -165,7 +162,7 @@ generate dbName con = do
                                topics
                  ]
 
-    let contents = unlines tables
+    let contents = unlines $ catMaybes tables
     heading <- makeHeading dbName con
     let content = (divId "content" $ linkLinks contents)
     putStrLn $ makeFile (heading ++ content) "/css.css" (getTitle dbName) ["/util.js"]
