@@ -19,9 +19,12 @@ td {
   overflow:hidden;
   margin-right: 8px;
   padding-left: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 tr {
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 tr:first-child * {
   background-color:#404040;
