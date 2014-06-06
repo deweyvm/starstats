@@ -21,7 +21,6 @@ p = subprocess.Popen(['./starstats "MySql ODBC 5.1 Driver" %s -g' % db],
 (out, err) = p.communicate()
 if err is not None and len(err) > 0:
     raise Exception(err)
-    sys.exit(1)
 print(out)
 
 duration = time.clock() - t
