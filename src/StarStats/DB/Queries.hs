@@ -23,12 +23,12 @@ getOverallActivity con = do
            \        h12, h13, h14, h15, h16, h17,\
            \        h18, h19, h20, h21, h22, h23\
            \ FROM activity;"
-    let extract (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:x13:x14:x15:x16:x17:x18:x19:x20:x21:x22:x23:_) = [fromSql x0, fromSql x1, fromSql x2, fromSql x3
-                     ,fromSql x4, fromSql x5, fromSql x6, fromSql x7
-                     ,fromSql x8, fromSql x9, fromSql x10, fromSql x11
-                     ,fromSql x12, fromSql x13, fromSql x14, fromSql x15
-                     ,fromSql x16, fromSql x17, fromSql x18, fromSql x19
-                     ,fromSql x20, fromSql x21, fromSql x22, fromSql x23]
+    let extract (x0:x1:x2:x3:x4:x5:x6:x7:x8:x9:x10:x11:x12:x13:x14:x15:x16:x17:x18:x19:x20:x21:x22:x23:_) = [ fromSql x0,  fromSql x1,  fromSql x2,  fromSql x3
+                         , fromSql x4,  fromSql x5,  fromSql x6,  fromSql x7
+                         , fromSql x8,  fromSql x9,  fromSql x10, fromSql x11
+                         , fromSql x12, fromSql x13, fromSql x14, fromSql x15
+                         , fromSql x16, fromSql x17, fromSql x18, fromSql x19
+                         , fromSql x20, fromSql x21, fromSql x22, fromSql x23]
     times <- runQuery con q
     return $ zip [0..] (concat $ extract <$> times)
 
