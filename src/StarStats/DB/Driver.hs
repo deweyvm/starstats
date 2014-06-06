@@ -167,7 +167,7 @@ generate dbName con = do
 
     let contents = unlines tables
     heading <- makeHeading dbName con
-    let content = (genTag "div" [("id", "content")] $ linkLinks contents)
+    let content = (divId "content" $ linkLinks contents)
     putStrLn $ makeFile (heading ++ content) "/css.css" (getTitle dbName) ["/util.js"]
     logInfo "Finished"
 
@@ -192,8 +192,8 @@ makeHeading channel con = do
                       , "."
                       ]
     let timeInfo = if words' == 0
-                   then genTag "div" [("id", "emptyhead-wrapper")] $ genTag "div" [("id", "emptyhead")] "no data added yet!"
-                   else genTag "div" [("id", "lead")] $ tag "p" desc
+                   then divId "emptyhead" "no data added yet!"
+                   else divId "lead" $ tag "p" desc
     return $ unlines [ tag "h1" ("Stats for #" ++ channel)
                      , timeInfo
                      ]
