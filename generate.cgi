@@ -22,9 +22,12 @@ p = subprocess.Popen(['./starstats "MySql ODBC 5.1 Driver" %s -g' % db],
                      shell=True)
 
 (out, err) = p.communicate()
-if err is not None and len(err) > 0:
+if p.returncode != 0:
     raise Exception(err)
-
+elif err is not None and len(err) > 0:
+    lines = err.split("\n")
+    for l in lines:
+        print("<!-- %s -->" % l)
 duration = time.clock() - t
 
 

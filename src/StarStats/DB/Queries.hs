@@ -346,6 +346,7 @@ getWellSpoken con =
            \     name,\
            \     IFNULL(wordcount/msgcount + charcount/wordcount, 0) as c\
            \ FROM users\
+           \ HAVING c > 0\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q

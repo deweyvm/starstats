@@ -13,14 +13,17 @@ import StarStats.DB.Tables
 import StarStats.DB.Queries
 import StarStats.DB.Connection
 import StarStats.Watcher
+import StarStats.Log.Log
 
 
 
 generate :: IConnection c => String -> c -> IO ()
 generate dbName con = do
+    logInfo "Setting output encoding"
     setLocaleEncoding utf8
     setFileSystemEncoding utf8
     setForeignEncoding utf8
+    logInfo "Running queries"
     let timeGet s f = time' s $ f con
     _           <- timeGet "P Top"              populateTop
     _           <- timeGet "P Unique"           populateUnique
@@ -54,6 +57,7 @@ generate dbName con = do
     !wellspoken <- timeGet "Q Wellspoken"       getWellSpoken
     !welcoming  <- timeGet "Q Welcoming"        getWelcomers
     !idlers     <- timeGet "Q Idlers"           getIdlers
+    logInfo "Assembling html"
     let printify = (mapSnd print' <$>)
     let bars = (toTimeBars tups)
     let col1 = toColumn (printify users) "Messages" 11
@@ -75,7 +79,7 @@ generate dbName con = do
                                "Name"
                                "Idle Quotient"
                                idlers
-                 , headerTable "Broken Keyboard"
+                 , headerTable "Enthusiastic"
                                "Name"
                                "YELLING"
                                yell
@@ -85,7 +89,7 @@ generate dbName con = do
                                excite
                  , headerTable "Amazed"
                                "Name"
-                               "Times Dumbfounded"
+                               "Times Lost for Words"
                                amaze
                  , headerTable "Apostrophe Users"
                                "Name"
@@ -165,7 +169,7 @@ generate dbName con = do
     heading <- makeHeading dbName con
     let content = (genTag "div" [("id", "content")] $ linkLinks contents)
     putStrLn $ makeFile (heading ++ content) "/css.css" (getTitle dbName) ["/util.js"]
-    --putStrLn $
+    logInfo "Finished"
 
 getTitle :: String -> String
 getTitle s = tag "title" ("Stats for #" ++ s ++ " -- starstats")
@@ -199,8 +203,16 @@ doAction :: Action -> ServerInfo -> IO ()
 doAction action sinfo@(ServerInfo driver chanName) = do
     con <- connect driver chanName
     case action of
-        Read -> readDb con
-        Generate -> generate chanName con
-        Recover file -> watch file False True sinfo
-        Repopulate file -> watch file True False sinfo
+        Read -> do
+            logInfo "Reading data lines from stdin"
+            readDb con
+        Generate -> do
+            logInfo "Generating webpage"
+            generate chanName con
+        Recover file -> do
+            logInfo "Recovering from log"
+            watch file False True sinfo
+        Repopulate file -> do
+            logInfo "Repopulating database"
+            watch file True False sinfo
     close con

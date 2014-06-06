@@ -14,6 +14,8 @@ import System.Exit
 import StarStats.DB.Utils
 import StarStats.Parser
 import StarStats.Time
+import StarStats.Log.Log
+
 
 getCount :: IConnection c => c -> IO Int
 getCount con = do
@@ -586,9 +588,9 @@ populateStdIn con = do
     case get' of
         Left l -> error $ show l
         Right line -> do
-            hPutStr stderr $ "Adding line: " ++ show line ++ "\n"
+            logVerbose $ "Adding line: " ++ line
             if line == ""
-            then do hPutStr stderr $ "Got empty line: Exiting\n"
+            then do logWarning "Got empty line: Exiting"
                     exitWith ExitSuccess
             else case parseLine line of
                      Left err -> do
@@ -608,8 +610,12 @@ insertFromStdIn data' con = do
         Left l' -> do
             let err = show l'
             case () of
-              ()| isInfixOf "Data too long" err -> return ()
-                | isInfixOf "Deadlock" err -> insertFromStdIn data' con
+              ()| isInfixOf "Data too long" err -> do
+                    logWarning "Data too long for row"
+                    return ()
+                | isInfixOf "Deadlock" err -> do
+                    logWarning "Deadlock encountered, retrying"
+                    insertFromStdIn data' con
                 | otherwise -> error err
         Right _ -> do
             return ()

@@ -18,6 +18,7 @@ import StarStats.Time
 import StarStats.DB.Tables
 import StarStats.DB.Utils
 import StarStats.DB.Connection
+import StarStats.Log.Log
 
 getSize :: String -> IO FileOffset
 getSize file = do
@@ -96,20 +97,26 @@ parseGood [] = []
 -- Get latest message and then read backwards until we find it and parse from there
 recover :: String -> String -> String -> IO ()
 recover file driver chanName = do
+    logInfo "Making connection"
     con <- connect driver chanName
+    logInfo "Searching for latest message"
     latest <- getLatestMessage con chanName -- \ these two lines
     close con                               --
     size <- getSize file                    -- / should be atomic together
 
     case latest of
-        Nothing -> do hPutStr stderr "No need to recover\n"
-                      hPutStr stderr "Resuming watch\n"
+        Nothing -> do logWarning "No need to recover"
+                      logWarning "Resuming watch"
         Just (msg, t) -> do ls <- lines <$> readFile file
                             let ps = parseGood ls
                             let matchingDate = matchDate t ps
                             let matchingLine = matchLine t msg matchingDate
                             let ss = fst <$> matchingLine
+                            if length ss == 0
+                            then do logWarning "Could not match log"
+                                    logWarning "To recover, run a full repop"
+                            else logInfo "Found match"
                             sequence_ $ (\x -> putStrLn x *> hFlush stdout ) <$> ss
-
+                            logInfo "Resuming watch"
     watchFile file size
 

@@ -1,5 +1,6 @@
-{-# LANGUAGE DoAndIfThenElse #-}
+{-# LANGUAGE DoAndIfThenElse, BangPatterns #-}
 
+import Prelude hiding(log)
 import System.Environment
 import Control.Applicative
 import System.IO
@@ -18,7 +19,6 @@ main = do
                     | hasArg "-rv" -> Recover (args !! 2)
                     | hasArg "-rd" -> Read
                     | hasArg "-g" -> Generate
-
 
     let sinfo = ServerInfo driver chanName
     doAction action sinfo

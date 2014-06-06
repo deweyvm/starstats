@@ -10,7 +10,7 @@ import Data.Maybe
 import Database.HDBC
 import System.Directory
 import Text.Printf
-
+import StarStats.Log.Log
 
 data Action = Recover String {- Scan the given file for the last message
                                 inserted. Print all subsequent data lines
@@ -189,5 +189,5 @@ time' msg action = do
     (s, res) <- time $ force <$> action
     let len = length msg
     let whitespace = printf ("%" ++ show (27 - len) ++ "s") " " ++ "\t"
-    putStrLn ("<!-- " ++ msg ++ ": " ++ whitespace ++ printf "%.3fs" s ++ " -->")
+    logInfo (msg ++ ": " ++ whitespace ++ printf "%.3fs" s)
     return res
