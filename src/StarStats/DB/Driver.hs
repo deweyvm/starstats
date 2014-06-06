@@ -64,9 +64,9 @@ generate dbName con = do
     let col5 = toColumn randTop "Random Message" 63
 
     let us = fst <$> users
-    let rows = formatTable us "User" 14 [col1, col2, col3, col4, col5]
+    let rows = formatTable "Top Users" us "User" 14 [col1, col2, col3, col4, col5]
     let tables = [ makeTimeScript "Activity (UTC)" activity
-                 , withHeading "Top Users" $ rows
+                 , rows
                  , headerTable "Welcoming"
                                "Name"
                                "Times"
@@ -186,8 +186,11 @@ makeHeading channel con = do
                       , end
                       , "."
                       ]
+    let timeInfo = if words' == 0
+                   then genTag "div" [("id", "emptyhead")] "no data added yet!"
+                   else genTag "div" [("id", "lead")] $ tag "p" desc
     return $ unlines [ tag "h1" ("Stats for #" ++ channel)
-                     , genTag "div" [("id", "lead")] $ tag "p" desc
+                     , timeInfo
                      ]
 
 

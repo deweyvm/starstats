@@ -8,8 +8,8 @@ import Data.Convertible
 import Data.List
 import Data.Maybe
 import Database.HDBC
-import Text.Printf
 import System.Directory
+import Text.Printf
 
 
 data Action = Recover String {- Scan the given file for the last message
@@ -20,9 +20,6 @@ data Action = Recover String {- Scan the given file for the last message
             | Read {- | Read and insert data lines from stdin. -}
             | Generate {- | Generate html. -}
 data ServerInfo = ServerInfo String String
-
-linkLinks :: String -> String
-linkLinks s = replaceUrls s (\x -> "<a href=\"" ++ x ++ "\">" ++ x ++ "</a>")
 
 escapeHtml :: String -> String
 escapeHtml =
@@ -68,7 +65,7 @@ instance Print Int where
     print' = show
 
 instance Print Double where
-    print' = printf "%.2f"
+    print' = printf "%.1f"
 
 instance Print String where
     print' = id

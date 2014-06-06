@@ -74,18 +74,21 @@ rowify us cs =
     let rows = Row . assemble' <$> us in
     hr : rows
 
-formatTable :: [Name]
+formatTable :: Heading
+            -> [Name]
             -> Heading
             -> Width
             -> [Column]
             -> String
-formatTable ns nh nw cs =
+formatTable h ns nh nw cs =
     let nameCol = Column (M.fromList $ zip ns ns) nh nw in
     let cs' = nameCol : cs in
     let rows = rowify ns cs' in
     let formatCell (s, w) = td (printf "%d%%" w) s in
     let formatRow (Row xs) = tr $ concat $ formatCell <$> xs in
-    tag "table" $ concat $ formatRow <$> rows
+    if length rows == 1
+    then ""
+    else withHeading h $ tag "table" $ concat $ formatRow <$> rows
 
 
 makeCanvas :: String -> Int -> Int -> String
@@ -112,7 +115,9 @@ makeTimeScript h hours =
         values = (show . snd) <$> hours in
     let fmt = (intercalate ", " values) in
     let vals = [show "timegraph"] ++ [("[" ++ fmt ++ "]")] in
-    withHeading h $ canvas ++ (tag "script" $ (makeCall "drawGraph" vals))
+    if length values == 0
+    then ""
+    else withHeading h $ canvas ++ (tag "script" $ (makeCall "drawGraph" vals))
 
 
 makeCall :: String -> [String] -> String
@@ -192,3 +197,6 @@ voidTag t props =
 tag :: String -> String -> String
 tag s c = genTag s [] c
 
+
+linkLinks :: String -> String
+linkLinks s = replaceUrls s (\x -> genTag "a" [("href", x)] x)

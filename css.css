@@ -49,6 +49,15 @@ html * {
   margin-bottom: 1em;
 }
 
+
+#emptyhead {
+    text-align: center;
+    font-style: italic;
+}
+
+
+
+
 /*thanks to leod for this part!*/
 .overflowtest {
   position: relative;
@@ -71,3 +80,5 @@ html * {
   white-space: normal;
   word-wrap:break-word;
 }
+
+/*******************************/

@@ -105,8 +105,12 @@ insert (Message time typ name msg) con = do
                \     h23=h23+IF(HOUR(?) = 23, 1, 0);"
     overallActiveQ <- prepare con qoact
     force <$> execute overallActiveQ [sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime]
-    let qq = "INSERT INTO users (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, isNaysay, isApostrophe, isCaps, isWelcoming, q1, q2, q3, q4, timesMentioned, timesMentioning) \
-            \ VALUES (?, 1, 0, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)\
+    let qq = "INSERT INTO users (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, isNaysay, isApostrophe, isCaps, isWelcoming, timesMentioned, timesMentioning, q1, q2, q3, q4) \
+            \ VALUES (?, 1, ?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\
+            \         IF(FLOOR(HOUR(?)/6) = 0, 1, 0),\
+            \         IF(FLOOR(HOUR(?)/6) = 1, 1, 0),\
+            \         IF(FLOOR(HOUR(?)/6) = 2, 1, 0),\
+            \         IF(FLOOR(HOUR(?)/6) = 3, 1, 0))\
             \ ON DUPLICATE KEY UPDATE\
             \     msgcount=msgcount+1, \
             \     firstseen=(\
@@ -133,7 +137,11 @@ insert (Message time typ name msg) con = do
             \     q4=q4+(IF(FLOOR(HOUR(?)/6) = 3, 1, 0))"
 
     countQ <- prepare con qq
-    force <$> execute countQ [ sqlName, sqlTime, sqlTime
+    force <$> execute countQ [ sqlName, wordcount, len, sqlTime, sqlTime
+                             , sqlTime
+                             , sqlTime
+                             , sqlTime
+                             , sqlTime
                              , sqlTime
                              , sqlTime
                              , sqlTime
