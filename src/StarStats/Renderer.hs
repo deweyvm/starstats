@@ -154,7 +154,7 @@ makeFile x file head' scripts =
     let css = voidTag "link" [("href",file),("rel", "stylesheet"), ("type", "text/css")] in
     let s :: [String]
         s = scriptSrc <$> scripts in
-    tag "html" $ tag "head" (css ++ (concat $ s) ++ head') ++ tag "body" x
+    tag "html" $ tag "head" (css ++ (concat $ s) ++ head') ++ tag "body" (genTag "div" [("id", "container")] x)
 
 simpleTable :: Print a => [(String,a)] -> String
 simpleTable xs = tag "table" $ concat $ format <$> xs

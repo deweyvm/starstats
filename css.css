@@ -1,6 +1,29 @@
-body {
+
+html, body {
   background-color:#595959;
+  margin-top: -0.2em;
+  height:96%;
 }
+
+#container {
+  min-height:96%;
+  position:relative;
+}
+
+#content {
+  padding-bottom:45px;
+}
+#footer {
+  position:absolute;
+  bottom:0;
+  width:100%;
+  height:16px;
+  text-align: center;
+  font-size: 0.55em;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
 table {
   table-layout: fixed;
   width: 100%;
@@ -42,17 +65,17 @@ html * {
   font-family:"Consolas", monospace !important;
   color:#A2A4BA;
 }
-#footer {
-  text-align: center;
-  font-size: 0.55em;
-  margin-top: 1em;
-  margin-bottom: 1em;
-}
 
 
 #emptyhead {
-    text-align: center;
-    font-style: italic;
+  font-style:italic;
+  position:absolute;
+  bottom:50%;
+  width:100%;
+  height:16px;            /* Height of the footer */
+  text-align: center;
+  margin-top: 1em;
+  margin-bottom: 1em;
 }
 
 
@@ -80,5 +103,4 @@ html * {
   white-space: normal;
   word-wrap:break-word;
 }
-
 /*******************************/
