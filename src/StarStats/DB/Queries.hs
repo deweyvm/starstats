@@ -1,3 +1,4 @@
+{-# LANGUAGE DoAndIfThenElse #-}
 module StarStats.DB.Queries where
 
 import Control.Arrow(second)
@@ -6,6 +7,7 @@ import Database.HDBC
 import Data.List (sortBy)
 import Text.Printf
 import StarStats.DB.Utils
+import System.IO
 
 getUniqueNicks :: IConnection c => c -> IO [(String,Int)]
 getUniqueNicks con =
@@ -33,7 +35,7 @@ getOverallActivity con = do
 getRandMessages :: IConnection c => c -> IO [(String, String)]
 getRandMessages con =
     let qs = ["SET @max = (SELECT MAX(id) FROM messages); "] in
-    let q = "SELECT name, contents\
+    let q = "SELECT DISTINCT name, contents\
            \ FROM messages AS m\
            \ JOIN (SELECT FLOOR(RAND() * @max) AS m2\
                  \ FROM messages\
@@ -43,6 +45,7 @@ getRandMessages con =
 
 getRandTopTen :: IConnection c => c -> IO [(String, String)]
 getRandTopTen con = do
+
     let q = "SELECT m.name, contents\
            \ FROM messages AS m\
            \ JOIN (SELECT \
@@ -50,7 +53,7 @@ getRandTopTen con = do
            \           name, \
            \           msgcount\
            \       FROM top) AS t\
-           \ ON m.userindex = r AND m.name = t.name;"
+           \ ON m.name = t.name AND m.userindex = r"
 
     getAndExtract con [] extractTup q
 
@@ -251,6 +254,7 @@ getNeedy con =
            \ FROM users\
            \ JOIN uniquenicks AS u\
            \ ON u.name = users.name\
+           \ WHERE timesMentioning > 0\
            \ ORDER BY c DESC\
            \ LIMIT 10;"  in
     getAndExtract con [] extractTup q
@@ -259,6 +263,7 @@ getRepeatedSimple :: IConnection c => c -> IO [(String, Int)]
 getRepeatedSimple con =
     let q = "SELECT contents, repcount\
            \ FROM allmsgs\
+           \ WHERE repcount > 1\
            \ ORDER BY repcount DESC\
            \ LIMIT 5;" in
     getAndExtract con [] extractTup q
@@ -293,9 +298,11 @@ getApostrophes con = do
     let extract :: [SqlValue] -> (String, String)
         extract = mapSnd showDouble . extractTup
     r1 <- reverse <$> getAndExtract con []  extract q1
-    let (xs, ys) = (getTopBottom (length r1 `quot` 2) r1)
-    let res = xs  ++ [("...", "...")] ++ ys
-    return $ res
+    if (length r1 == 0)
+    then return []
+    else do let (xs, ys) = (getTopBottom (length r1 `quot` 2) r1)
+            let res = xs  ++ [("...", "...")] ++ ys
+            return $ res
 
 getQuestions :: IConnection c => c -> IO [(String, Int)]
 getQuestions con =

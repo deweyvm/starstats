@@ -15,6 +15,9 @@ function sum(arr) {
 }
 
 function drawBar(canvasName, w, x, y, z) {
+    if (w + x + y + z === 0) {
+        w = 1;
+    }
     var context = getContext(canvasName);
     var total = w + x + y + z;
     var w_ = 100*w/total;

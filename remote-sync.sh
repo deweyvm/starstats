@@ -10,7 +10,7 @@ ssh $HOST "rm -rf ~/$NAME.zip ~/$NAME" &&\
 echo "Upload to $HOST" &&\
 scp $NAME.zip $HOST:. &&\
 echo "Run sync command" &&\
-ssh -t $HOST "unzip -qq $NAME.zip && cd $NAME && cabal configure && sh run.sh && sudo sh sync.sh"
+ssh -t $HOST "unzip -qq $NAME.zip && cd $NAME && cabal configure && sh build.sh && sudo sh sync.sh"
 if [[ $? -ne 0 ]] ; then
     echo "Failure-------------------------------------------------------------------------"
 else

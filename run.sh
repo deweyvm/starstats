@@ -1,54 +1,39 @@
 #!/usr/bin/env bash
 EXE=./dist/build/starstats/starstats
-
-pushd src &> /dev/null && \
-#echo "Generating documentation..." &&\
-#out=`haddock -h -o ../docs Main.hs`
-#if [[ $? -ne 0 ]] ; then
-#    echo WARNING: haddock failure
-#    echo $out
-#fi
+SIMUL=../ircsimul/ircsimul.py
+PY3=python3
 if [[ "$(expr substr $(uname -s) 1 6)" == "CYGWIN" ]] ; then
     driver="MySQL ODBC 5.3 ANSI Driver"
 else
     export MYSQL_UNIX_PORT=/var/run/mysqld/mysqld.sock
     driver="MySql ODBC 5.1 Driver"
 fi
-popd &> /dev/null
-echo "Building... "
-rm -f $EXE &&\
-cabal build 2>&1 >/dev/null
-if [[ $? -ne 0 ]] ; then
-    echo "Build Failed"
-    exit 1
-fi
-log=`cat config`
-db=`cat config | sed 's/.*\/#\(.*\)[.]log/\1/'`
+
+log=$2
+db=`echo $log | sed 's/.*\/#\(.*\)[.]log/\1/'`
 echo "Running starstats... "  &&\
-rm -f temp && \
 case $1 in
-# recover
-"-r")
-    $EXE "$driver" "$db" "$log" "-w" "-rv" | $EXE "$driver" "$db" "-p"
+"--repop")
+    $EXE "$driver" "$db" "$log" "-rp" | $EXE "$driver" "$db" "-rd"
 ;;
-"-rv")
-    $EXE "$driver" "$db" "$log" "-w" "-rv"
+"--repop-dry-run")
+    $EXE "$driver" "$db" "$log" "-rp"
 ;;
-"-tw")
-    $EXE "$driver" "$db" "$log" "-w" "-rp"
+"--recover")
+    $EXE "$driver" "$db" "$log" "-rv" | $EXE "$driver" "$db" "-rd"
 ;;
-# repopulate the database
-"-w")
-    $EXE "$driver" "$db" "$log" "-w" "-rp" | $EXE "$driver" "$db" "-p"
+"--recover-dry-run")
+    $EXE "$driver" "$db" "$log" "-rv"
 ;;
-"-g")
-    $EXE "$driver" "$db"
+"--generate")
+    $EXE "$driver" "$db" "-g"
 ;;
-"-s")
-    $EXE "$driver" "$db" > generated.html
+"--contrive-repop")
+    $PY3 $SIMUL -l -1 --realtime --stdout | $EXE "$driver" "zarathustra" "-rd"
 ;;
-"-pc")
-    cat "$log" | $EXE "$driver" "$db" > generated.html
+*)
+    echo "Unknown option \"$1\""
+    exit 1
 ;;
 esac
 if [[ $? -ne 0 ]] ; then

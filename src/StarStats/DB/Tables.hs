@@ -175,7 +175,7 @@ insert (Message time typ name msg) con = do
 
     let qm = "INSERT INTO messages (name, type, userindex, wordcount, charcount, contents, contentspre, time, hour, quartile, hash)\
             \ VALUES (?,?,\
-            \         IFNULL((SELECT msgcount FROM users WHERE name=?), 0),\
+            \         IFNULL((SELECT msgcount - 1 FROM users WHERE name=?), 0),\
             \         ?,?,?,?,?,\
             \         HOUR(?),\
             \         HOUR(?)/6,\
@@ -606,8 +606,8 @@ insertFromStdIn data' con = do
         Right _ -> do
             return ()
 
-repopulateDb :: IConnection c => c -> IO ()
-repopulateDb con = do
+readDb :: IConnection c => c -> IO ()
+readDb con = do
     deleteDbs con
     createDbs con
     populateStdIn con

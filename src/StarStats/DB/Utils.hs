@@ -11,6 +11,16 @@ import Database.HDBC
 import Text.Printf
 import System.Directory
 
+
+data Action = Recover String {- Scan the given file for the last message
+                                inserted. Print all subsequent data lines
+                                and then resume watching. -}
+            | Repopulate String {- Repopulate from the beginning of the given
+                                   file and then resume watching. -}
+            | Read {- | Read and insert data lines from stdin. -}
+            | Generate {- | Generate html. -}
+data ServerInfo = ServerInfo String String
+
 linkLinks :: String -> String
 linkLinks s = replaceUrls s (\x -> "<a href=\"" ++ x ++ "\">" ++ x ++ "</a>")
 
@@ -75,21 +85,6 @@ instance Default Int where
 
 instance Default [Char] where
     default' = ""
-
-configFile :: String
-configFile = "config"
-
-readConfig :: IO String
-readConfig = do
-    exists <- doesFileExist configFile
-    if not exists
-    then
-        error $ "file \"" ++ configFile ++ "\" not found"
-    else do
-        config <- lines <$> readFile configFile
-        return $ processConfig config
-    where processConfig (c:_) = c
-          processConfig     _ = error "file 'config' is empty"
 
 halfList :: [a] -> ([a], [a])
 halfList [] = ([], [])

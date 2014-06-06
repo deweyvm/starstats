@@ -16,6 +16,7 @@ import Debug.Trace
 import StarStats.Parser
 import StarStats.Time
 import StarStats.DB.Tables
+import StarStats.DB.Utils
 import StarStats.DB.Connection
 
 getSize :: String -> IO FileOffset
@@ -31,8 +32,8 @@ getEnd file bytes = do
     return $ U.toString s
 
 
-watch :: String -> Bool -> Bool -> String -> String -> IO ()
-watch file doRepop doRecover driver chanName = do
+watch :: String -> Bool -> Bool -> ServerInfo -> IO ()
+watch file doRepop doRecover (ServerInfo driver chanName) = do
     exists <- doesFileExist file
     if not exists
     then error "no file"
@@ -101,7 +102,8 @@ recover file driver chanName = do
     size <- getSize file                    -- / should be atomic together
 
     case latest of
-        Nothing -> error "No need to recover"
+        Nothing -> do hPutStr stderr "No need to recover\n"
+                      hPutStr stderr "Resuming watch\n"
         Just (msg, t) -> do ls <- lines <$> readFile file
                             let ps = parseGood ls
                             let matchingDate = matchDate t ps

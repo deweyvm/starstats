@@ -12,8 +12,8 @@ import StarStats.DB.Utils
 import StarStats.DB.Tables
 import StarStats.DB.Queries
 import StarStats.DB.Connection
+import StarStats.Watcher
 
-data Action = Repopulate | Generate
 
 
 generate :: IConnection c => String -> c -> IO ()
@@ -191,10 +191,12 @@ makeHeading channel con = do
                      ]
 
 
-doAction :: String -> String -> Action -> IO ()
-doAction driver dbName action = do
-    con <- connect driver dbName
+doAction :: Action -> ServerInfo -> IO ()
+doAction action sinfo@(ServerInfo driver chanName) = do
+    con <- connect driver chanName
     case action of
-        Repopulate -> repopulateDb con
-        Generate -> generate dbName con
+        Read -> readDb con
+        Generate -> generate chanName con
+        Recover file -> watch file False True sinfo
+        Repopulate file -> watch file True False sinfo
     close con
