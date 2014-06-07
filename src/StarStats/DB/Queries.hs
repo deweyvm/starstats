@@ -283,7 +283,8 @@ getApostrophes con = do
     r1 <- reverse <$> getAndExtract con []  extract q1
     if (length r1 == 0)
     then return []
-    else do let (xs, ys) = (getTopBottom (length r1 `quot` 2) r1)
+    else do let len = min 5 (length r1 `quot` 2)
+            let (xs, ys) = (getTopBottom len r1)
             let res = xs  ++ [("...", "...")] ++ ys
             return $ res
 
