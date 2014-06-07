@@ -135,7 +135,17 @@ makeList :: [String] -> String
 makeList xs = concat $ tag "p" <$> xs
 
 withHeading3 :: String -> (String -> String)
-withHeading3 h x = divClass "element" $ (tag "h3" h) ++ x
+withHeading3 h x =
+    let divv = genTag "div" [("class", "myhr")] in
+    let spann = genTag "span" [("class", "myhr-inner")] in
+    let h' = "&nbsp;&nbsp;" ++ h ++ "&nbsp;&nbsp;" in
+    divClass "element" $ (divv (spann h')) ++ x
+
+-- <div style="height: 2px; background-color: black; text-align: center">
+--   <span style="background-color: white; position: relative; top: -0.5em;">
+--     Section Title
+--   </span>
+-- </div>
 
 section :: String -> [String] -> String
 section h [] = ""
@@ -163,7 +173,7 @@ makeFile x file head' scripts =
 
 simpleTable :: Print a => [(String,a)] -> String
 simpleTable xs = tag "table" $ concat $ format <$> xs
-    where format (s, y) = tr $ td "30%" s ++ td "70%" (print' y)
+    where format (s, y) = tr $ td "50%" s ++ td "50%" (print' y)
 
 {-# NOINLINE counter #-}
 counter :: IORef Int

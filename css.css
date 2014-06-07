@@ -47,10 +47,7 @@ h2 {
   color: #6978FF!important;
   text-align: left;
 }
-h3 {
-  color: #6ED899!important;
-  text-align: left;
-}
+
 td {
   background-color: #4A4A4A;
   border-radius: 5px;
@@ -93,7 +90,26 @@ html * {
   margin-bottom: 1em;
 }
 
+.myhr {
+    margin-top:2em;
+    margin-bottom:2em;
+    height: 2px;
+    width: 90%;
+    background-color: #404040;
+    text-align: center;
+    background-image: -webkit-linear-gradient(left, #595959, #404040, #595959, #404040, #595959);
+    background-image:    -moz-linear-gradient(left, #595959, #404040, #595959, #404040, #595959);
+    background-image:     -ms-linear-gradient(left, #595959, #404040, #595959, #404040, #595959);
+    background-image:      -o-linear-gradient(left, #595959, #404040, #595959, #404040, #595959);
+}
+.myhr-inner {
+    color: #6ED899;
+    font-size: 1.17em;
+    background-color: #595959!important;
+    position: relative;
+    top: -0.58em;
 
+}
 
 
 /*thanks to leod for this part!*/
