@@ -8,7 +8,6 @@ import Data.List (sortBy)
 import Text.Printf
 import StarStats.DB.Utils
 import System.IO
-import StarStats.Renderer
 
 getUniqueNicks :: IConnection c => c -> IO [(String,Int)]
 getUniqueNicks con =

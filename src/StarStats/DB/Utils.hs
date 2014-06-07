@@ -76,13 +76,13 @@ class Default a where
     default' :: a
 
 instance Default Double where
-    default' = 0
+    default' = -1
 
 instance Default Int where
-    default' = 0
+    default' = -1
 
 instance Default [Char] where
-    default' = ""
+    default' = "!error"
 
 halfList :: [a] -> ([a], [a])
 halfList [] = ([], [])
@@ -162,7 +162,7 @@ extractAction (x:y:z:_) =
              then (\x-> "<i>" ++ name ++ " " ++ x ++ "</i>")--fixme
              else id) $ fromSql y in
     (name, y')
-extractAction _ = ("!error", "!error")
+extractAction _ = (default', default')
 
 type Extract a = [SqlValue] -> a
 
