@@ -40,7 +40,7 @@ function drawGraph(canvasName, xs) {
     var context = getContext(canvasName);
     var spacing = 5;
     var width = 16;
-
+    var div = Math.floor(xs.length/util__colors.length);
     var total = 0;
     var max = 0;
     var percents = []
@@ -59,7 +59,7 @@ function drawGraph(canvasName, xs) {
     for (var i = 0; i < xs.length; i += 1) {
         var x = i * (spacing + width);
         var y = 100 - percents[i] + 20;
-        var color = util__colors[Math.floor(i/6)];
+        var color = util__colors[Math.floor(i/div)];
         var percentText = Math.floor((xs[i]*100/total)).toString() + "%";
         var iwidth = context.measureText(i).width;
         var pwidth = context.measureText(percentText).width;

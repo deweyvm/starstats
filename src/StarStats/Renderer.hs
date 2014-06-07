@@ -108,13 +108,13 @@ makeRectScript name w x y z =
     let vals = [show name] ++ (show <$> [w, x, y, z]) in
     tag "script" $ makeCall "drawBar" vals
 
-makeTimeScript :: String -> [(Int,Int)] -> Maybe String
-makeTimeScript h hours =
-    let canvas = makeCanvas "timegraph" (24*24) 140 in
+makeTimeScript :: String -> String -> [(Int,Int)] -> Maybe String
+makeTimeScript canvasName h hours =
+    let canvas = makeCanvas canvasName (24*24) 140 in
     let values :: [String]
         values = (show . snd) <$> hours in
     let fmt = (intercalate ", " values) in
-    let vals = [show "timegraph"] ++ [("[" ++ fmt ++ "]")] in
+    let vals = [show canvasName] ++ [("[" ++ fmt ++ "]")] in
     if length values == 0
     then Nothing
     else Just $ withHeading3 h $ canvas ++ (tag "script" $ (makeCall "drawGraph" vals))

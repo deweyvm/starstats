@@ -16,8 +16,8 @@ getUniqueNicks con =
            \ ORDER BY msgcount DESC;" in
     getAndExtract con [] extractTup q
 
-getOverallActivity :: IConnection c => c -> IO [(Int,Int)]
-getOverallActivity con = do
+getHourlyActivity :: IConnection c => c -> IO [(Int,Int)]
+getHourlyActivity con = do
     let q = "SELECT h0,  h1,  h2,  h3,  h4,  h5,\
            \        h6,  h7,  h8,  h9,  h10, h11,\
            \        h12, h13, h14, h15, h16, h17,\
@@ -29,6 +29,15 @@ getOverallActivity con = do
                          , fromSql x12, fromSql x13, fromSql x14, fromSql x15
                          , fromSql x16, fromSql x17, fromSql x18, fromSql x19
                          , fromSql x20, fromSql x21, fromSql x22, fromSql x23]
+        extract _ = []
+    times <- runQuery con q
+    return $ zip [0..] (concat $ extract <$> times)
+
+getDailyActivity :: IConnection c => c -> IO [(Int,Int)]
+getDailyActivity con = do
+    let q = "SELECT d0, d1, d2, d3, d4, d5, d6\
+           \ FROM activity;"
+    let extract (d0:d1:d2:d3:d4:d5:d6:_) = [fromSql d0, fromSql d1, fromSql d2, fromSql d3, fromSql d4, fromSql d5, fromSql d6]
     times <- runQuery con q
     return $ zip [0..] (concat $ extract <$> times)
 

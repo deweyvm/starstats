@@ -76,13 +76,13 @@ class Default a where
     default' :: a
 
 instance Default Double where
-    default' = -1
+    default' = 0
 
 instance Default Int where
-    default' = -1
+    default' = 0
 
 instance Default [Char] where
-    default' = "!error"
+    default' = ""
 
 halfList :: [a] -> ([a], [a])
 halfList [] = ([], [])

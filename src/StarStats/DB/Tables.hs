@@ -78,8 +78,13 @@ insert (Message time typ name msg) con = do
     activeQ <- prepare con qact
     force <$> execute activeQ  [sqlName, sqlTime, sqlTime]
 
-    let qoact = "INSERT INTO activity (dummy,h0,h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15,h16,h17,h18,h19,h20,h21,h22,h23)\
-               \ VALUES (1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)\
+    let qoact = "INSERT INTO activity (dummy,h0,h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15,h16,h17,h18,h19,h20,h21,h22,h23,\
+               \ d0, d1, d2, d3, d4, d5, d6)\
+               \ VALUES (1,0,0,0,0,0,0,\
+               \           0,0,0,0,0,0,\
+               \           0,0,0,0,0,0,\
+               \           0,0,0,0,0,0,\
+               \           0,0,0,0,0,0,0)\
                \ ON DUPLICATE KEY UPDATE\
                \     h0=h0+IF(HOUR(?) = 0, 1, 0),\
                \     h1=h1+IF(HOUR(?) = 1, 1, 0),\
@@ -104,9 +109,17 @@ insert (Message time typ name msg) con = do
                \     h20=h20+IF(HOUR(?) = 20, 1, 0),\
                \     h21=h21+IF(HOUR(?) = 21, 1, 0),\
                \     h22=h22+IF(HOUR(?) = 22, 1, 0),\
-               \     h23=h23+IF(HOUR(?) = 23, 1, 0);"
+               \     h23=h23+IF(HOUR(?) = 23, 1, 0),\
+               \     d0=d0+IF(DAYOFWEEK(?) = 1, 1, 0),\
+               \     d1=d1+IF(DAYOFWEEK(?) = 2, 1, 0),\
+               \     d2=d2+IF(DAYOFWEEK(?) = 3, 1, 0),\
+               \     d3=d3+IF(DAYOFWEEK(?) = 4, 1, 0),\
+               \     d4=d4+IF(DAYOFWEEK(?) = 5, 1, 0),\
+               \     d5=d5+IF(DAYOFWEEK(?) = 6, 1, 0),\
+               \     d6=d6+IF(DAYOFWEEK(?) = 7, 1, 0);"
     overallActiveQ <- prepare con qoact
-    force <$> execute overallActiveQ [sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime]
+    force <$> execute overallActiveQ [sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime
+                                     , sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime]
     let qq = "INSERT INTO users (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, isNaysay, isApostrophe, isCaps, isWelcoming, timesMentioned, timesMentioning, q1, q2, q3, q4) \
             \ VALUES (?, 1, ?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\
             \         IF(FLOOR(HOUR(?)/6) = 0, 1, 0),\
@@ -475,6 +488,13 @@ createDbs con = do
                                         \ h21 MEDIUMINT UNSIGNED NOT NULL,\
                                         \ h22 MEDIUMINT UNSIGNED NOT NULL,\
                                         \ h23 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ d0 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ d1 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ d2 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ d3 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ d4 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ d5 MEDIUMINT UNSIGNED NOT NULL,\
+                                        \ d6 MEDIUMINT UNSIGNED NOT NULL,\
                                         \ PRIMARY KEY (dummy));"
     let count = "CREATE TABLE users(name CHAR(21) NOT NULL,\
                                   \ msgcount MEDIUMINT UNSIGNED NOT NULL,\
