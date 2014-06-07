@@ -190,10 +190,10 @@ makeHeading channel con = do
                       ]
     let timeInfo = if words' == 0
                    then divId "emptyhead" "no data added yet!"
-                   else divId "lead" $ tag "p" desc
-    return $ unlines [ tag "h1" ("Stats for #" ++ channel)
-                     , timeInfo
-                     ]
+                   else tag "p" desc
+    return $ divId "lead" $ unlines [ tag "h1" ("Stats for #" ++ channel)
+                                    , timeInfo
+                                    ]
 
 
 doAction :: Action -> ServerInfo -> IO ()

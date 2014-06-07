@@ -135,11 +135,11 @@ makeList :: [String] -> String
 makeList xs = concat $ tag "p" <$> xs
 
 withHeading3 :: String -> (String -> String)
-withHeading3 h = (++) (tag "h3" h)
+withHeading3 h x = divClass "element" $ (tag "h3" h) ++ x
 
 section :: String -> [String] -> String
 section h [] = ""
-section h xs = (++) (tag "h2" h) (unlines xs)
+section h xs = divClass "section" $ (tag "h2" h) ++ (unlines xs)
 
 pairMap :: (a -> b) -> (a, a) -> (b, b)
 pairMap f (x, y) = (f x, f y)
@@ -206,7 +206,7 @@ genTag t props c =
 voidTag :: String -> [(String,String)] -> String
 voidTag t props =
     let props' = foldl (\acc kv -> acc ++ propToString kv) "" props in
-    concat ["<", t, " ", props', ">\n"]
+    concat ["<", t, " ", props', "/>\n"]
 
 tag :: String -> String -> String
 tag s c = genTag s [] c
