@@ -1,6 +1,6 @@
 
 html, body {
-  background-color:#595959;
+  background-color: #595959;
   margin-top: -0.1em;
   height: 96%;
 }
@@ -26,6 +26,7 @@ html, body {
 
 .section {
   margin-left: 0.5em;
+  text-align: center;
 }
 
 .element {
@@ -34,21 +35,24 @@ html, body {
 
 table {
   table-layout: fixed;
-  width: 100%;
+  width: 90%;
   text-overflow: ellipsis;
   font-size: 0.95em;
 }
 h1 {
-  color:#6978FF!important;
+  color: #6978FF!important;
+  text-align: left;
 }
 h2 {
-  color:#6978FF!important;
+  color: #6978FF!important;
+  text-align: left;
 }
 h3 {
-  color:#6ED899!important;
+  color: #6ED899!important;
+  text-align: left;
 }
 td {
-  background-color:#4A4A4A;
+  background-color: #4A4A4A;
   border-radius: 5px;
   overflow: hidden;
   margin-right: 8px;
@@ -61,20 +65,20 @@ tr {
   text-overflow: ellipsis;
 }
 tr:first-child * {
-  background-color:#404040;
+  background-color: #404040;
 }
 a:link {
-  color:#6978FF;
+  color: #6978FF;
 }
 a:visited {
-  color:#D86EAE;
+  color: #D86EAE;
 }
 a:active {
-  color:#828BDE;
+  color: #828BDE;
 }
 html * {
-  font-family:"Consolas", monospace !important;
-  color:#A2A4BA;
+  font-family: "Consolas", monospace !important;
+  color: #A2A4BA;
 }
 
 
@@ -83,7 +87,7 @@ html * {
   position: absolute;
   bottom: 50%;
   width: 100%;
-  height: 16px;            /* Height of the footer */
+  height: 16px;
   text-align: center;
   margin-top: 1em;
   margin-bottom: 1em;
