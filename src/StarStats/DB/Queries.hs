@@ -8,6 +8,7 @@ import Data.List (sortBy)
 import Text.Printf
 import StarStats.DB.Utils
 import System.IO
+import StarStats.Renderer
 
 getUniqueNicks :: IConnection c => c -> IO [(String,Int)]
 getUniqueNicks con =
@@ -35,18 +36,18 @@ getOverallActivity con = do
 getRandMessages :: IConnection c => c -> IO [(String, String)]
 getRandMessages con =
     let qs = ["SET @max = (SELECT MAX(id) FROM messages); "] in
-    let q = "SELECT DISTINCT name, contents\
+    let q = "SELECT DISTINCT name, contents, m.type\
            \ FROM messages AS m\
            \ JOIN (SELECT FLOOR(RAND() * @max) AS m2\
                  \ FROM messages\
                  \ LIMIT 10) AS dummy\
            \ ON m.id = m2;" in
-    getAndExtract con qs extractTup q
+    getAndExtract con qs extractAction q
 
 getRandTopTen :: IConnection c => c -> IO [(String, String)]
 getRandTopTen con = do
 
-    let q = "SELECT m.name, contents\
+    let q = "SELECT m.name, contents, m.type\
            \ FROM messages AS m\
            \ JOIN (SELECT \
            \           FLOOR(RAND() * msgcount) AS r, \
@@ -55,7 +56,7 @@ getRandTopTen con = do
            \       FROM top) AS t\
            \ ON m.name = t.name AND m.userindex = r"
 
-    getAndExtract con [] extractTup q
+    getAndExtract con [] extractAction q
 
 getKickers :: IConnection c => c -> IO [(String, Int)]
 getKickers con =

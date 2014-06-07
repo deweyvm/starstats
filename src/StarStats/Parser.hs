@@ -55,9 +55,9 @@ parseDataLine :: Parser DataLine
 parseDataLine = try (parseTimeChange) <|> parseChatLine
 
 parseChatLine :: Parser DataLine
-parseChatLine = try parseStatus
+parseChatLine = try parseAction
+            <|> try parseStatus
             <|> try parseNotice
-            <|> try parseAction
             <|> try parseInvite
             <|> parseMessage
 

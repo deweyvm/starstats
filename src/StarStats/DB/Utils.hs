@@ -154,6 +154,16 @@ extractTup :: (Convertible SqlValue a
 extractTup (x:y:_) = (fromSql x, fromSql y)
 extractTup       _ = (default', default')
 
+extractAction :: [SqlValue] -> (String, String)
+extractAction (x:y:z:_) =
+    let isAction = (fromSql z :: Int) == 1 in
+    let name = fromSql x in
+    let y' = (if isAction
+             then (\x-> "<i>" ++ name ++ " " ++ x ++ "</i>")--fixme
+             else id) $ fromSql y in
+    (name, y')
+extractAction _ = ("!error", "!error")
+
 type Extract a = [SqlValue] -> a
 
 runQuery :: IConnection c => c -> String -> IO [[SqlValue]]
