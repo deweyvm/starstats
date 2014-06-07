@@ -88,7 +88,7 @@ formatTable h ns nh nw cs =
     let formatRow (Row xs) = tr $ concat $ formatCell <$> xs in
     if length rows == 1
     then Nothing
-    else Just $ withHeading3 h $ tag "table" $ concat $ formatRow <$> rows
+    else Just $ withHeading3 h Table $ tag "table" $ concat $ formatRow <$> rows
 
 
 makeCanvas :: String -> Int -> Int -> String
@@ -108,16 +108,18 @@ makeRectScript name w x y z =
     let vals = [show name] ++ (show <$> [w, x, y, z]) in
     tag "script" $ makeCall "drawBar" vals
 
-makeTimeScript :: String -> String -> [(Int,Int)] -> Maybe String
+makeTimeScript :: String -> String -> [(String,Int)] -> Maybe String
 makeTimeScript canvasName h hours =
-    let canvas = makeCanvas canvasName (24*24) 140 in
+    let width = (24*24) in
+    let canvas = makeCanvas canvasName width 140 in
     let values :: [String]
         values = (show . snd) <$> hours in
     let fmt = (intercalate ", " values) in
-    let vals = [show canvasName] ++ [("[" ++ fmt ++ "]")] in
+    let ls = (intercalate "," (show. fst <$> hours)) in
+    let vals = [show canvasName] ++ [show width] ++ [("[" ++ ls ++ "]")] ++  [("[" ++ fmt ++ "]")] in
     if length values == 0
     then Nothing
-    else Just $ withHeading3 h $ canvas ++ (tag "script" $ (makeCall "drawGraph" vals))
+    else Just $ withHeading3 h Graph $ canvas ++ (tag "script" $ (makeCall "drawGraph" vals))
 
 
 makeCall :: String -> [String] -> String
@@ -134,18 +136,12 @@ formatList = liftA simpleFormat
 makeList :: [String] -> String
 makeList xs = concat $ tag "p" <$> xs
 
-withHeading3 :: String -> (String -> String)
-withHeading3 h x =
+withHeading3 :: String -> Section -> (String -> String)
+withHeading3 h s x =
     let divv = genTag "div" [("class", "myhr")] in
     let spann = genTag "span" [("class", "myhr-inner")] in
     let h' = "&nbsp;&nbsp;" ++ h ++ "&nbsp;&nbsp;" in
-    divClass "element" $ (divv (spann h')) ++ x
-
--- <div style="height: 2px; background-color: black; text-align: center">
---   <span style="background-color: white; position: relative; top: -0.5em;">
---     Section Title
---   </span>
--- </div>
+    divClass (sectionString s) $ (divv (spann h')) ++ x
 
 section :: String -> [String] -> String
 section h [] = ""
@@ -154,14 +150,22 @@ section h xs = divClass "section" $ (tag "h2" h) ++ (unlines xs)
 pairMap :: (a -> b) -> (a, a) -> (b, b)
 pairMap f (x, y) = (f x, f y)
 
+
+data Section = Graph | Table
+
+
+sectionString :: Section -> String
+sectionString Graph = "graph-element"
+sectionString Table = "table-element"
+
 headerTable :: Print a => String -> String -> String -> [(String, a)] -> Maybe String
 headerTable h c1 c2 xs =
 
     if length xs == 0
         then Nothing
-        else let s = (c1, c2) in
+        else let p = (c1, c2) in
              let mapped = (second print') <$> xs in
-             Just $ withHeading3 h $ simpleTable ((pairMap (tag "b") s):mapped)
+             Just $ withHeading3 h Table $ simpleTable ((pairMap (tag "b") p):mapped)
 
 makeFile :: String -> String -> String -> [String] -> String
 makeFile x file head' scripts =

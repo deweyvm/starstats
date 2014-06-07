@@ -40,6 +40,7 @@ generate dbName con = do
     !urls       <- timeGet "Q Random urls"      getUrls
     !hourly     <- timeGet "Q Hourly activity"  getHourlyActivity
     !daily      <- timeGet "Q Daily activity"   getDailyActivity
+    !monthly    <- timeGet "Q Monthly activity" getMonthlyActivity
     !unique     <- timeGet "Q Unique nicks"     getUniqueNicks
     !avgwc      <- timeGet "Q AWC"              getAverageWordCount
     !avgwl      <- timeGet "Q AWL"              getAverageWordLength
@@ -72,7 +73,8 @@ generate dbName con = do
     let us = fst <$> users
     let rows = formatTable "Top Users" us "User" 14 [col1, col2, col3, col4, col5]
     let graphs = [ makeTimeScript "hourly" "Hourly Activity (UTC)" hourly
-                 , makeTimeScript "daily" "Daily Activity" daily]
+                 , makeTimeScript "daily" "Daily Activity" daily
+                 , makeTimeScript "monthly" "Monthly Activity" monthly]
     let tables = [ rows
                  , headerTable "Welcoming"
                                "Name"

@@ -26,6 +26,14 @@ getCount con = do
 
 data DbInsert = DbInsert Int
 
+updateMonthCount :: IConnection c => c -> LocalTime -> IO ()
+updateMonthCount con t = do
+    quickQuery con "INSERT INTO monthly (monthyear, mon, num)\
+                  \ VALUES (EXTRACT(YEAR_MONTH FROM ?),\
+                  \         UPPER(SUBSTR(MONTHNAME(?), 1, 3)), 1)\
+                  \ ON DUPLICATE KEY UPDATE \
+                  \     num=num+1;" [toSql t, toSql t]
+    return ()
 
 insert :: IConnection c
        => DataLine
@@ -175,6 +183,8 @@ insert (Message time typ name msg) con = do
                              , sqlTime
                              , sqlTime
                              ]
+
+    updateMonthCount con newT
 
     let qt1 = "INSERT INTO totals (dummy, msgcount, wordcount, startDate, endDate)\
              \ VALUES (1,1,?,?,?)\
@@ -411,6 +421,7 @@ deleteDbs con = do
                                  , "DROP TABLE IF EXISTS savedate;"
                                  , "DROP TABLE IF EXISTS repuser;"
                                  , "DROP TABLE IF EXISTS lastmsg;"
+                                 , "DROP TABLE IF EXISTS monthly;"
                                  ]
     return ()
 
@@ -463,6 +474,10 @@ createDbs con = do
     let joins = "CREATE TABLE joins(name CHAR(21) NOT NULL,\
                                   \ num MEDIUMINT UNSIGNED NOT NULL,\
                                   \ PRIMARY KEY (name));"
+    let monthly = "CREATE TABLE monthly(monthyear INT NOT NULL,\
+                                      \ mon VARCHAR(3) NOT NULL,\
+                                      \ num INT NOT NULL,\
+                                      \ PRIMARY KEY (monthyear));"
     let activity = "CREATE TABLE activity(dummy BOOL NOT NULL,\
                                         \ h0 MEDIUMINT UNSIGNED NOT NULL,\
                                         \ h1 MEDIUMINT UNSIGNED NOT NULL,\
@@ -571,6 +586,7 @@ createDbs con = do
                                  , savedate
                                  , repuser
                                  , lastmsg
+                                 , monthly
                                  ]
     return ()
 

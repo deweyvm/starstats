@@ -25,17 +25,23 @@ html, body {
 }
 
 .section {
-  margin-left: 0.5em;
+  margin: 0.5em;
   text-align: center;
 }
 
-.element {
-  margin-left: 1em;
+.graph-element {
+  margin: 0;
+  display: inline-block;
+}
+
+.table-element {
+  margin: 0;
 }
 
 table {
   table-layout: fixed;
   width: 90%;
+  margin-left: 5%;
   text-overflow: ellipsis;
   font-size: 0.95em;
 }
@@ -94,7 +100,7 @@ html * {
     margin-top:2em;
     margin-bottom:2em;
     height: 2px;
-    width: 90%;
+    width: 100%;
     background-color: #404040;
     text-align: center;
     background-image: -webkit-linear-gradient(left, #595959, #404040, #595959, #404040, #595959);

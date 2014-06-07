@@ -16,7 +16,7 @@ getUniqueNicks con =
            \ ORDER BY msgcount DESC;" in
     getAndExtract con [] extractTup q
 
-getHourlyActivity :: IConnection c => c -> IO [(Int,Int)]
+getHourlyActivity :: IConnection c => c -> IO [(String,Int)]
 getHourlyActivity con = do
     let q = "SELECT h0,  h1,  h2,  h3,  h4,  h5,\
            \        h6,  h7,  h8,  h9,  h10, h11,\
@@ -31,15 +31,28 @@ getHourlyActivity con = do
                          , fromSql x20, fromSql x21, fromSql x22, fromSql x23]
         extract _ = []
     times <- runQuery con q
-    return $ zip [0..] (concat $ extract <$> times)
+    return $ zip (show <$> [0..]) (concat $ extract <$> times)
 
-getDailyActivity :: IConnection c => c -> IO [(Int,Int)]
+getDailyActivity :: IConnection c => c -> IO [(String,Int)]
 getDailyActivity con = do
     let q = "SELECT d0, d1, d2, d3, d4, d5, d6\
            \ FROM activity;"
     let extract (d0:d1:d2:d3:d4:d5:d6:_) = [fromSql d0, fromSql d1, fromSql d2, fromSql d3, fromSql d4, fromSql d5, fromSql d6]
     times <- runQuery con q
-    return $ zip [0..] (concat $ extract <$> times)
+    return $ zip (["S", "M", "T", "W", "T", "F", "S"]) (concat $ extract <$> times)
+
+getMonthlyActivity :: IConnection c => c -> IO [(String, Int)]
+getMonthlyActivity con = do
+    let q = "SELECT mon, num\
+           \ FROM monthly\
+           \ ORDER BY monthyear\
+           \ LIMIT 12"
+    vals <- runQuery con q
+    let extract (x:y:_) = (fromSql x, fromSql y)
+    return $ take 12 ((extract <$> vals) ++ (zip (repeat "") (repeat 0)))
+
+
+
 
 getRandMessages :: IConnection c => c -> IO [(String, String)]
 getRandMessages con =

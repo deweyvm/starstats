@@ -36,11 +36,12 @@ function drawBar(canvasName, w, x, y, z) {
     }
 }
 
-function drawGraph(canvasName, xs) {
+function drawGraph(canvasName, canvasWidth, ls, xs) {
     var context = getContext(canvasName);
     var spacing = 5;
     var width = 16;
-    var div = Math.floor(xs.length/util__colors.length);
+    var xOffset = (canvasWidth - (width + spacing)*xs.length)/2;
+    var div = Math.ceil(xs.length/util__colors.length);
     var total = 0;
     var max = 0;
     var percents = []
@@ -65,9 +66,9 @@ function drawGraph(canvasName, xs) {
         var pwidth = context.measureText(percentText).width;
 
         context.fillStyle = color;
-        context.fillRect(x, y, width, percents[i]);
+        context.fillRect(x + xOffset, y, width, percents[i]);
         context.fillStyle = '#A2A4BA';
-        context.fillText(i, x + (width - iwidth)/2, 130);
-        context.fillText(percentText, x + (width - pwidth)/2, y - 4);
+        context.fillText(ls[i], x + (width - iwidth)/2 + xOffset, 130);
+        context.fillText(percentText, x + (width - pwidth)/2 + xOffset, y - 4);
     }
 }
