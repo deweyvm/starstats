@@ -586,7 +586,8 @@ populateStdIn :: IConnection c => c -> IO ()
 populateStdIn con = do
     !get' <- try getLine :: IO (Either IOError String)
     case get' of
-        Left l -> error $ show l
+        Left l -> do
+            logInfo "End of input reached"
         Right line -> do
             logVerbose $ "Adding line: " ++ line
             if line == ""
@@ -601,7 +602,7 @@ populateStdIn con = do
                          date <- getDate con
                          insertMessage line date con
                          commit con
-    populateStdIn con
+            populateStdIn con
 
 insertFromStdIn :: IConnection c => DataLine -> c -> IO ()
 insertFromStdIn data' con = do
@@ -620,8 +621,13 @@ insertFromStdIn data' con = do
         Right _ -> do
             return ()
 
-readDb :: IConnection c => c -> IO ()
-readDb con = do
+initDb :: IConnection c => c -> IO ()
+initDb con = do
     deleteDbs con
     createDbs con
+    logInfo "Databases initialized"
+
+readDb :: IConnection c => c -> IO ()
+readDb con = do
+    initDb con
     populateStdIn con

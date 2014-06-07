@@ -7,6 +7,7 @@ import System.IO
 import StarStats.DB.Driver
 import StarStats.Watcher
 import StarStats.DB.Utils
+import StarStats.Log.Log
 
 main :: IO ()
 main = do
@@ -19,6 +20,9 @@ main = do
                     | hasArg "-rv" -> Recover (args !! 2)
                     | hasArg "-rd" -> Read
                     | hasArg "-g" -> Generate
+                    | hasArg "-i" -> Initialize
+                    | otherwise -> error $ "Unknown args " ++ show args
 
     let sinfo = ServerInfo driver chanName
     doAction action sinfo
+    logInfo "Shutting down gracefully"

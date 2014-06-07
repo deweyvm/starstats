@@ -88,7 +88,7 @@ formatTable h ns nh nw cs =
     let formatRow (Row xs) = tr $ concat $ formatCell <$> xs in
     if length rows == 1
     then Nothing
-    else Just $ withHeading h $ tag "table" $ concat $ formatRow <$> rows
+    else Just $ withHeading3 h $ tag "table" $ concat $ formatRow <$> rows
 
 
 makeCanvas :: String -> Int -> Int -> String
@@ -117,7 +117,7 @@ makeTimeScript h hours =
     let vals = [show "timegraph"] ++ [("[" ++ fmt ++ "]")] in
     if length values == 0
     then Nothing
-    else Just $ withHeading h $ canvas ++ (tag "script" $ (makeCall "drawGraph" vals))
+    else Just $ withHeading3 h $ canvas ++ (tag "script" $ (makeCall "drawGraph" vals))
 
 
 makeCall :: String -> [String] -> String
@@ -134,8 +134,12 @@ formatList = liftA simpleFormat
 makeList :: [String] -> String
 makeList xs = concat $ tag "p" <$> xs
 
-withHeading :: String -> (String -> String)
-withHeading h = (++) (tag "h2" h)
+withHeading3 :: String -> (String -> String)
+withHeading3 h = (++) (tag "h3" h)
+
+section :: String -> [String] -> String
+section h [] = ""
+section h xs = (++) (tag "h2" h) (unlines xs)
 
 pairMap :: (a -> b) -> (a, a) -> (b, b)
 pairMap f (x, y) = (f x, f y)
@@ -147,7 +151,7 @@ headerTable h c1 c2 xs =
         then Nothing
         else let s = (c1, c2) in
              let mapped = (second print') <$> xs in
-             Just $ withHeading h $ simpleTable ((pairMap (tag "b") s):mapped)
+             Just $ withHeading3 h $ simpleTable ((pairMap (tag "b") s):mapped)
 
 makeFile :: String -> String -> String -> [String] -> String
 makeFile x file head' scripts =
@@ -173,7 +177,7 @@ makeExpandBox x = unsafePerformIO $ do
     let id' = "A" ++ (show i)
     let div' = divClass "overflowtest"
     let label' = genTag "label" [("for", id')]
-    let inputTag = voidTag "input" [("id", id'), ("type", "checkbox")]
+    let inputTag = voidTag "input" [("id", id'), ("type", "checkbox"), ("autocomplete", "off")]
     return $ div' (inputTag ++ label' (tag "div" x))
 
 td :: String -> (String -> String)

@@ -31,6 +31,12 @@ case $1 in
 "--contrive-repop")
     $PY3 $SIMUL -l -1 --realtime --stdout | $EXE "$driver" "zarathustra" "-rd"
 ;;
+"--contrive-100-days")
+    $PY3 $SIMUL -a 6000 -d 100 -m --stdout | $EXE "$driver" "zarathustra" "-rd"
+;;
+"--init")
+    $EXE "$driver" "$2" "-i"
+;;
 *)
     echo "Unknown option \"$1\""
     exit 1

@@ -70,8 +70,8 @@ generate dbName con = do
 
     let us = fst <$> users
     let rows = formatTable "Top Users" us "User" 14 [col1, col2, col3, col4, col5]
-    let tables = [ makeTimeScript "Activity (UTC)" activity
-                 , rows
+    let graphs = [ makeTimeScript "Activity (UTC)" activity ]
+    let tables = [ rows
                  , headerTable "Welcoming"
                                "Name"
                                "Times"
@@ -161,10 +161,10 @@ generate dbName con = do
                                "Topic"
                                topics
                  ]
-
-    let contents = unlines $ catMaybes tables
+    let graphSection = section "Graphs" $ catMaybes graphs
+    let tableSection = section "Tables" $ catMaybes tables
     heading <- makeHeading dbName con
-    let content = (divId "content" $ linkLinks contents)
+    let content = divId "content" $ linkLinks (graphSection ++ tableSection)
     putStrLn $ makeFile (heading ++ content) "/css.css" (getTitle dbName) ["/util.js"]
     logInfo "Finished"
 
@@ -212,4 +212,7 @@ doAction action sinfo@(ServerInfo driver chanName) = do
         Repopulate file -> do
             logInfo "Repopulating database"
             watch file True False sinfo
+        Initialize -> do
+            logInfo "Initializing databases"
+            initDb con
     close con

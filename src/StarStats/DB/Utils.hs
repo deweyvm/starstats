@@ -19,6 +19,7 @@ data Action = Recover String {- Scan the given file for the last message
                                    file and then resume watching. -}
             | Read {- | Read and insert data lines from stdin. -}
             | Generate {- | Generate html. -}
+            | Initialize {- | Initialize a blank database -}
 data ServerInfo = ServerInfo String String
 
 escapeHtml :: String -> String
