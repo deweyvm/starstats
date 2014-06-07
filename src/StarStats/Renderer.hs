@@ -177,7 +177,10 @@ makeExpandBox x = unsafePerformIO $ do
     let id' = "A" ++ (show i)
     let div' = divClass "overflowtest"
     let label' = genTag "label" [("for", id')]
-    let inputTag = voidTag "input" [("id", id'), ("type", "checkbox"), ("autocomplete", "off")]
+    let inputTag = voidTag "input" [ ("id", id')
+                                   , ("type", "checkbox")
+                                   , ("autocomplete", "off")
+                                   ]
     return $ div' (inputTag ++ label' (tag "div" x))
 
 td :: String -> (String -> String)
