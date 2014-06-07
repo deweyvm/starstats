@@ -41,4 +41,5 @@ tag = soup.new_tag("div", id="footer")
 soup2 = BeautifulSoup(s)
 container.insert(len(container.contents), soup2)
 pretty = soup.prettify(formatter="html")
+#this fixes a bug where links have an underlined space after them
 print(re.sub("(\r\n|\n)[ ]*</a", "</a", pretty))
