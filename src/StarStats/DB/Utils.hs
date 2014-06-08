@@ -47,13 +47,15 @@ replaceUrls s f =
     let words' = words s in
     unwords $ (\x -> (if isUrl x then f else id) x) <$> words'
 
+hasUrl :: String -> Bool
+hasUrl s = length (filter isUrl (words s)) > 0
+
 extractUrl :: String -> String
 extractUrl s =
     let words' = words s in
     case filter isUrl words' of
         (x:_) -> x
         _ -> "!!Error extracting url!!"
-
 
 
 replaceChar :: Char -> String -> String -> String

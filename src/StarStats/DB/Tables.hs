@@ -92,7 +92,7 @@ insert (Message time typ name msg) con = do
 
 
 
-    if isInfixOf "http://" msg || isInfixOf "https://" msg
+    if not $ hasUrl msg
     then return ()
     else do let url = extractUrl msg
             let qurl = "INSERT INTO allurls(url, repcount, hash, saidby, saidwhen)\
