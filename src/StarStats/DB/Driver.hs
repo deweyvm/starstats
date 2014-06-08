@@ -84,22 +84,26 @@ generate dbName con = do
             let col3' = toColumn (printify col3) h3 w3 in
             let us = fst <$> col1 in
             formatTable h us h0 w0 [col1', col2', col3']
-    let rsrows = table4 repSimple "Simple Repeated Phrases" ("User", "18%")
-                                                            ("Times", "25%")
-                                                            ("Last Said By", "25%")
-                                                            ("Last Said On", "25%")
+    let rsrows = table4 repSimple "Simple Repeated Phrases" ("Message", "50%")
+                                                            ("Times", "10%")
+                                                            ("Last Said By", "15%")
+                                                            ("Last Said On", "15%")
 
 
-    let rcrows = table4 repComplex "Complex Repeated Phrases" ("User", "18%")
-                                                              ("Times", "25%")
-                                                              ("Last Said By", "25%")
-                                                              ("Last Said On", "25%")
+    let rcrows = table4 repComplex "Complex Repeated Phrases" ("Message", "50%")
+                                                              ("Times", "10%")
+                                                              ("Last Said By", "15%")
+                                                              ("Last Said On", "15%")
 
     let graphs = [ makeTimeScript "hourly" "Hourly Activity (UTC)" hourly
                  , makeTimeScript "daily" "Daily Activity" daily
                  , makeTimeScript "monthly" "Monthly Activity" monthly
                  , makeTimeScript "users" "Active Users" activet]
     let tables = [ urows
+                 , headerTable "Random Topics"
+                               "Name"
+                               "Topic"
+                               topics
                  , headerTable "Welcoming"
                                "Name"
                                "Times"
@@ -178,10 +182,6 @@ generate dbName con = do
                                "Name"
                                "Times Kicked"
                                kickees
-                 , headerTable "Topics"
-                               "Name"
-                               "Topic"
-                               topics
                  ]
     let graphSection = section $ catMaybes graphs
     let tableSection = section $ catMaybes tables
