@@ -13,7 +13,8 @@ getUniqueNicks :: IConnection c => c -> IO [(String,Int)]
 getUniqueNicks con =
     let q = "SELECT name, msgcount\
            \ FROM uniquenicks\
-           \ ORDER BY msgcount DESC;" in
+           \ ORDER BY msgcount DESC\
+           \ LIMIT 20;" in
     getAndExtract con [] extractTup q
 
 getHourlyActivity :: IConnection c => c -> IO [(String,Int)]
@@ -272,6 +273,19 @@ getNeedy con =
            \ ORDER BY c DESC\
            \ LIMIT 10;"  in
     getAndExtract con [] extractTup q
+
+
+getTopUrls :: IConnection c => c -> IO [(String, Int, String, String)]
+getTopUrls con = do
+    let q = "SELECT DISTINCT contents, repcount, saidby, saidwhen\
+           \ FROM allmsgs\
+           \ WHERE hasURL\
+           \ GROUP BY hash\
+           \ ORDER BY repcount DESC\
+           \ LIMIT 10;"
+    let extract (w:x:y:z:_) = (extractUrl $ fromSql w, fromSql x, fromSql y, fromSql z)
+        extract _ = ("error", -1, "", "")
+    getAndExtract con [] extract q
 
 getRepeatedSimple :: IConnection c => c -> IO [(String, Int, String, String)]
 getRepeatedSimple con =

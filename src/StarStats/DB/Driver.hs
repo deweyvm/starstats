@@ -36,6 +36,7 @@ generate dbName con = do
     !urls       <- timeGet "Q Random urls"      getUrls
     !hourly     <- timeGet "Q Hourly activity"  getHourlyActivity
     !daily      <- timeGet "Q Daily activity"   getDailyActivity
+    !topUrls    <- timeGet "Q Top Urls"         getTopUrls
     !( monthly
      , activet) <- timeGet "Q Monthly activity" getMonthlyActivity
     !unique     <- timeGet "Q Unique nicks"     getUniqueNicks
@@ -86,14 +87,18 @@ generate dbName con = do
             formatTable h us h0 w0 [col1', col2', col3']
     let rsrows = table4 repSimple "Simple Repeated Phrases" ("Message", "50%")
                                                             ("Times", "10%")
-                                                            ("Last Said By", "15%")
-                                                            ("Last Said On", "15%")
+                                                            ("Last Said By", "11%")
+                                                            ("Last Said On", "19%")
 
 
     let rcrows = table4 repComplex "Complex Repeated Phrases" ("Message", "50%")
                                                               ("Times", "10%")
-                                                              ("Last Said By", "15%")
-                                                              ("Last Said On", "15%")
+                                                              ("Last Said By", "11%")
+                                                              ("Last Said On", "19%")
+    let urlrows = table4 topUrls "Top URLs" ("URL", "50%")
+                                            ("Times", "10%")
+                                            ("Last Said By", "11%")
+                                            ("Last Said On", "19%")
 
     let graphs = [ makeTimeScript "hourly" "Hourly Activity (UTC)" hourly
                  , makeTimeScript "daily" "Daily Activity" daily
@@ -104,6 +109,7 @@ generate dbName con = do
                                "Name"
                                "Topic"
                                topics
+                 , urlrows
                  , headerTable "Welcoming"
                                "Name"
                                "Times"
