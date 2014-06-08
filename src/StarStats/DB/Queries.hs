@@ -49,7 +49,9 @@ getMonthlyActivity con = do
            \ LIMIT 12"
     vals <- runQuery con q
     let extract (x:y:_) = (fromSql x, fromSql y)
-    return $ take 12 ((extract <$> vals) ++ (zip (repeat "") (repeat 0)))
+    if length vals == 0
+    then return []
+    else return $ take 12 ((extract <$> vals) ++ (zip (repeat "") (repeat 0)))
 
 
 

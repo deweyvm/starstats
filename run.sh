@@ -31,8 +31,8 @@ case $1 in
 "--contrive-repop")
     $PY3 $SIMUL -l -1 --realtime --stdout | $EXE "$driver" "zarathustra" "-rd"
 ;;
-"--contrive-365-days")
-    $PY3 $SIMUL -a 60 -d 365 -m --stdout | $EXE "$driver" "zarathustra" "-rd"
+"--contrive-1-year")
+    $PY3 $SIMUL -a 1200 -d 365 -m --stdout | $EXE "$driver" "zarathustra" "-rd"
 ;;
 "--init")
     $EXE "$driver" "$2" "-i"

@@ -26,7 +26,8 @@ instance Eq TimeBar where
 
 instance Print TimeBar where
     print' (TimeBar user w x y z) =
-        (makeCanvas user 100 16) ++ (makeRectScript user w x y z)
+        let uname = makeUserTag user in
+        (makeCanvas uname 100 16) ++ (makeRectScript uname w x y z)
 
 
 type Heading = String
@@ -90,6 +91,8 @@ formatTable h ns nh nw cs =
     then Nothing
     else Just $ withHeading3 h Table $ tag "table" $ concat $ formatRow <$> rows
 
+makeUserTag :: String -> String
+makeUserTag s = "user-user-user-user-user-" ++ s
 
 makeCanvas :: String -> Int -> Int -> String
 makeCanvas name width height =
@@ -105,7 +108,7 @@ makeRectScript :: String
                -> Int
                -> String
 makeRectScript name w x y z =
-    let vals = [show name] ++ (show <$> [w, x, y, z]) in
+    let vals = [show (name)] ++ (show <$> [w, x, y, z]) in
     tag "script" $ makeCall "drawBar" vals
 
 makeTimeScript :: String -> String -> [(String,Int)] -> Maybe String
@@ -143,9 +146,9 @@ withHeading3 h s x =
     let h' = "&nbsp;&nbsp;" ++ h ++ "&nbsp;&nbsp;" in
     divClass (sectionString s) $ (divv (spann h')) ++ x
 
-section :: String -> [String] -> String
-section h [] = ""
-section h xs = divClass "section" $ (tag "h2" h) ++ (unlines xs)
+section :: [String] -> String
+section [] = ""
+section xs = divClass "section" $ (unlines xs)
 
 pairMap :: (a -> b) -> (a, a) -> (b, b)
 pairMap f (x, y) = (f x, f y)
