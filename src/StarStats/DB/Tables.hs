@@ -46,7 +46,7 @@ insert (Message time typ name msg) con = do
     let sqlType = toSql typ
     let sqlPre = toSql (take 24 msg)
     let sqlMsg = toSql (take 500 msg)
-    let sqlTime = toSql newT --(subHours newT (subtract 3))
+    let sqlTime = toSql newT --(subHours newT (subtract 3)) --convert to utc
     let words' = words msg
     let wordcount = toSql $ length words'
     let stripped = words $ removeUrls msg
@@ -71,7 +71,7 @@ insert (Message time typ name msg) con = do
 
 
     let qa = "INSERT INTO allmsgs (hash, contents, repcount, length, hasURL, isComplex)\
-            \ VALUES (CRC32(?), ?, 1, ?, ? REGEXP '.*http://.*|.*https://.*', ? NOT REGEXP 'http://.*|https://.*' AND ? > 12)\
+            \ VALUES (CRC32(LOWER(?)), ?, 1, ?, ? REGEXP '.*http://.*|.*https://.*', ? NOT REGEXP 'http://.*|https://.*' AND ? > 12)\
             \ ON DUPLICATE KEY UPDATE repcount=repcount+1;"
 
     let len = toSql $ length msg
