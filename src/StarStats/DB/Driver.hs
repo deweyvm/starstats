@@ -120,15 +120,15 @@ generate dbName con = do
                                idlers
                  , headerTable "Enthusiastic"
                                "Name"
-                               "YELLING"
+                               "YELLING (%)"
                                yell
                  , headerTable "Excitable"
                                "Name"
-                               "!!!!!!!!!!!!!!"
+                               "!!!!!!!!!!!!!! (%)"
                                excite
                  , headerTable "Amazed"
                                "Name"
-                               "Times Lost for Words"
+                               "Lost for Words (%)"
                                amaze
                  , headerTable "Apostrophe Users"
                                "Name"
@@ -136,7 +136,7 @@ generate dbName con = do
                                apos
                  , headerTable "Redefining English"
                                "Name"
-                               "Text Speak Count"
+                               "Text Speak (%)"
                                text
                  , headerTable "Well Spoken"
                                "Name"
@@ -144,13 +144,13 @@ generate dbName con = do
                                wellspoken
                  , headerTable "Naysayers"
                                "Name"
-                               "Percent Negative"
+                               "Negativity (%)s"
                                nay
                  , rsrows
                  , rcrows
                  , headerTable "Inquisitive"
                                "Name"
-                               "Number Of Questions Asked"
+                               "Questions Asked (%)"
                                questions
                  , headerTable "Sociable"
                                "Name"

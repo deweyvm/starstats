@@ -220,9 +220,9 @@ getSelfTalk con =
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
 
-getWelcomers :: IConnection c => c -> IO [(String, Int)]
+getWelcomers :: IConnection c => c -> IO [(String, Double)]
 getWelcomers con =
-    let q = "SELECT name, isWelcoming AS c\
+    let q = "SELECT name, IFNULL(100*isWelcoming/msgcount, 0) AS c\
            \ FROM users\
            \ WHERE isWelcoming > 0 \
            \ ORDER BY c DESC\
@@ -310,9 +310,9 @@ getRepeatedComplex con = do
         extract _ = ("error", -1, "", "")
     getAndExtract con [] extract q
 
-getTextSpeakers :: IConnection c => c -> IO [(String, Int)]
+getTextSpeakers :: IConnection c => c -> IO [(String, Double)]
 getTextSpeakers con =
-    let q = "SELECT name, isTxt AS c\
+    let q = "SELECT name, IFNULL(100*isTxt/msgcount, 0) AS c\
            \ FROM users\
            \ WHERE isTxt > 0\
            \ ORDER BY c DESC\
@@ -338,36 +338,36 @@ getApostrophes con = do
             let res = xs  ++ [("...", "...")] ++ ys
             return $ res
 
-getQuestions :: IConnection c => c -> IO [(String, Int)]
+getQuestions :: IConnection c => c -> IO [(String, Double)]
 getQuestions con =
-    let q = "SELECT name, isQuestion AS c\
+    let q = "SELECT name, IFNULL(100*isQuestion/msgcount, 0) AS c\
            \ FROM users\
            \ WHERE isQuestion > 0\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
 
-getAmazed :: IConnection c => c -> IO [(String,Int)]
+getAmazed :: IConnection c => c -> IO [(String,Double)]
 getAmazed con =
-    let q = "SELECT name, isAmaze as c\
+    let q = "SELECT name, IFNULL(100*isAmaze/msgcount, 0) as c\
            \ FROM users\
            \ WHERE isAmaze > 0\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
 
-getExcited :: IConnection c => c -> IO [(String, Int)]
+getExcited :: IConnection c => c -> IO [(String, Double)]
 getExcited con =
-    let q = "SELECT name, isExclamation as c\
+    let q = "SELECT name, IFNULL(100*isExclamation/msgcount, 0) as c\
            \ FROM users\
            \ WHERE isExclamation > 0\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
 
-getYell :: IConnection c => c -> IO [(String, Int)]
+getYell :: IConnection c => c -> IO [(String, Double)]
 getYell con =
-    let q = "SELECT name, isCaps AS c\
+    let q = "SELECT name, IFNULL(100*isCaps/msgcount, 0) AS c\
            \ FROM users\
            \ WHERE isCaps > 0\
            \ ORDER BY c DESC\
