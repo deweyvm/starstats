@@ -177,6 +177,7 @@ headerTable h c1 c2 xs =
 
 makeFile :: String -> String -> String -> [String] -> String
 makeFile x file head' scripts =
+    let favicon = "<link href=\"data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAgElEQVQ4y8VTQQrAIAxrhw/Si3uHe6h7h7v4pOwwZZtTURQW6MFAJQkpA5CUYj885WC0SqmFBjH8gSjJ5W0lWPfmmH3K/W+BYR2i5F7AOhLPR9V/hpuUQaYczTBaEQAZ2ojWgXWIe58MevzfGZS6X0PYmV+knNSS/OsWagk3nPgJrrxPTeuNs14AAAAASUVO\" rel=\"icon\" type=\"image/x-icon\" />" in
     let scriptSrc src = genTag "script" [ ("language", "javascript")
                                         , ("src", src)] "" in
     let css = voidTag "link" [ ("href",file)
@@ -185,7 +186,7 @@ makeFile x file head' scripts =
                              ] in
     let s :: [String]
         s = scriptSrc <$> scripts in
-    tag "html" $ tag "head" (css ++ (concat $ s) ++ head') ++ tag "body" (divId "container" x)
+    tag "html" $ tag "head" (css ++ (concat $ s) ++ head' ++ favicon) ++ tag "body" (divId "container" x)
 
 simpleTable :: Print a => [(String,a)] -> String
 simpleTable xs = tag "table" $ concat $ format <$> xs
@@ -201,7 +202,7 @@ makeExpandBox x = unsafePerformIO $ do
     i <- readIORef counter
     writeIORef counter (i+1)
     let id' = "A" ++ (show i)
-    let div' = divClass "overflowtest"
+    let div' = divClass "overflowbox"
     let label' = genTag "label" [("for", id')]
     let inputTag = voidTag "input" [ ("id", id')
                                    , ("type", "checkbox")

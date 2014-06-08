@@ -199,7 +199,7 @@ getTimeInfo con = do
                       ]
     return $ if words' == 0
              then Nothing
-             else Just $ tag "p" desc
+             else Just $ divClass "summary" desc
 doAction :: Action -> ServerInfo -> IO ()
 doAction action sinfo@(ServerInfo driver chanName) = do
     con <- connect driver chanName
