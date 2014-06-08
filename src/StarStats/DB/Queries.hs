@@ -277,13 +277,11 @@ getNeedy con =
 
 getTopUrls :: IConnection c => c -> IO [(String, Int, String, String)]
 getTopUrls con = do
-    let q = "SELECT DISTINCT contents, repcount, saidby, saidwhen\
-           \ FROM allmsgs\
-           \ WHERE hasURL\
-           \ GROUP BY hash\
+    let q = "SELECT DISTINCT url, repcount, saidby, saidwhen\
+           \ FROM allurls\
            \ ORDER BY repcount DESC\
            \ LIMIT 10;"
-    let extract (w:x:y:z:_) = (extractUrl $ fromSql w, fromSql x, fromSql y, fromSql z)
+    let extract (w:x:y:z:_) = (fromSql w, fromSql x, fromSql y, fromSql z)
         extract _ = ("error", -1, "", "")
     getAndExtract con [] extract q
 

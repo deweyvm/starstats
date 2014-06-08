@@ -90,6 +90,21 @@ insert (Message time typ name msg) con = do
                            , sqlMsg, sqlMsg, len
                            , sqlName, sqlTime ]
 
+
+
+    if isInfixOf "http://" msg || isInfixOf "https://" msg
+    then return ()
+    else do let url = extractUrl msg
+            let qurl = "INSERT INTO allurls(url, repcount, hash, saidby, saidwhen)\
+                      \ VALUES (?, 1, CRC32(LOWER(?)), ?, ?)\
+                      \ ON DUPLICATE KEY UPDATE \
+                      \     repcount=repcount+1,\
+                      \     saidby=?,\
+                      \     saidwhen=?"
+            quickQuery con qurl [ toSql url, toSql url, sqlName
+                                , sqlTime, sqlName, sqlTime]
+            return ()
+
     let qact = "INSERT INTO activeusers (name, lastspoke)\
               \ VALUES (?,?)\
               \ ON DUPLICATE KEY UPDATE\
@@ -449,6 +464,7 @@ deleteDbs con = do
                                  , "DROP TABLE IF EXISTS mentions;"
                                  , "DROP TABLE IF EXISTS allusers;"
                                  , "DROP TABLE IF EXISTS allmsgs;"
+                                 , "DROP TABLE IF EXISTS allurls;"
                                  , "DROP TABLE IF EXISTS seqcount;"
                                  , "DROP TABLE IF EXISTS urls;"
                                  , "DROP TABLE IF EXISTS totals;"
@@ -590,7 +606,14 @@ createDbs con = do
                                       \ PRIMARY KEY (hash),\
                                       \ INDEX (repcount))\
                  \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-
+    let allurls = "CREATE TABLE allurls(url VARCHAR(500) NOT NULL,\
+                                      \ repcount INT NOT NULL,\
+                                      \ hash CHAR(50) NOT NULL,\
+                                      \ saidby CHAR(21) NOT NULL,\
+                                      \ saidwhen DATETIME NOT NULL,\
+                                      \ PRIMARY KEY (hash),\
+                                      \ INDEX (repcount))\
+                 \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let mentions = "CREATE TABLE mentions(mentioner CHAR(21) NOT NULL,\
                                         \ mentionee CHAR(21) NOT NULL,\
                                         \ num INT NOT NULL,\
@@ -623,6 +646,7 @@ createDbs con = do
                                  , count
                                  , mentions
                                  , allmsgs
+                                 , allurls
                                  , seqcount
                                  , urls
                                  , totals

@@ -51,7 +51,6 @@ generate dbName con = do
     !nay        <- timeGet "Q Naysayers"        getNaysayers
     !text       <- timeGet "Q txt spk"          getTextSpeakers
     !apos       <- timeGet "Q ''s"              getApostrophes
-    -- !rltships   <- timeGet "Q Relationships"    getRelationships
     !amaze      <- timeGet "Q Amaze"            getAmazed
     !excite     <- timeGet "Q Excite"           getExcited
     !yell       <- timeGet "Q Yell"             getYell

@@ -38,8 +38,8 @@ def getFooter(duration):
 
 def printNotFound(exc, db):
     print("<html><head><title>starstats</title><link href=\"/css.css\" rel=\"stylesheet\" type=\"text/css\"/><link href=\"/favicon.ico?v=1.1\" rel=\"shortcut icon\"/></head><body>")
-    print("<div class=\"tribox\"><div id=\"emptyhead\">No records for channel '%s'<br/>(or an error may have occurred)</div><div class=\"tritext-err\"></div></div>" % db)
-    print(getFooter(0))
+    print("<div class=\"tribox\"><div id=\"emptyhead\">No records for channel '#%s'<br/>(or an error may have occurred)</div><div class=\"tritext-err\"></div></div>" % db)
+    print(getFooter("0s"))
 
 
     print("<!-- %s -->" % str(exc))
