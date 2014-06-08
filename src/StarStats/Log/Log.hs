@@ -2,7 +2,8 @@
 module StarStats.Log.Log where
 
 import System.IO.Unsafe
-import System.IO
+import System.IO.UTF8
+import System.IO (stderr, hFlush)
 data LogLevel = None
               | Error
               | Warning
@@ -15,7 +16,7 @@ logLevel :: LogLevel
 logLevel = All
 
 format :: LogLevel -> String -> String
-format l s = concat ["[", shows l, "]: ", s, "\n"]
+format l s = concat ["[", shows l, "]: ", s]
     where shows All = "ALL"
           shows Error = "ERR"
           shows Warning = "WAR"
@@ -27,7 +28,7 @@ safeLog :: LogLevel -> String -> IO ()
 safeLog l s = do
     if l > logLevel
     then return ()
-    else do hPutStr stderr (format l s)
+    else do hPutStrLn stderr (format l s)
             hFlush stderr
 
 logAll :: String -> IO ()

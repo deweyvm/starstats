@@ -177,7 +177,7 @@ headerTable h c1 c2 xs =
 
 makeFile :: String -> String -> String -> [String] -> String
 makeFile x file head' scripts =
-    let favicon = "<link href=\"data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAgElEQVQ4y8VTQQrAIAxrhw/Si3uHe6h7h7v4pOwwZZtTURQW6MFAJQkpA5CUYj885WC0SqmFBjH8gSjJ5W0lWPfmmH3K/W+BYR2i5F7AOhLPR9V/hpuUQaYczTBaEQAZ2ojWgXWIe58MevzfGZS6X0PYmV+knNSS/OsWagk3nPgJrrxPTeuNs14AAAAASUVO\" rel=\"icon\" type=\"image/x-icon\" />" in
+    let favicon = "<link href=\"/favicon.ico?v=1.1\" rel=\"shortcut icon\"/>" in
     let scriptSrc src = genTag "script" [ ("language", "javascript")
                                         , ("src", src)] "" in
     let css = voidTag "link" [ ("href",file)

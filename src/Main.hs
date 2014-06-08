@@ -4,6 +4,7 @@ import Prelude hiding(log)
 import System.Environment
 import Control.Applicative
 import System.IO
+import GHC.IO.Encoding hiding (close)
 import StarStats.DB.Driver
 import StarStats.Watcher
 import StarStats.DB.Utils
@@ -11,6 +12,10 @@ import StarStats.Log.Log
 
 main :: IO ()
 main = do
+    setLocaleEncoding utf8
+    setFileSystemEncoding utf8
+    setForeignEncoding utf8
+    logInfo "Setting output encoding"
     args <- getArgs
     let hasArg s = elem s args
     let driver = args !! 0

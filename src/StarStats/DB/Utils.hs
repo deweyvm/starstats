@@ -209,3 +209,11 @@ time' msg action = do
     let whitespace = printf ("%" ++ show (27 - len) ++ "s") " " ++ "\t"
     logInfo (msg ++ ": " ++ whitespace ++ printf "%.3fs" s)
     return res
+
+split3 :: [(a, b, c, d)] -> ([(a, b)], [(a, c)], [(a,d)])
+split3 xs =
+    helper xs ([], [], [])
+    where helper ((w, x, y, z):rest) (ac1, ac2, ac3) =
+              helper rest ((w, x) : ac1, (w, y) : ac2, (w, z) : ac3)
+          helper [] (ac1, ac2, ac3) = (reverse ac1, reverse ac2, reverse ac3)
+

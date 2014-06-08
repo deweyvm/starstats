@@ -8,7 +8,6 @@ import Data.List (concat, isInfixOf)
 import Data.Maybe
 import Database.HDBC
 import Database.HDBC.ODBC
-import GHC.IO.Encoding hiding (close)
 import StarStats.Renderer
 import StarStats.DB.Utils
 import StarStats.DB.Tables
@@ -21,10 +20,6 @@ import StarStats.Log.Log
 
 generate :: IConnection c => String -> c -> IO ()
 generate dbName con = do
-    logInfo "Setting output encoding"
-    setLocaleEncoding utf8
-    setFileSystemEncoding utf8
-    setForeignEncoding utf8
     logInfo "Running queries"
     let timeGet s f = time' s $ f con
     _           <- timeGet "P Top"              populateTop
@@ -65,19 +60,46 @@ generate dbName con = do
     logInfo "Assembling html"
     let printify = (mapSnd print' <$>)
     let bars = (toTimeBars tups)
-    let col1 = toColumn (printify users) "Messages" "11%"
-    let col2 = toColumn (printify bars) "Active" "107"
-    let col3 = toColumn (printify avgwl) "AWL" "6%"
-    let col4 = toColumn (printify avgwc) "AWC" "6%"
-    let col5 = toColumn randTop "Random Message" "59%"
+    let ucol1 = toColumn (printify users) "Messages" "11%"
+    let ucol2 = toColumn (printify bars) "Active" "107"
+    let ucol3 = toColumn (printify avgwl) "AWL" "6%"
+    let ucol4 = toColumn (printify avgwc) "AWC" "6%"
+    let ucol5 = toColumn randTop "Random Message" "59%"
 
-    let us = fst <$> users
-    let rows = formatTable "Top Users" us "User" "18%" [col1, col2, col3, col4, col5]
+    let uus = fst <$> users
+    let urows = formatTable "Top Users" uus "User" "18%" [ucol1, ucol2, ucol3, ucol4, ucol5]
+
+    let table4 :: (Print a, Print b, Print c)
+               => [(String, a, b, c)]
+               -> String
+               -> (String, String)
+               -> (String, String)
+               -> (String, String)
+               -> (String, String)
+               -> Maybe String
+        table4 xs h (h0, w0) (h1, w1) (h2, w2) (h3, w3)=
+            let (col1, col2, col3) = split3 xs in
+            let col1' = toColumn (printify col1) h1 w1 in
+            let col2' = toColumn (printify col2) h2 w2 in
+            let col3' = toColumn (printify col3) h3 w3 in
+            let us = fst <$> col1 in
+            formatTable h us h0 w0 [col1', col2', col3']
+    let rsrows = table4 repSimple "Simple Repeated Phrases" ("User", "18%")
+                                                            ("Times", "25%")
+                                                            ("Last Said By", "25%")
+                                                            ("Last Said On", "25%")
+
+
+    let rcrows = table4 repComplex "Complex Repeated Phrases" ("User", "18%")
+                                                              ("Times", "25%")
+                                                              ("Last Said By", "25%")
+                                                              ("Last Said On", "25%")
+
     let graphs = [ makeTimeScript "hourly" "Hourly Activity (UTC)" hourly
                  , makeTimeScript "daily" "Daily Activity" daily
                  , makeTimeScript "monthly" "Monthly Activity" monthly
                  , makeTimeScript "users" "Active Users" activet]
-    let tables = [ rows
+    let tables = [ urows
                  , headerTable "Welcoming"
                                "Name"
                                "Times"
@@ -114,14 +136,8 @@ generate dbName con = do
                                "Name"
                                "Percent Negative"
                                nay
-                 , headerTable "Repeated Phrases"
-                               "Phrase"
-                               "Times Repeated"
-                               repSimple
-                 , headerTable "Longer Repeated Phrases"
-                               "Phrase"
-                               "Times Repeated"
-                               repComplex
+                 , rsrows
+                 , rcrows
                  , headerTable "Inquisitive"
                                "Name"
                                "Number Of Questions Asked"

@@ -274,23 +274,34 @@ getNeedy con =
            \ LIMIT 10;"  in
     getAndExtract con [] extractTup q
 
-getRepeatedSimple :: IConnection c => c -> IO [(String, Int)]
+getRepeatedSimple :: IConnection c => c -> IO [(String, Int, String, String)]
 getRepeatedSimple con =
-    let q = "SELECT contents, repcount\
+    let q = "SELECT contents, repcount, saidby, saidwhen\
            \ FROM allmsgs\
            \ WHERE repcount > 1\
            \ ORDER BY repcount DESC\
            \ LIMIT 5;" in
-    getAndExtract con [] extractTup q
+    let extract (w:x:y:z:_) = (fromSql w, fromSql x, fromSql y, fromSql z)
+        extract _ = ("error", -1, "", "") in
+    getAndExtract con [] extract q
 
-getRepeatedComplex :: IConnection c => c -> IO [(String, Int)]
+split :: [(a, b, c, d)] -> ([(a, b)], [(a, c)], [(a,d)])
+split xs =
+    helper xs ([], [], [])
+    where helper ((w, x, y, z):rest) (ac1, ac2, ac3) =
+              helper rest ((w, x) : ac1, (w, y) : ac2, (w, z) : ac3)
+          helper [] (ac1, ac2, ac3) = (reverse ac1, reverse ac2, reverse ac3)
+
+getRepeatedComplex :: IConnection c => c -> IO [(String, Int, String, String)]
 getRepeatedComplex con = do
-    let q = "SELECT contents, repcount\
+    let q = "SELECT contents, repcount, saidby, saidwhen\
            \ FROM allmsgs\
            \ WHERE isComplex AND repcount > 1\
            \ ORDER BY repcount DESC\
            \ LIMIT 10;"
-    getAndExtract con [] (mapFst escapeHtml . extractTup) q
+    let extract (w:x:y:z:_) = (escapeHtml $ fromSql w, fromSql x, fromSql y, fromSql z)
+        extract _ = ("error", -1, "", "")
+    getAndExtract con [] extract q
 
 getTextSpeakers :: IConnection c => c -> IO [(String, Int)]
 getTextSpeakers con =

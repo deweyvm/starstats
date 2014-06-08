@@ -1,7 +1,7 @@
 {-# LANGUAGE DoAndIfThenElse, BangPatterns #-}
 module StarStats.DB.Tables where
 
-import Prelude hiding (readFile)
+import Prelude hiding (readFile, getLine)
 import Control.Applicative
 import Control.Exception
 import Control.DeepSeq
@@ -9,7 +9,7 @@ import Data.List(isInfixOf)
 import Data.Time.LocalTime
 import Data.Maybe(fromMaybe, isJust)
 import Database.HDBC
-import System.IO hiding (readFile)
+import System.IO.UTF8 hiding (readFile)
 import System.Exit
 import StarStats.DB.Utils
 import StarStats.Parser
@@ -73,13 +73,23 @@ insert (Message time typ name msg) con = do
 
 
 
-    let qa = "INSERT INTO allmsgs (hash, contents, repcount, length, hasURL, isComplex)\
-            \ VALUES (CRC32(LOWER(?)), ?, 1, ?, ? REGEXP '.*http://.*|.*https://.*', ? NOT REGEXP 'http://.*|https://.*' AND ? > 12)\
-            \ ON DUPLICATE KEY UPDATE repcount=repcount+1;"
+    let qa = "INSERT INTO allmsgs ( hash, contents, repcount, length\
+            \                     , saidby, saidwhen\
+            \                     , hasURL, isComplex)\
+            \ VALUES (CRC32(LOWER(?)), ?, 1, ?,\
+            \         ?, ?,\
+            \         ? REGEXP '.*http://.*|.*https://.*', ? NOT REGEXP 'http://.*|https://.*' AND ? > 12)\
+            \ ON DUPLICATE KEY UPDATE\
+            \     repcount=repcount+1,\
+            \     saidby=?,\
+            \     saidwhen=?;"
 
     let len = toSql $ length msg
     msgQ <- prepare con qa
-    force <$> execute msgQ [toSql (stripPunctuation msg), sqlMsg, len, sqlMsg, sqlMsg, len]
+    force <$> execute msgQ [toSql (stripPunctuation msg), sqlMsg, len
+                           , sqlName, sqlTime
+                           , sqlMsg, sqlMsg, len
+                           , sqlName, sqlTime ]
 
     let qact = "INSERT INTO activeusers (name, lastspoke)\
               \ VALUES (?,?)\
@@ -545,6 +555,8 @@ createDbs con = do
                                       \ hasURL BOOL NOT NULL,\
                                       \ isComplex BOOL NOT NULL,\
                                       \ hash CHAR(50) NOT NULL,\
+                                      \ saidby CHAR(21) NOT NULL,\
+                                      \ saidwhen DATETIME NOT NULL,\
                                       \ PRIMARY KEY (hash),\
                                       \ INDEX (repcount))\
                  \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
@@ -628,6 +640,7 @@ populateStdIn con = do
     case get' of
         Left l -> do
             logInfo "End of input reached"
+            logInfo (show l)
         Right line -> do
             logVerbose $ "Adding line: " ++ line
             if line == ""

@@ -1,7 +1,7 @@
 {-# LANGUAGE DoAndIfThenElse, BangPatterns #-}
 module StarStats.Watcher where
 
-
+import Prelude hiding(putStrLn, putStr, readFile)
 import Control.Applicative
 import Control.Concurrent
 import Control.DeepSeq
@@ -11,7 +11,8 @@ import Data.Time.LocalTime
 import System.Posix.Files
 import System.Posix.Types
 import System.Directory
-import System.IO
+import System.IO.UTF8
+import System.IO (stdout, hFlush, hSeek, hClose, SeekMode(..), IOMode(..))
 import Debug.Trace
 import StarStats.Parser
 import StarStats.Time
