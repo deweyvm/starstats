@@ -22,12 +22,16 @@ data Action = Recover String {- Scan the given file for the last message
             | Initialize {- | Initialize a blank database -}
 data ServerInfo = ServerInfo String String
 
+stripPunctuation :: String -> String
+stripPunctuation = filter (\x -> not (elem x "\"';:.,?!"))
+
 escapeHtml :: String -> String
 escapeHtml =
     replaceChar '>' "&gt;" . replaceChar '<' "&lt;"
 
 hyphenate :: String -> String
-hyphenate = replaceChar ' ' "-" . replaceChar '\'' ""
+hyphenate =
+    replaceChar ' ' "-" . replaceChar '\'' ""
 
 removeUrls :: String -> String
 removeUrls s = replaceUrls s (\x -> "")

@@ -76,7 +76,7 @@ insert (Message time typ name msg) con = do
 
     let len = toSql $ length msg
     msgQ <- prepare con qa
-    force <$> execute msgQ [sqlMsg, sqlMsg, len, sqlMsg, sqlMsg, len]
+    force <$> execute msgQ [toSql (stripPunctuation msg), sqlMsg, len, sqlMsg, sqlMsg, len]
 
     let qact = "INSERT INTO activeusers (name, lastspoke)\
               \ VALUES (?,?)\

@@ -200,6 +200,10 @@ getTimeInfo con = do
     return $ if words' == 0
              then Nothing
              else Just $ divClass "summary" desc
+
+safeGenerate :: IConnection c => String -> c -> IO ()
+safeGenerate = generate
+
 doAction :: Action -> ServerInfo -> IO ()
 doAction action sinfo@(ServerInfo driver chanName) = do
     con <- connect driver chanName
@@ -209,7 +213,7 @@ doAction action sinfo@(ServerInfo driver chanName) = do
             readDb con
         Generate -> do
             logInfo "Generating webpage"
-            generate chanName con
+            safeGenerate chanName con
         Recover file -> do
             logInfo "Recovering from log"
             watch file False True sinfo

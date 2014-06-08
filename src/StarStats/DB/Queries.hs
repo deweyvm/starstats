@@ -220,9 +220,9 @@ getWelcomers con =
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
 
-getIdlers :: IConnection c => c -> IO [(String,String)]
+getIdlers :: IConnection c => c -> IO [(String,Double)]
 getIdlers con =
-    let q = "SELECT joins.name, IFNULL(num/c.msgcount, 'Infinity') as c\
+    let q = "SELECT joins.name, IFNULL(num/c.msgcount, '1e500') as c\
            \ FROM joins \
            \ JOIN users as c \
            \ ON c.name = joins.name\
