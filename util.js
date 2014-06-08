@@ -62,13 +62,14 @@ function drawGraph(canvasName, canvasWidth, ls, xs) {
         var y = 100 - percents[i] + 20;
         var color = util__colors[Math.floor(i/div)];
         var percentText = Math.floor((xs[i]*100/total)).toString() + "%";
-        var iwidth = context.measureText(i).width;
+        var labelText = ls[i];
+        var iwidth = context.measureText(labelText).width;
         var pwidth = context.measureText(percentText).width;
 
         context.fillStyle = color;
         context.fillRect(x + xOffset, y, width, percents[i]);
         context.fillStyle = '#A2A4BA';
-        context.fillText(ls[i], x + (width - iwidth)/2 + xOffset, 130);
+        context.fillText(labelText, x + (width - iwidth)/2 + xOffset, 130);
         context.fillText(percentText, x + (width - pwidth)/2 + xOffset, y - 4);
     }
 }
