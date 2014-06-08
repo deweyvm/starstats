@@ -41,17 +41,25 @@ getDailyActivity con = do
     times <- runQuery con q
     return $ zip (["S", "M", "T", "W", "T", "F", "S"]) (concat $ extract <$> times)
 
-getMonthlyActivity :: IConnection c => c -> IO [(String, Int)]
+getMonthlyActivity :: IConnection c => c -> IO ([(String, Int)], [(String, Int)])
 getMonthlyActivity con = do
-    let q = "SELECT mon, num\
-           \ FROM monthly\
-           \ ORDER BY monthyear\
-           \ LIMIT 12"
-    vals <- runQuery con q
+    let qmsgs = "SELECT mon, nummsgs\
+               \ FROM monthly\
+               \ ORDER BY monthyear\
+               \ LIMIT 12"
+    msgs <- runQuery con qmsgs
+
+    let qusers = "SELECT mon, numusers\
+                \ FROM monthly\
+                \ ORDER BY monthyear\
+                \ LIMIT 12;"
+    users <- runQuery con qusers
+
     let extract (x:y:_) = (fromSql x, fromSql y)
-    if length vals == 0
-    then return []
-    else return $ take 12 ((extract <$> vals) ++ (zip (repeat "") (repeat 0)))
+    let order xs = take 12 ((extract <$> xs) ++ (zip (repeat "") (repeat 0)))
+    if length msgs == 0
+    then return ([],[])
+    else return $ (order msgs, order users)
 
 
 
