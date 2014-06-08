@@ -13,12 +13,13 @@ from bs4 import BeautifulSoup
 cgitb.enable()
 print("Content-type: text/html\n")
 
-arguments = cgi.FieldStorage()
+
 try:
+    arguments = cgi.FieldStorage()
     db = arguments["name"].value
 except KeyError:
     db = ""
-env = {'MYSQL_UNIX_PORT':'/var/run/mysqld/mysqld.sock'}
+os.environ['MYSQL_UNIX_PORT'] = '/var/run/mysqld/mysqld.sock'
 driver="MySql ODBC 5.1 Driver"
 
 def getFooter(duration):
@@ -37,7 +38,7 @@ def printNotFound(exc):
 try:
     import pyodbc
     cstr="DSN=name32;Driver={%s};Server=localhost;Port=3306;Database=%s;User=root;Password=password;Option=3;" % (driver, db)
-    os.environ['MYSQL_UNIX_PORT'] = '/var/run/mysqld/mysqld.sock'
+
     cnxn = pyodbc.connect(cstr)
 except Exception as exc:
     printNotFound(exc)
@@ -46,7 +47,6 @@ except Exception as exc:
 p = subprocess.Popen(['time ./starstats \"%s\" \"%s\" -g' % (driver, db)],
                      stdout=subprocess.PIPE,
                      stderr=subprocess.PIPE,
-                     env=env,
                      shell=True)
 
 (out, err) = p.communicate()
@@ -61,7 +61,6 @@ elif err is not None and len(err) > 0:
         print("<!-- %s -->" % l)
         if re.search("real\t", l) is not None:
             timetaken=re.sub(".*real\t*(.*)", "\\1", l)
-            print(timetaken)
 
 
 
