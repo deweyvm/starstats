@@ -72,7 +72,6 @@ insert (Message time typ name msg) con = do
         else updateRep con name <* return ()
 
 
-
     let qa = "INSERT INTO allmsgs ( hash, contents, repcount, length\
             \                     , saidby, saidwhen\
             \                     , hasURL, isComplex)\
@@ -312,14 +311,29 @@ insert (Topic time setter topic) con = do
 insert (Join time name) con = do
     t <- getDate con
     let newT = setHoursMinutes t time
+    let sqlTime = toSql newT
+    let sqlName = toSql name
+    let qjt = "INSERT INTO chantime (name, lastjoin, hours)\
+             \ VALUES (?, ?, 0)\
+             \ ON DUPLICATE KEY UPDATE\
+             \     lastJoin=?"
+    quickQuery con qjt [sqlName, sqlTime, sqlTime]
+
     prepared <- prepare con "INSERT INTO joins (name, num)\
                            \ VALUES (?, 1)\
                            \ ON DUPLICATE KEY UPDATE\
                            \     num = num+1"
-    let sqlName = toSql name
     force <$> execute prepared [sqlName]
     updateDate con newT
     return ()
+insert (Quit time name _) con = do
+    t <- getDate con
+    let newT = setHoursMinutes t time
+    doQuit con newT name
+insert (Part time name _) con = do
+    t <- getDate con
+    let newT = setHoursMinutes t time
+    doQuit con newT name
 insert (Day date) con = do
     updateDate con date
     return ()
@@ -327,6 +341,16 @@ insert (Open date) con = do
     updateDate con date
     return ()
 insert  _ _ =
+    return ()
+
+doQuit :: IConnection c => c -> LocalTime -> String -> IO ()
+doQuit con time name = do
+    let sqlName = toSql name
+    let sqlTime = toSql time
+    let q = "UPDATE chantime SET\
+           \     hours=hours + (time_to_sec(timediff(?, lastjoin)) / 3600)\
+           \ WHERE name = ?"
+    quickQuery con q [sqlTime, sqlName]
     return ()
 
 updateDate :: IConnection c => c -> LocalTime -> IO ()
@@ -435,6 +459,7 @@ deleteDbs con = do
                                  , "DROP TABLE IF EXISTS repuser;"
                                  , "DROP TABLE IF EXISTS lastmsg;"
                                  , "DROP TABLE IF EXISTS monthly;"
+                                 , "DROP TABLE IF EXISTS chantime;"
                                  ]
     return ()
 
@@ -487,6 +512,11 @@ createDbs con = do
     let joins = "CREATE TABLE joins(name CHAR(21) NOT NULL,\
                                   \ num MEDIUMINT UNSIGNED NOT NULL,\
                                   \ PRIMARY KEY (name));"
+    let chanTime = "CREATE TABLE chantime(name CHAR(21) NOT NULL,\
+                                        \ lastjoin DATETIME NOT NULL,\
+                                        \ hours DOUBLE NOT NULL,\
+                                        \ PRIMARY KEY (name));"
+
     let monthly = "CREATE TABLE monthly(monthyear INT NOT NULL,\
                                       \ mon VARCHAR(3) NOT NULL,\
                                       \ nummsgs INT NOT NULL,\
@@ -603,6 +633,7 @@ createDbs con = do
                                  , repuser
                                  , lastmsg
                                  , monthly
+                                 , chanTime
                                  ]
     return ()
 
