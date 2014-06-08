@@ -28,11 +28,14 @@ data DbInsert = DbInsert Int
 
 updateMonthCount :: IConnection c => c -> LocalTime -> IO ()
 updateMonthCount con t = do
-    quickQuery con "INSERT INTO monthly (monthyear, mon, num)\
+    count <- toSql <$> getCount con
+    quickQuery con "INSERT INTO monthly (monthyear, mon, nummsgs, numusers)\
                   \ VALUES (EXTRACT(YEAR_MONTH FROM ?),\
-                  \         UPPER(SUBSTR(MONTHNAME(?), 1, 3)), 1)\
+                  \         UPPER(SUBSTR(MONTHNAME(?), 1, 3)),\
+                  \         1,\
+                  \         ?)\
                   \ ON DUPLICATE KEY UPDATE \
-                  \     num=num+1;" [toSql t, toSql t]
+                  \     nummsgs=nummsgs+1;" [toSql t, toSql t, count]
     return ()
 
 insert :: IConnection c
@@ -476,7 +479,8 @@ createDbs con = do
                                   \ PRIMARY KEY (name));"
     let monthly = "CREATE TABLE monthly(monthyear INT NOT NULL,\
                                       \ mon VARCHAR(3) NOT NULL,\
-                                      \ num INT NOT NULL,\
+                                      \ nummsgs INT NOT NULL,\
+                                      \ numusers INT NOT NULL,\
                                       \ PRIMARY KEY (monthyear));"
     let activity = "CREATE TABLE activity(dummy BOOL NOT NULL,\
                                         \ h0 MEDIUMINT UNSIGNED NOT NULL,\

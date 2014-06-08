@@ -32,7 +32,7 @@ instance Print TimeBar where
 
 type Heading = String
 type Name = String
-type Width = Int
+type Width = String
 data Column = Column (M.Map Name String) Heading Width
 data Row = Row [(String, Width)]
 
@@ -85,7 +85,7 @@ formatTable h ns nh nw cs =
     let nameCol = Column (M.fromList $ zip ns ns) nh nw in
     let cs' = nameCol : cs in
     let rows = rowify ns cs' in
-    let formatCell (s, w) = td (printf "%d%%" w) s in
+    let formatCell (s, w) = td w s in
     let formatRow (Row xs) = tr $ concat $ formatCell <$> xs in
     if length rows == 1
     then Nothing

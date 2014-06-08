@@ -64,15 +64,14 @@ generate dbName con = do
     logInfo "Assembling html"
     let printify = (mapSnd print' <$>)
     let bars = (toTimeBars tups)
-    let col1 = toColumn (printify users) "Messages" 11
-    let col2 = toColumn (printify bars) "Active" 10
-    let col3 = toColumn (printify avgwl) "AWL" 6
-    let col4 = toColumn (printify avgwc) "AWC" 6
-
-    let col5 = toColumn randTop "Random Message" 59
+    let col1 = toColumn (printify users) "Messages" "11%"
+    let col2 = toColumn (printify bars) "Active" "107"
+    let col3 = toColumn (printify avgwl) "AWL" "6%"
+    let col4 = toColumn (printify avgwc) "AWC" "6%"
+    let col5 = toColumn randTop "Random Message" "59%"
 
     let us = fst <$> users
-    let rows = formatTable "Top Users" us "User" 18 [col1, col2, col3, col4, col5]
+    let rows = formatTable "Top Users" us "User" "18%" [col1, col2, col3, col4, col5]
     let graphs = [ makeTimeScript "hourly" "Hourly Activity (UTC)" hourly
                  , makeTimeScript "daily" "Daily Activity" daily
                  , makeTimeScript "monthly" "Monthly Activity" monthly]
