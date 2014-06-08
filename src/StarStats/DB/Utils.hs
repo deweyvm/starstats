@@ -26,6 +26,9 @@ escapeHtml :: String -> String
 escapeHtml =
     replaceChar '>' "&gt;" . replaceChar '<' "&lt;"
 
+hyphenate :: String -> String
+hyphenate = replaceChar ' ' "-" . replaceChar '\'' ""
+
 removeUrls :: String -> String
 removeUrls s = replaceUrls s (\x -> "")
 

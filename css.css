@@ -1,8 +1,9 @@
 
 html, body {
   background-color: #595959;
-  margin-top: -0.1em;
+  margin-top: 1em;
   height: 96%;
+
 }
 
 #container {
@@ -47,7 +48,7 @@ table {
 }
 h1 {
   color: #6978FF!important;
-  text-align: left;
+  text-align: center;
 }
 h2 {
   color: #6978FF!important;
@@ -70,13 +71,13 @@ tr {
 tr:first-child * {
   background-color: #404040;
 }
-a:link {
+table a:link {
   color: #6978FF;
 }
-a:visited {
+table a:visited {
   color: #D86EAE;
 }
-a:active {
+table a:active {
   color: #828BDE;
 }
 html * {
@@ -96,25 +97,39 @@ html * {
   margin-bottom: 1em;
 }
 
+.myhr a {
+  text-decoration: none!important;
+}
+
+
+
 .myhr {
-    margin-top:2em;
-    margin-bottom:2em;
-    height: 2px;
-    width: 100%;
-    background-color: #404040;
-    text-align: center;
-    background-image: -webkit-linear-gradient(left, #595959, #404040, #595959, #404040, #595959);
-    background-image:    -moz-linear-gradient(left, #595959, #404040, #595959, #404040, #595959);
-    background-image:     -ms-linear-gradient(left, #595959, #404040, #595959, #404040, #595959);
-    background-image:      -o-linear-gradient(left, #595959, #404040, #595959, #404040, #595959);
+  margin-top:2em;
+  margin-bottom:2em;
+  height: 2px;
+  width: 100%;
+  background-color: #404040;
+  text-align: center;
+  background-image: -webkit-linear-gradient(left, #595959, #404040, #595959, #404040, #595959);
+  background-image:    -moz-linear-gradient(left, #595959, #404040, #595959, #404040, #595959);
+  background-image:     -ms-linear-gradient(left, #595959, #404040, #595959, #404040, #595959);
+  background-image:      -o-linear-gradient(left, #595959, #404040, #595959, #404040, #595959);
 }
 .myhr-inner {
-    color: #6ED899;
-    font-size: 1.17em;
-    background-color: #595959!important;
-    position: relative;
-    top: -0.58em;
+  color: #6ED899;
+  font-size: 1.17em;
+  background-color: #595959!important;
+  position: relative;
+  top: -0.58em;
 
+}
+
+.myhr-inner a {
+  color: inherit;
+}
+
+.myhr-inner a:target {
+  outline: none;
 }
 
 

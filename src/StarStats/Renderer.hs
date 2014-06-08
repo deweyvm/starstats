@@ -89,7 +89,7 @@ formatTable h ns nh nw cs =
     let formatRow (Row xs) = tr $ concat $ formatCell <$> xs in
     if length rows == 1
     then Nothing
-    else Just $ withHeading3 h Table $ tag "table" $ concat $ formatRow <$> rows
+    else Just $ linkHeader Table h $ tag "table" $ concat $ formatRow <$> rows
 
 makeUserTag :: String -> String
 makeUserTag s = "user-user-user-user-user-" ++ s
@@ -122,7 +122,7 @@ makeTimeScript canvasName h hours =
     let vals = [show canvasName] ++ [show width] ++ [("[" ++ ls ++ "]")] ++  [("[" ++ fmt ++ "]")] in
     if length values == 0
     then Nothing
-    else Just $ withHeading3 h Graph $ canvas ++ (tag "script" $ (makeCall "drawGraph" vals))
+    else Just $ linkHeader Graph h  $ canvas ++ (tag "script" $ (makeCall "drawGraph" vals))
 
 
 makeCall :: String -> [String] -> String
@@ -161,19 +161,28 @@ sectionString :: Section -> String
 sectionString Graph = "graph-element"
 sectionString Table = "table-element"
 
+linkHeader :: Section -> String -> String -> String
+linkHeader sec h s =
+    let tagname = hyphenate h in
+    let href = genTag "a" [("id", tagname), ("href", "#" ++ tagname)] in
+    (withHeading3 (href h) sec $ s)
+
 headerTable :: Print a => String -> String -> String -> [(String, a)] -> Maybe String
 headerTable h c1 c2 xs =
-
     if length xs == 0
         then Nothing
         else let p = (c1, c2) in
              let mapped = (second print') <$> xs in
-             Just $ withHeading3 h Table $ simpleTable ((pairMap (tag "b") p):mapped)
+             Just $ linkHeader Table h $ simpleTable ((pairMap (tag "b") p):mapped)
 
 makeFile :: String -> String -> String -> [String] -> String
 makeFile x file head' scripts =
-    let scriptSrc src = genTag "script" [("language", "javascript"), ("src", src)] "" in
-    let css = voidTag "link" [("href",file),("rel", "stylesheet"), ("type", "text/css")] in
+    let scriptSrc src = genTag "script" [ ("language", "javascript")
+                                        , ("src", src)] "" in
+    let css = voidTag "link" [ ("href",file)
+                             , ("rel", "stylesheet")
+                             , ("type", "text/css")
+                             ] in
     let s :: [String]
         s = scriptSrc <$> scripts in
     tag "html" $ tag "head" (css ++ (concat $ s) ++ head') ++ tag "body" (divId "container" x)

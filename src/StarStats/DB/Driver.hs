@@ -167,16 +167,21 @@ generate dbName con = do
                  ]
     let graphSection = section $ catMaybes graphs
     let tableSection = section $ catMaybes tables
-    heading <- makeHeading dbName con
-    let content = divId "content" $ linkLinks (graphSection ++ tableSection)
+    let heading = divId "lead" $ tag "h1" ("#" ++ dbName)
+    timeInfo <- getTimeInfo con
+    let bottom = case timeInfo of
+                   Just t -> t
+                   Nothing -> divId "emptyhead" "no data added yet!"
+    let content = divId "content" $ linkLinks (graphSection ++ tableSection ++ bottom)
     putStrLn $ makeFile (heading ++ content) "/css.css" (getTitle dbName) ["/util.js"]
     logInfo "Finished"
 
 getTitle :: String -> String
 getTitle s = tag "title" ("Stats for #" ++ s ++ " -- starstats")
 
-makeHeading :: IConnection c => String -> c -> IO String
-makeHeading channel con = do
+
+getTimeInfo :: IConnection c => c -> IO (Maybe String)
+getTimeInfo con = do
     !words' <- time' "H Get Words" $ getTotalWords con
     !msgs <- time' "H Get Messages" $ getTotalMessages con
     !start <- time' "H Get Start" $ getStartDate con
@@ -192,14 +197,9 @@ makeHeading channel con = do
                       , end
                       , "."
                       ]
-    let timeInfo = if words' == 0
-                   then divId "emptyhead" "no data added yet!"
-                   else tag "p" desc
-    return $ divId "lead" $ unlines [ tag "h1" ("Stats for #" ++ channel)
-                                    , timeInfo
-                                    ]
-
-
+    return $ if words' == 0
+             then Nothing
+             else Just $ tag "p" desc
 doAction :: Action -> ServerInfo -> IO ()
 doAction action sinfo@(ServerInfo driver chanName) = do
     con <- connect driver chanName
