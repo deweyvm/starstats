@@ -170,9 +170,10 @@ generate dbName con = do
     let tableSection = section $ catMaybes tables
     let heading = divId "lead" $ tag "h1" ("#" ++ dbName)
     timeInfo <- getTimeInfo con
+    let error' x =( divClass "tribox" ) (divId "emptyhead" x ++ divClass "tritext-empty" "")
     let bottom = case timeInfo of
                    Just t -> t
-                   Nothing -> divId "emptyhead" "no data added yet!"
+                   Nothing -> error' $ ("no data added yet!")
     let content = divId "content" $ linkLinks (graphSection ++ tableSection ++ bottom)
     putStrLn $ makeFile (heading ++ content) "/css.css" (getTitle dbName) ["/util.js"]
     logInfo "Finished"

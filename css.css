@@ -1,4 +1,4 @@
-
+@charset "utf-8";
 html, body {
   background-color: #595959;
   margin-top: 1em;
@@ -16,13 +16,13 @@ h2 {
 }
 
 .summary {
-    width:80%;
-    margin-left:10%;
-    margin-top:1em;
-    font-size:0.75em;
-    position:relative;
-    text-align: center;
-    top: 0.40em;
+  width:80%;
+  margin-left:10%;
+  margin-top:1em;
+  font-size:0.75em;
+  position:relative;
+  text-align: center;
+  top: 0.40em;
 }
 
 #container {
@@ -99,16 +99,7 @@ html * {
 }
 
 
-#emptyhead {
-  font-style: italic;
-  position: absolute;
-  bottom: 50%;
-  width: 100%;
-  height: 16px;
-  text-align: center;
-  margin-top: 1em;
-  margin-bottom: 1em;
-}
+
 
 .myhr a {
   text-decoration: none!important;
@@ -168,4 +159,81 @@ html * {
   white-space: normal;
   word-wrap: break-word;
 }
+
+.tribox {
+  position: absolute;
+  background: url('/sign.png') center no-repeat;
+  width: 100%; height: 345px;
+  top: 50%;
+  margin-top: -172px;
+}
+
+.tritext-empty {
+  position: absolute;
+  cursor: default;
+  opacity: .1;
+  text-align: center;
+  color: #000;
+  font-size: 160px;
+  font-weight: bold;
+  width: 100%;
+  height: 230px;
+  top: 130px;
+  line-height: 160px;
+  z-index: 1;
+}
+
+.tritext-empty:after {
+  content: "☆";
+}
+
+.tritext-empty::selection {
+  color: #000;
+  background: rgba(0,0,0,0);
+}
+.tritext-empty::-moz-selection {
+  color: #000;
+  background: rgba(0,0,0,0);
+}
+
+.tritext-err {
+  position: absolute;
+  cursor: default;
+  opacity: .1;
+  text-align: center;
+  color: #000;
+  font-size: 160px;
+  font-weight: bold;
+  width: 100%;
+  height: 230px;
+  top: 130px;
+  line-height: 160px;
+  z-index: 1;
+}
+
+.tritext-err:after {
+  content: "☹";
+}
+
+.tritext-err::selection {
+  color: #000;
+  background: rgba(0,0,0,0);
+}
+.tritext-err::-moz-selection {
+  color: #000;
+  background: rgba(0,0,0,0);
+}
+
+
 /*******************************/
+#emptyhead {
+  z-index: 2;
+  font-style: italic;
+  position: absolute;
+  top: 170px;
+  width: 100%;
+  height: 10px;
+  text-align: center;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}

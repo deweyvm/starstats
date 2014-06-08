@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import subprocess
 import sys
+reload(sys)
+sys.setdefaultencoding("utf-8")
 import re
 import datetime
 import time
@@ -36,7 +38,7 @@ def getFooter(duration):
 
 def printNotFound(exc, db):
     print("<html><head><title>starstats</title><link href=\"/css.css\" rel=\"stylesheet\" type=\"text/css\"/></head><body>")
-    print("<div id=\"emptyhead\">No records for channel '%s'</div>" % db)
+    print("<div class=\"tribox\"><div id=\"emptyhead\">No records for channel '%s'</div><div class=\"tritext-err\"></div></div>" % db)
     print(getFooter(0))
 
 
