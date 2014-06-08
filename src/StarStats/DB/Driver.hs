@@ -3,7 +3,8 @@ module StarStats.DB.Driver where
 
 import Prelude hiding (foldl, concat, sequence_, sum)
 import Control.Applicative
-import Data.List (concat)
+import Control.Exception
+import Data.List (concat, isInfixOf)
 import Data.Maybe
 import Database.HDBC
 import Database.HDBC.ODBC
@@ -202,7 +203,14 @@ getTimeInfo con = do
              else Just $ divClass "summary" desc
 
 safeGenerate :: IConnection c => String -> c -> IO ()
-safeGenerate = generate
+safeGenerate s con = do
+    e <- try (generate s con) :: IO (Either IOError ())
+    case e of
+        Left l -> if isInfixOf "Deadlock" (show l)
+                  then do logWarning "Deadlock encountered, retrying"
+                          safeGenerate s con
+                  else logError (show l)
+        Right _ -> return ()
 
 doAction :: Action -> ServerInfo -> IO ()
 doAction action sinfo@(ServerInfo driver chanName) = do
