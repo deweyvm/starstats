@@ -19,7 +19,7 @@ import StarStats.Log.Log
 
 
 generate :: IConnection c => ServerInfo -> c -> IO ()
-generate (ServerInfo driver chanName serverName dbName) con = do
+generate (ServerInfo driver dbName) con = do
     logInfo "Running queries"
     let timeGet s f = time' s $ f con
     _           <- timeGet "P Top"              populateTop

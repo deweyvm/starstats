@@ -10,35 +10,29 @@ else
 fi
 
 
-channel=$2
-server=$3
-db=$4
-log=$5
+db=$2
+log=$3
 echo "Running starstats... "  &&\
 case $1 in
 "--repop")
     $EXE --driver="$driver" \
-         --channel="$channel" \
-         --server="$server" \
          --db="$db" \
          --repopulate="$log" | \
     $EXE --driver="$driver" \
-         --channel="$channel" \
-         --server="$server" \
          --db="$db" \
          "--read"
 ;;
 "--repop-dry-run")
-    $EXE "--driver=$driver" "--channel=$channel" "--server=$server" "--db=$db" "--repopulate=$log"
+    $EXE --driver="$driver" --db="$db" --repopulate"=$log"
 ;;
 "--recover")
-    $EXE "--driver=$driver" "--channel=$channel" "--server=$server" "--db=$db" "--recover=$log" | $EXE "--driver=$driver" "--db=$db" "--read"
+    $EXE --driver="$driver" --db="$db" --recover="$log" | $EXE --driver="$driver" --db="$db" "--read"
 ;;
 "--recover-dry-run")
-    $EXE "--driver=$driver" "--channel=$channel" "--server=$server" "--db=$db" "--recover=$log"
+    $EXE --driver="$driver" --db="$db" --recover="$log"
 ;;
 "--contrive-repop")
-    $PY3 $SIMUL -l -1 --realtime --stdout | $EXE "--driver=$driver" "--db=zarathustra" "--read"
+    $PY3 $SIMUL -l -1 --realtime --stdout | $EXE --driver="$driver" --db="zarathustra" "--read"
 ;;
 "--contrive-1-year")
     $PY3 $SIMUL -a 1200 -d 365 -m --stdout | $EXE "--driver=$driver" "--db=zarathustra" "--read"

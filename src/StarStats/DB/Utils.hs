@@ -21,8 +21,6 @@ data Action = Recover String {- Scan the given file for the last message
             | Generate {- | Generate html. -}
             | Initialize {- | Initialize a blank database -}
 data ServerInfo = ServerInfo String {- OBDC driver to use -}
-                             String {- Channel name -}
-                             String {- Server name -}
                              String {- Db name to use. Can be any valid
                                        MySQL db name. Used to access the page
                                        through the cgi script-}

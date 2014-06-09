@@ -5,7 +5,7 @@ import Database.HDBC
 import Database.HDBC.ODBC
 import StarStats.DB.Utils
 connect :: ServerInfo -> IO Connection
-connect (ServerInfo driver _ _ dbName) = do
+connect (ServerInfo driver dbName) = do
     let connectionString = "DSN=name32;\
                           \ Driver={" ++ driver ++ "};\
                           \ Server=localhost;\

@@ -46,7 +46,7 @@ def printNotFound(exc, db):
     print("</body></html>")
 
 def runProgram(driver, db):
-    p = subprocess.Popen(['time ./starstats --driver=\"%s\" --channel=dummy --server=dummy --db=%s  --generate' % (driver, db)],
+    p = subprocess.Popen(['time ./starstats --driver=\"%s\" --db=%s  --generate' % (driver, db)],
                      stdout=subprocess.PIPE,
                      stderr=subprocess.PIPE,
                      shell=True)

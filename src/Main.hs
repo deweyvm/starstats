@@ -16,15 +16,11 @@ import StarStats.Log.Log
 
 data Options = Options { optDbName :: String
                        , optDriverName :: String
-                       , optChannelName :: Maybe String
-                       , optServerName :: Maybe String
                        , optMode :: Action
                        }
 startOptions :: Options
 startOptions = Options { optDbName = ""
                        , optDriverName = ""
-                       , optChannelName = Nothing
-                       , optServerName = Nothing
                        , optMode = Initialize
                        }
 
@@ -36,16 +32,6 @@ options =
             (\arg opt -> return opt { optDbName = arg })
             "DBNAME")
         "Database name"
-    , Option "" ["server"]
-        (OptArg
-           (\arg opt -> return opt { optServerName = arg })
-           "SERVER")
-        "Server name"
-    , Option "" ["channel"]
-        (OptArg
-           (\arg opt -> return opt { optChannelName = arg })
-           "CHANNEL")
-        "Channel name"
     , Option "" ["driver"]
         (ReqArg
             (\arg opt -> return opt { optDriverName = arg })
@@ -93,12 +79,9 @@ main = do
     let (actions, nonOptions, errors) = getOpt RequireOrder options args
     opts <- foldl (>>=) (return startOptions) actions
 
-    chanName <- assertDefined "Channel Name" $ optChannelName opts
-    serverName <- assertDefined "Server Name" $ optServerName opts
 
     let sinfo = ServerInfo (optDriverName opts)
-                           (chanName)
-                           (serverName)
                            (optDbName opts)
+
     doAction (optMode opts) sinfo
     logInfo "Shutting down gracefully"
