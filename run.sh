@@ -58,7 +58,9 @@ case $1 in
     $PY3 $SIMUL -a 1200 -d 365 -m --stdout | $EXE --driver="$driver" "--db=zarathustra" --logtype="$logtype" --read
 ;;
 "--init")
-    $EXE  "--driver=$driver" "--channel=$channel" "--server=$server" "--db=$db" "--init"
+    $EXE --driver="$driver" \
+         --db="$db" \
+         --init
 ;;
 *)
     echo "Unknown option \"$1\""
