@@ -220,11 +220,11 @@ getSelfTalk con =
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
 
-getWelcomers :: IConnection c => c -> IO [(String, Double)]
-getWelcomers con =
-    let q = "SELECT name, IFNULL(100*isWelcoming/msgcount, 0) AS c\
+getFriendly :: IConnection c => c -> IO [(String, Double)]
+getFriendly con =
+    let q = "SELECT name, IFNULL(100*isFriendly/msgcount, 0) AS c\
            \ FROM users\
-           \ WHERE isWelcoming > 0 \
+           \ WHERE isFriendly > 0 \
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
@@ -375,12 +375,25 @@ getYell con =
 getWellSpoken :: IConnection c => c -> IO [(String, Double)]
 getWellSpoken con =
     let q = "SELECT \
-           \     name,\
+           \     u.name,\
            \     IFNULL(wordcount/msgcount + charcount/wordcount, 0) as c\
-           \ FROM users\
+           \ FROM users AS u\
+           \ JOIN activeusers AS a\
+           \ ON u.name = a.name\
            \ HAVING c > 0\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
+    getAndExtract con [] extractTup q
+
+getLong :: IConnection c => c -> IO [(String, Double)]
+getLong con = do
+    let q = "SELECT u.name, IFNULL(100*isLong/msgcount, 0) AS c\
+           \ FROM users AS u\
+           \ JOIN activeusers AS a\
+           \ ON u.name = a.name\
+           \ HAVING c > 0\
+           \ ORDER BY c DESC\
+           \ LIMIT 10;"
     getAndExtract con [] extractTup q
 
 getTotalMessages :: IConnection c => c -> IO Int

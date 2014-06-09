@@ -155,8 +155,8 @@ insert (Message time typ name msg) con = do
     overallActiveQ <- prepare con qoact
     force <$> execute overallActiveQ [sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime
                                      , sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime, sqlTime]
-    let qq = "INSERT INTO users (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, isNaysay, isApostrophe, isCaps, isWelcoming, timesMentioned, timesMentioning, q1, q2, q3, q4) \
-            \ VALUES (?, 1, ?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\
+    let qq = "INSERT INTO users (name, msgcount, wordcount, charcount, lastseen, firstseen, isExclamation, isQuestion, isAmaze, isTxt, isNaysay, isApostrophe, isCaps, isFriendly, isLong, timesMentioned, timesMentioning, q1, q2, q3, q4) \
+            \ VALUES (?, 1, ?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,\
             \         IF(FLOOR(HOUR(?)/6) = 0, 1, 0),\
             \         IF(FLOOR(HOUR(?)/6) = 1, 1, 0),\
             \         IF(FLOOR(HOUR(?)/6) = 2, 1, 0),\
@@ -180,7 +180,8 @@ insert (Message time typ name msg) con = do
             \                       AND ? REGEXP '[[:<:]]no[[:>:]]', 1, 0)),\
             \     isApostrophe=isApostrophe+(IF(? LIKE '%''%', 1, 0)),\
             \     isCaps=isCaps+(IF(? = BINARY UPPER(?), 1, 0)),\
-            \     isWelcoming=isWelcoming+(IF(? REGEXP '[[:<:]](welcome|hi|hello|good morning)[[:>:]]', 1, 0)),\
+            \     isFriendly=isFriendly+(IF(? REGEXP '[[:<:]](welcome|hi|hello|good morning)[[:>:]]', 1, 0)),\
+            \     isLong=isLong+(IF(LENGTH(?) > 200, 1, 0)),\
             \     q1=q1+(IF(FLOOR(HOUR(?)/6) = 0, 1, 0)),\
             \     q2=q2+(IF(FLOOR(HOUR(?)/6) = 1, 1, 0)),\
             \     q3=q3+(IF(FLOOR(HOUR(?)/6) = 2, 1, 0)),\
@@ -204,6 +205,7 @@ insert (Message time typ name msg) con = do
                              , sqlMsg, sqlMsg
                              , sqlMsg
                              , sqlMsg, sqlMsg
+                             , sqlMsg
                              , sqlMsg
                              , sqlTime
                              , sqlTime
@@ -586,7 +588,8 @@ createDbs con = do
                                   \ isNaysay MEDIUMINT UNSIGNED NOT NULL,\
                                   \ isApostrophe MEDIUMINT UNSIGNED NOT NULL,\
                                   \ isCaps MEDIUMINT UNSIGNED NOT NULL,\
-                                  \ isWelcoming MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ isFriendly MEDIUMINT UNSIGNED NOT NULL,\
+                                  \ isLong MEDIUMINT UNSIGNED NOT NULL,\
                                   \ q1 MEDIUMINT UNSIGNED NOT NULL,\
                                   \ q2 MEDIUMINT UNSIGNED NOT NULL,\
                                   \ q3 MEDIUMINT UNSIGNED NOT NULL,\

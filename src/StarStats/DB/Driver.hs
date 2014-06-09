@@ -55,7 +55,8 @@ generate dbName con = do
     !excite     <- timeGet "Q Excite"           getExcited
     !yell       <- timeGet "Q Yell"             getYell
     !wellspoken <- timeGet "Q Wellspoken"       getWellSpoken
-    !welcoming  <- timeGet "Q Welcoming"        getWelcomers
+    !loq        <- timeGet "Q Loquatious"       getLong
+    !friendly  <- timeGet "Q Friendly"         getFriendly
     !idlers     <- timeGet "Q Idlers"           getIdlers
     logInfo "Assembling html"
     let printify = (mapSnd print' <$>)
@@ -109,10 +110,10 @@ generate dbName con = do
                                "Topic"
                                topics
                  , urlrows
-                 , headerTable "Welcoming"
+                 , headerTable "Friendly"
                                "Name"
                                "Times"
-                               welcoming
+                               friendly
                  , headerTable "Champion Idlers"
                                "Name"
                                "Idle Quotient"
@@ -121,6 +122,10 @@ generate dbName con = do
                                "Name"
                                "YELLING (%)"
                                yell
+                 , headerTable "Loquatious"
+                               "Name"
+                               "Verbose (%)"
+                               loq
                  , headerTable "Excitable"
                                "Name"
                                "!!!!!!!!!!!!!! (%)"
