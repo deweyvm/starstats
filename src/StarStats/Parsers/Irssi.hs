@@ -9,47 +9,10 @@ import Data.Functor.Identity
 import Data.Time.LocalTime
 import Data.Maybe
 import StarStats.Time
+import StarStats.Parsers.Common
 
-type Name = String
-type Contents = String
 
-data DataLine = Message Time Int Name Contents
-              | Nick Time Name Name
-              | Kick Time Name Name Contents
-              | Topic Time Name Contents
-              | Join Time Name
-              | Part Time Name Contents
-              | Quit Time Name Contents
-              | Mode Time Contents
-              | Notice Time String
-              | Invite Time String
-              | Day LocalTime
-              | Close LocalTime
-              | Open LocalTime
-    deriving (Show)
 
-data Log = Log [DataLine] deriving (Show)
-
-logLength :: Log -> Int
-logLength (Log ls) = length ls
-
-lexer :: P.GenTokenParser String a Identity
-lexer = P.makeTokenParser $ emptyDef
-
-integer :: Parser Integer
-integer = P.integer lexer
-
-whiteSpace :: Parser ()
-whiteSpace = P.whiteSpace lexer
-
-lexeme :: Parser String -> Parser String
-lexeme = P.lexeme lexer
-
-identifier :: Parser String
-identifier = P.identifier lexer
-
-symbol :: String -> Parser String
-symbol = P.symbol lexer
 
 parseDataLine :: Parser DataLine
 parseDataLine = try (parseTimeChange) <|> parseChatLine
@@ -108,8 +71,7 @@ parseMode :: Parser DataLine
 parseMode = Mode <$> parseTime
                  <*> (symbol "-!- mode/#" *> word *> eatLine)
 
-word :: Parser String
-word = many (noneOf " ")
+
 
 parseTopic :: Parser DataLine
 parseTopic = Topic <$> parseTime
@@ -145,8 +107,6 @@ parseMessage = Message <$> parseTime
                        <*> (string "<" *> oneOf " +~@%&" *> parseName <* symbol ">")
                        <*> parseContents
 
-parseInt :: Parser Int
-parseInt = fromInteger <$> integer
 
 parseTime :: Parser Time
 parseTime = (,) <$> (parseInt <* symbol ":")
@@ -155,8 +115,6 @@ parseTime = (,) <$> (parseInt <* symbol ":")
 parseName :: Parser Name
 parseName = manyTill anyChar (lookAhead (symbol ">"))
 
-eatLine :: Parser String
-eatLine = manyTill anyChar eof
 
 parseContents :: Parser Contents
 parseContents = eatLine
@@ -167,10 +125,6 @@ get = fromMaybe anyTime
 
 parseDateString :: Parser LocalTime
 parseDateString = (get . stringToLocalTime) <$> eatLine
-
-data DbParseError = DbParseError String -- line attempted to parse
-                                 String -- error message
-    deriving Show
 
 parseLine :: String -> Either DbParseError DataLine
 parseLine s =

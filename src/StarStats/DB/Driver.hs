@@ -8,6 +8,7 @@ import Data.List (concat, isInfixOf)
 import Data.Maybe
 import Database.HDBC
 import Database.HDBC.ODBC
+import qualified StarStats.Parsers.Irssi as Irssi
 import StarStats.Renderer
 import StarStats.DB.Utils
 import StarStats.DB.Tables
@@ -244,18 +245,18 @@ doAction :: Action -> ServerInfo -> IO ()
 doAction action sinfo = do
     con <- connect sinfo
     case action of
-        Read -> do
+        Read parser -> do
             logInfo "Reading data lines from stdin"
-            readDb con
+            readDb parser con
         Generate -> do
             logInfo "Generating webpage"
             safeGenerate sinfo con
-        Recover file -> do
+        Recover parser file -> do
             logInfo "Recovering from log"
-            watch file False True sinfo
-        Repopulate file -> do
+            watch parser file False True sinfo
+        Repopulate parser file -> do
             logInfo "Repopulating database"
-            watch file True False sinfo
+            watch parser file True False sinfo
         Initialize -> do
             logInfo "Initializing databases"
             initDb con

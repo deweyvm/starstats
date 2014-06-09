@@ -12,7 +12,7 @@ import Database.HDBC
 import System.IO.UTF8 hiding (readFile)
 import System.Exit
 import StarStats.DB.Utils
-import StarStats.Parsers.Irssi
+import StarStats.Parsers.Common
 import StarStats.Time
 import StarStats.Log.Log
 
@@ -692,8 +692,8 @@ getLatestMessage con dbName = do
             extract val
 
 
-populateStdIn :: IConnection c => c -> IO ()
-populateStdIn con = do
+populateStdIn :: IConnection c => DLParser -> c -> IO ()
+populateStdIn parser con = do
     !get' <- try getLine :: IO (Either IOError String)
     case get' of
         Left l -> do
@@ -704,7 +704,7 @@ populateStdIn con = do
             if line == ""
             then do logWarning "Got empty line: Exiting"
                     exitWith ExitSuccess
-            else case parseLine line of
+            else case parser line of
                      Left err -> do
                          commit con
                          error $ show err
@@ -713,7 +713,7 @@ populateStdIn con = do
                          date <- getDate con
                          insertMessage line date con
                          commit con
-            populateStdIn con
+            populateStdIn parser con
 
 insertFromStdIn :: IConnection c => DataLine -> c -> IO ()
 insertFromStdIn data' con = do
@@ -738,7 +738,7 @@ initDb con = do
     createDbs con
     logInfo "Databases initialized"
 
-readDb :: IConnection c => c -> IO ()
-readDb con = do
+readDb :: IConnection c => DLParser -> c -> IO ()
+readDb parser con = do
     initDb con
-    populateStdIn con
+    populateStdIn parser con

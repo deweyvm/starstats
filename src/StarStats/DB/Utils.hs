@@ -11,15 +11,21 @@ import Database.HDBC
 import System.Directory
 import Text.Printf
 import StarStats.Log.Log
+import StarStats.Parsers.Common
+data ActionType = RecoverT {- Scan the given file for the last message
+                              inserted. Print all subsequent data lines
+                              and then resume watching. -}
+                | RepopulateT {- Repopulate from the beginning of the given
+                                 file and then resume watching. -}
+                | ReadT {- | Read and insert data lines from stdin. -}
+                | GenerateT {- | Generate html. -}
+                | InitializeT {- | Initialize a blank database -}
 
-data Action = Recover String {- Scan the given file for the last message
-                                inserted. Print all subsequent data lines
-                                and then resume watching. -}
-            | Repopulate String {- Repopulate from the beginning of the given
-                                   file and then resume watching. -}
-            | Read {- | Read and insert data lines from stdin. -}
-            | Generate {- | Generate html. -}
-            | Initialize {- | Initialize a blank database -}
+data Action = Recover DLParser String
+            | Repopulate DLParser String
+            | Read DLParser
+            | Generate
+            | Initialize
 data ServerInfo = ServerInfo String {- OBDC driver to use -}
                              String {- Db name to use. Can be any valid
                                        MySQL db name. Used to access the page

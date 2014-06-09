@@ -14,7 +14,7 @@ import System.Directory
 import System.IO.UTF8
 import System.IO (stdout, hFlush, hSeek, hClose, SeekMode(..), IOMode(..))
 import Debug.Trace
-import StarStats.Parsers.Irssi
+import StarStats.Parsers.Common
 import StarStats.Time
 import StarStats.DB.Tables
 import StarStats.DB.Utils
@@ -34,8 +34,8 @@ getEnd file bytes = do
     return $ U.toString s
 
 
-watch :: String -> Bool -> Bool -> ServerInfo -> IO ()
-watch file doRepop doRecover srv = do
+watch :: DLParser -> String -> Bool -> Bool -> ServerInfo -> IO ()
+watch parser file doRepop doRecover srv = do
     exists <- doesFileExist file
     if not exists
     then error "no file"
@@ -43,7 +43,7 @@ watch file doRepop doRecover srv = do
             then repopulate file
             else return ())
             (if doRecover
-            then recover file srv
+            then recover parser file srv
             else do size <- getSize file
                     watchFile file size)
 
@@ -88,16 +88,16 @@ matchLine t0 msg0 ls =
               tt == tt0  && s == msg0
           matching _ = False
 
-parseGood :: [String] -> [(String, DataLine)]
-parseGood (x:xs) =
-    case parseLine x of
-        Left l -> parseGood xs
-        Right r -> (x, r) : parseGood xs
-parseGood [] = []
+parseGood :: DLParser -> [String] -> [(String, DataLine)]
+parseGood parser (x:xs) =
+    case parser x of
+        Left l -> parseGood parser xs
+        Right r -> (x, r) : parseGood parser xs
+parseGood _ [] = []
 
 -- Get latest message and then read backwards until we find it and parse from there
-recover :: String -> ServerInfo -> IO ()
-recover file srv@(ServerInfo _ dbName) = do
+recover :: DLParser -> String -> ServerInfo -> IO ()
+recover parser file srv@(ServerInfo _ dbName) = do
     logInfo "Making connection"
     con <- connect srv
     logInfo "Searching for latest message"
@@ -109,7 +109,7 @@ recover file srv@(ServerInfo _ dbName) = do
         Nothing -> do logWarning "No need to recover"
                       logWarning "Resuming watch"
         Just (msg, t) -> do ls <- lines <$> readFile file
-                            let ps = parseGood ls
+                            let ps = parseGood parser ls
                             let matchingDate = matchDate t ps
                             let matchingLine = matchLine t msg matchingDate
                             let ss = fst <$> matchingLine
