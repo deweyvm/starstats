@@ -137,7 +137,7 @@ generate (ServerInfo driver dbName) con = do
                                amaze
                  , headerTable "Apostrophe Users"
                                "Name"
-                               "Percent of Messages with ''s"
+                               "Message's (%)"
                                apos
                  , headerTable "Redefining English"
                                "Name"

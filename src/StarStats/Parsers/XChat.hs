@@ -19,81 +19,79 @@ parseDataLine :: Parser DataLine
 parseDataLine = try (parseTimeChange) <|> parseChatLine
 
 parseChatLine :: Parser DataLine
-parseChatLine = try parseAction
-            <|> try parseStatus
-            <|> try parseNotice
-            <|> try parseInvite
+parseChatLine = try parseStatus
             <|> parseMessage
 
 
 parseTimeChange :: Parser DataLine
-parseTimeChange = try (Day <$> (symbol "--- Day changed" *> parseDateString))
-              <|> try (Close <$> (symbol "--- Log closed" *> parseDateString))
-              <|> (Open <$> (symbol "--- Log opened" *> parseDateString))
-
-parseInvite :: Parser DataLine
-parseInvite = Invite <$> parseTime
-                     <*> ((symbol "!") *> eatLine)
-
-parseNotice :: Parser DataLine
-parseNotice = Notice <$> parseTime
-                     <*> ((symbol "-") *> eatLine)
+parseTimeChange = try (Close <$> (symbol "**** ENDING LOGGING AT" *> parseDateString))
+              <|> (Open <$> (symbol "**** BEGIN LOGGING AT" *> parseDateString))
 
 parseStatus :: Parser DataLine
-parseStatus = try parseQuit
+parseStatus = try parseBad
+          <|> try parseQuit
           <|> try parsePart
           <|> try parseJoin
           <|> try parseMode
           <|> try parseNickChange
           <|> try parseKick
-          <|> parseTopic
+          <|> try parseTopic
+          <|> parseAction
 
 parseJoin :: Parser DataLine
 parseJoin =
     Join <$> parseTime
-         <*> (symbol "-!-" *> parseNick <* symbol "["
-                                        <* many (noneOf "]")
-                                        <* symbol "] has joined"
-                                        <* eatLine)
-
-parseLeave :: (Time -> Name -> Contents -> DataLine) -> String -> Parser DataLine
-parseLeave ctor s =
-    ctor <$> parseTime
-         <*> (symbol "-!-" *> parseNick <* many (noneOf "]") <* symbol ("] " ++ s))
-         <*> eatLine
+         <*> (symbol "*" *> parseNick <* symbol "("
+                                      <* many (noneOf ")")
+                                      <* symbol ") has joined")
 
 parseQuit :: Parser DataLine
-parseQuit = parseLeave Quit "has quit"
+parseQuit =
+    Quit <$> parseTime
+         <*> (symbol "*" *> parseNick <* symbol "has quit")
+         <*> eatLine
+
+parseBad :: Parser DataLine
+parseBad =
+    Bad <$> (parseTime *> (try (symbol "* Disconnected (No such device or address)")
+                       <|> try (symbol "* ChanServ gives channel operator status to ")
+                       <|> try (symbol "* Topic for #")
+                       <|> symbol "* Now talking on #") *> eatLine)
+
 
 parsePart :: Parser DataLine
-parsePart = parseLeave Part "has left"
+parsePart =
+    Part <$> parseTime
+         <*> (symbol "*" *> parseNick <* symbol "("
+                                      <* many (noneOf ")")
+                                      <* symbol ") has left")
+         <*> eatLine
 
 parseMode :: Parser DataLine
 parseMode = Mode <$> parseTime
-                 <*> (symbol "-!- mode/#" *> word *> eatLine)
-
-
+                 <*> (symbol "*" *> parseNick
+                                 *> symbol "sets mode"
+                                 *> eatLine)
 
 parseTopic :: Parser DataLine
 parseTopic = Topic <$> parseTime
-                   <*> (symbol "-!-" *> parseNick)
-                   <*> (symbol "changed the topic of #"
-                           *> parseNick
-                           *> symbol "to: "
-                           *> eatLine)
+                   <*> (symbol "*" *> parseNick)
+                   <*> (symbol "has changed the topic to:" *> eatLine)
 
 parseKick :: Parser DataLine
-parseKick = Kick <$> parseTime
-                 <*> (symbol "-!-" *> parseNick)
-                 <*> (symbol "was kicked from #" *> word *> symbol " by " *> parseNick <* whiteSpace)
-                 <*> eatLine
+parseKick =
+    let kick t kicker kickee reason = Kick t kickee kicker reason in
+    kick <$> parseTime
+         <*> (symbol "*" *> parseNick)
+         <*> (symbol "has kicked" *> parseNick *> symbol " from " *> word <* whiteSpace)
+         <*> eatLine
 
 parseNick :: Parser Name
 parseNick = many (noneOf " ") <* whiteSpace
 
 parseNickChange :: Parser DataLine
 parseNickChange = Nick <$> parseTime
-                       <*> (symbol "-!-" *> parseNick)
+                       <*> (symbol "*" *> parseNick)
                        <*> (symbol "is now known as" *> parseNick)
 
 parseAction :: Parser DataLine
@@ -105,13 +103,13 @@ parseAction = Message <$> parseTime
 parseMessage :: Parser DataLine
 parseMessage = Message <$> parseTime
                        <*> return 0
-                       <*> (string "<" *> oneOf " +~@%&" *> parseName <* symbol ">")
+                       <*> (string "<" *> parseName <* symbol ">")
                        <*> parseContents
 
 
 parseTime :: Parser Time
-parseTime = (,) <$> (parseInt <* symbol ":")
-                <*> parseInt
+parseTime = (,) <$> (word *> symbol " " *> parseInt *> parseInt <* symbol ":")
+                <*> (parseInt <* symbol ":" <* parseInt)
 
 parseName :: Parser Name
 parseName = manyTill anyChar (lookAhead (symbol ">"))
@@ -129,6 +127,8 @@ parseDateString = (get . stringToLocalTime) <$> eatLine
 
 parseLine :: String -> Either DbParseError DataLine
 parseLine s =
-    case parse parseDataLine "" s of
-        Left err -> Left (DbParseError s (show err))
-        Right success -> Right success
+    if length s == 0
+    then Right (Bad "")
+    else case parse parseDataLine "" s of
+             Left err -> Left (DbParseError s (show err))
+             Right success -> Right success

@@ -13,7 +13,7 @@ data LogLevel = None
               deriving (Ord, Eq, Show)
 
 logLevel :: LogLevel
-logLevel = All
+logLevel = Error
 
 format :: LogLevel -> String -> String
 format l s = concat ["[", shows l, "]: ", s]

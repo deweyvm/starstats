@@ -699,15 +699,17 @@ populateStdIn parser con = do
         Left l -> do
             logInfo "End of input reached"
             logInfo (show l)
+            exitWith ExitSuccess
         Right line -> do
             logVerbose $ "Adding line: " ++ line
-            if line == ""
+            if line == "" && False --fixme
             then do logWarning "Got empty line: Exiting"
                     exitWith ExitSuccess
             else case parser line of
                      Left err -> do
                          commit con
-                         error $ show err
+                         {-error-}
+                         logError $ show err
                      Right dl -> do
                          insertFromStdIn dl con
                          date <- getDate con
@@ -717,6 +719,7 @@ populateStdIn parser con = do
 
 insertFromStdIn :: IConnection c => DataLine -> c -> IO ()
 insertFromStdIn data' con = do
+    logAll (show data')
     e <- try (withTransaction con (insert data')) :: IO (Either SqlError ())
     case e of
         Left l' -> do

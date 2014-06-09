@@ -35,6 +35,7 @@ data DataLine = Message Time Int Name Contents
               | Day LocalTime
               | Close LocalTime
               | Open LocalTime
+              | Bad Contents
     deriving (Show)
 
 lexer :: P.GenTokenParser String a Identity
