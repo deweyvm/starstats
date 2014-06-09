@@ -32,7 +32,10 @@ getHourlyActivity con = do
                          , fromSql x20, fromSql x21, fromSql x22, fromSql x23]
         extract _ = []
     times <- runQuery con q
-    return $ zip (show <$> [0..]) (concat $ extract <$> times)
+    let catted = concat $ extract <$> times
+    if length catted < 3
+    then return []
+    else return $ zip (show <$> [0..]) catted
 
 getDailyActivity :: IConnection c => c -> IO [(String,Int)]
 getDailyActivity con = do
@@ -40,7 +43,10 @@ getDailyActivity con = do
            \ FROM activity;"
     let extract (d0:d1:d2:d3:d4:d5:d6:_) = [fromSql d0, fromSql d1, fromSql d2, fromSql d3, fromSql d4, fromSql d5, fromSql d6]
     times <- runQuery con q
-    return $ zip (["S", "M", "T", "W", "T", "F", "S"]) (concat $ extract <$> times)
+    let catted = concat $ extract <$> times
+    if length catted < 3
+    then return []
+    else return $ zip (["S", "M", "T", "W", "T", "F", "S"]) catted
 
 getMonthlyActivity :: IConnection c => c -> IO ([(String, Int)], [(String, Int)])
 getMonthlyActivity con = do
@@ -58,7 +64,7 @@ getMonthlyActivity con = do
 
     let extract (x:y:_) = (fromSql x, fromSql y)
     let order xs = take 12 ((extract <$> xs) ++ (zip (repeat "") (repeat 0)))
-    if length msgs == 0
+    if length msgs < 3
     then return ([],[])
     else return $ (order msgs, order users)
 

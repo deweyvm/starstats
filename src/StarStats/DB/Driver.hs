@@ -18,8 +18,8 @@ import StarStats.Log.Log
 
 
 
-generate :: IConnection c => String -> c -> IO ()
-generate dbName con = do
+generate :: IConnection c => ServerInfo -> c -> IO ()
+generate (ServerInfo driver chanName serverName dbName) con = do
     logInfo "Running queries"
     let timeGet s f = time' s $ f con
     _           <- timeGet "P Top"              populateTop
@@ -230,26 +230,26 @@ getTimeInfo con = do
              then Nothing
              else Just $ divClass "summary" desc
 
-safeGenerate :: IConnection c => String -> c -> IO ()
-safeGenerate s con = do
-    e <- try (generate s con) :: IO (Either IOError ())
+safeGenerate :: IConnection c => ServerInfo -> c -> IO ()
+safeGenerate sinfo con = do
+    e <- try (generate sinfo con) :: IO (Either IOError ())
     case e of
         Left l -> if isInfixOf "Deadlock" (show l)
                   then do logWarning "Deadlock encountered, retrying"
-                          safeGenerate s con
+                          safeGenerate sinfo con
                   else logError (show l)
         Right _ -> return ()
 
 doAction :: Action -> ServerInfo -> IO ()
-doAction action sinfo@(ServerInfo driver chanName) = do
-    con <- connect driver chanName
+doAction action sinfo = do
+    con <- connect sinfo
     case action of
         Read -> do
             logInfo "Reading data lines from stdin"
             readDb con
         Generate -> do
             logInfo "Generating webpage"
-            safeGenerate chanName con
+            safeGenerate sinfo con
         Recover file -> do
             logInfo "Recovering from log"
             watch file False True sinfo

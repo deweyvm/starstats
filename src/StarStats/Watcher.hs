@@ -35,7 +35,7 @@ getEnd file bytes = do
 
 
 watch :: String -> Bool -> Bool -> ServerInfo -> IO ()
-watch file doRepop doRecover (ServerInfo driver chanName) = do
+watch file doRepop doRecover srv@(ServerInfo driver chanName serverName dbName) = do
     exists <- doesFileExist file
     if not exists
     then error "no file"
@@ -43,7 +43,7 @@ watch file doRepop doRecover (ServerInfo driver chanName) = do
             then repopulate file
             else return ())
             (if doRecover
-            then recover file driver chanName
+            then recover file srv
             else do size <- getSize file
                     watchFile file size)
 
@@ -96,14 +96,14 @@ parseGood (x:xs) =
 parseGood [] = []
 
 -- Get latest message and then read backwards until we find it and parse from there
-recover :: String -> String -> String -> IO ()
-recover file driver chanName = do
+recover :: String -> ServerInfo -> IO ()
+recover file srv@(ServerInfo driver chanName serverName dbName) = do
     logInfo "Making connection"
-    con <- connect driver chanName
+    con <- connect srv
     logInfo "Searching for latest message"
-    latest <- getLatestMessage con chanName -- \ these two lines
-    close con                               --
-    size <- getSize file                    -- / should be atomic together
+    latest <- getLatestMessage con dbName -- \ these two lines
+    close con                             --
+    size <- getSize file                  -- / should be atomic together
 
     case latest of
         Nothing -> do logWarning "No need to recover"

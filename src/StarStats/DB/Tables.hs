@@ -434,7 +434,7 @@ populateTop con = do
                  \ (SELECT name, msgcount\
                  \  FROM users\
                  \  ORDER BY msgcount DESC\
-                 \  LIMIT 10);"
+                 \  LIMIT 20);"
     return ()
 
 -- a nick is "unique" if it has over N messages and doesnt have an oldnick such that

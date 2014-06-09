@@ -3,9 +3,9 @@ module StarStats.DB.Connection where
 
 import Database.HDBC
 import Database.HDBC.ODBC
-
-connect :: String -> String -> IO Connection
-connect driver dbName = do
+import StarStats.DB.Utils
+connect :: ServerInfo -> IO Connection
+connect (ServerInfo driver _ _ dbName) = do
     let connectionString = "DSN=name32;\
                           \ Driver={" ++ driver ++ "};\
                           \ Server=localhost;\

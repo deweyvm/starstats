@@ -9,33 +9,42 @@ else
     driver="MySql ODBC 5.1 Driver"
 fi
 
-log=$2
-db=`echo $log | sed 's/.*\/#\(.*\)[.]log/\1/'`
+
+channel=$2
+server=$3
+db=$4
+log=$5
 echo "Running starstats... "  &&\
 case $1 in
 "--repop")
-    $EXE "$driver" "$db" "$log" "-rp" | $EXE "$driver" "$db" "-rd"
+    $EXE --driver="$driver" \
+         --channel="$channel" \
+         --server="$server" \
+         --db="$db" \
+         --repopulate="$log" | \
+    $EXE --driver="$driver" \
+         --channel="$channel" \
+         --server="$server" \
+         --db="$db" \
+         "--read"
 ;;
 "--repop-dry-run")
-    $EXE "$driver" "$db" "$log" "-rp"
+    $EXE "--driver=$driver" "--channel=$channel" "--server=$server" "--db=$db" "--repopulate=$log"
 ;;
 "--recover")
-    $EXE "$driver" "$db" "$log" "-rv" | $EXE "$driver" "$db" "-rd"
+    $EXE "--driver=$driver" "--channel=$channel" "--server=$server" "--db=$db" "--recover=$log" | $EXE "--driver=$driver" "--db=$db" "--read"
 ;;
 "--recover-dry-run")
-    $EXE "$driver" "$db" "$log" "-rv"
-;;
-"--generate")
-    $EXE "$driver" "$db" "-g"
+    $EXE "--driver=$driver" "--channel=$channel" "--server=$server" "--db=$db" "--recover=$log"
 ;;
 "--contrive-repop")
-    $PY3 $SIMUL -l -1 --realtime --stdout | $EXE "$driver" "zarathustra" "-rd"
+    $PY3 $SIMUL -l -1 --realtime --stdout | $EXE "--driver=$driver" "--db=zarathustra" "--read"
 ;;
 "--contrive-1-year")
-    $PY3 $SIMUL -a 1200 -d 365 -m --stdout | $EXE "$driver" "zarathustra" "-rd"
+    $PY3 $SIMUL -a 1200 -d 365 -m --stdout | $EXE "--driver=$driver" "--db=zarathustra" "--read"
 ;;
 "--init")
-    $EXE "$driver" "$2" "-i"
+    $EXE  "--driver=$driver" "--channel=$channel" "--server=$server" "--db=$db" "--init"
 ;;
 *)
     echo "Unknown option \"$1\""
