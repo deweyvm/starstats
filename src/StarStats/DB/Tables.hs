@@ -12,7 +12,7 @@ import Database.HDBC
 import System.IO.UTF8 hiding (readFile)
 import System.Exit
 import StarStats.DB.Utils
-import StarStats.Parser
+import StarStats.Parsers.Irssi
 import StarStats.Time
 import StarStats.Log.Log
 

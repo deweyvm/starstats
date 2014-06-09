@@ -14,7 +14,7 @@ import System.Directory
 import System.IO.UTF8
 import System.IO (stdout, hFlush, hSeek, hClose, SeekMode(..), IOMode(..))
 import Debug.Trace
-import StarStats.Parser
+import StarStats.Parsers.Irssi
 import StarStats.Time
 import StarStats.DB.Tables
 import StarStats.DB.Utils

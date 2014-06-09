@@ -1,4 +1,4 @@
-module StarStats.Parser where
+module StarStats.Parsers.Irssi where
 
 import Control.Applicative((<*>), (<$>), (*>), (<*))
 import Text.Parsec
