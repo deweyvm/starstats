@@ -76,12 +76,13 @@ rowify us cs =
     hr : rows
 
 formatTable :: Heading
+            -> String
             -> [Name]
             -> Heading
             -> Width
             -> [Column]
             -> Maybe String
-formatTable h ns nh nw cs =
+formatTable h desc ns nh nw cs =
     let nameCol = Column (M.fromList $ zip ns ns) nh nw in
     let cs' = nameCol : cs in
     let rows = rowify ns cs' in
@@ -89,7 +90,7 @@ formatTable h ns nh nw cs =
     let formatRow (Row xs) = tr $ concat $ formatCell <$> xs in
     if length rows == 1
     then Nothing
-    else Just $ linkHeader Table h $ tag "table" $ concat $ formatRow <$> rows
+    else Just $ linkHeader Table h desc $ tag "table" $ concat $ formatRow <$> rows
 
 makeUserTag :: String -> String
 makeUserTag s = "user-user-user-user-user-" ++ s
@@ -111,8 +112,8 @@ makeRectScript name w x y z =
     let vals = [show (name)] ++ (show <$> [w, x, y, z]) in
     tag "script" $ makeCall "drawBar" vals
 
-makeTimeScript :: String -> String -> [(String,Int)] -> Maybe String
-makeTimeScript canvasName h hours =
+makeTimeScript :: String -> String -> String -> [(String,Int)] -> Maybe String
+makeTimeScript h desc canvasName hours =
     let width = (24*24) in
     let canvas = makeCanvas canvasName width 140 in
     let values :: [String]
@@ -122,7 +123,7 @@ makeTimeScript canvasName h hours =
     let vals = [show canvasName] ++ [show width] ++ [("[" ++ ls ++ "]")] ++  [("[" ++ fmt ++ "]")] in
     if length values == 0
     then Nothing
-    else Just $ linkHeader Graph h  $ canvas ++ (tag "script" $ (makeCall "drawGraph" vals))
+    else Just $ linkHeader Graph h desc  $ canvas ++ (tag "script" $ (makeCall "drawGraph" vals))
 
 
 makeCall :: String -> [String] -> String
@@ -139,12 +140,13 @@ formatList = liftA simpleFormat
 makeList :: [String] -> String
 makeList xs = concat $ tag "p" <$> xs
 
-withHeading3 :: String -> Section -> (String -> String)
-withHeading3 h s x =
-    let divv = genTag "div" [("class", "myhr")] in
-    let spann = genTag "span" [("class", "myhr-inner")] in
-    let h' = "&nbsp;&nbsp;" ++ h ++ "&nbsp;&nbsp;" in
-    divClass (sectionString s) $ (divv (spann h')) ++ x
+withHeading3 :: String -> String -> Section -> (String -> String)
+withHeading3 h desc s x =
+    let divv = divClass "myhr" in
+    let spann = spanClass "myhr-inner" in
+    let spanDesc = spanClass "myhr-desc" in
+    let h' = "&nbsp;&nbsp;" ++ h ++ "" in
+    divClass (sectionString s) $ (divv (spann (h' ++ spanDesc (hoverBox desc)))) ++ x
 
 section :: [String] -> String
 section [] = ""
@@ -161,19 +163,24 @@ sectionString :: Section -> String
 sectionString Graph = "graph-element"
 sectionString Table = "table-element"
 
-linkHeader :: Section -> String -> String -> String
-linkHeader sec h s =
+linkHeader :: Section -> String -> String -> String -> String
+linkHeader sec h desc s =
     let tagname = hyphenate h in
     let href = genTag "a" [("id", tagname), ("href", "#" ++ tagname)] in
-    (withHeading3 (href h) sec $ s)
+    (withHeading3 (href h) desc sec $ s)
 
-headerTable :: Print a => String -> String -> String -> [(String, a)] -> Maybe String
-headerTable h c1 c2 xs =
+hoverBox :: String -> String
+hoverBox desc = spanClass "htip" (tag "div" ("[?]&nbsp;" ++ (divClass "hwrap" $ divClass "hbox" desc)))
+
+
+
+headerTable :: Print a => String -> String -> String -> String -> [(String, a)] -> Maybe String
+headerTable desc h c1 c2 xs =
     if length xs == 0
         then Nothing
         else let p = (c1, c2) in
              let mapped = (second print') <$> xs in
-             Just $ linkHeader Table h $ simpleTable ((pairMap (tag "b") p):mapped)
+             Just $ linkHeader Table h desc  $ simpleTable ((pairMap (tag "b") p):mapped)
 
 makeFile :: String -> String -> String -> [String] -> String
 makeFile x file head' scripts =
@@ -221,6 +228,9 @@ divId id' = genTag "div" [("id", id')]
 
 divClass :: String -> (String -> String)
 divClass class' = genTag "div" [("class", class')]
+
+spanClass :: String -> (String -> String)
+spanClass class' = genTag "span" [("class", class')]
 
 propToString :: (String,String) -> String
 propToString (k, v) = k ++ "=\"" ++ v ++ "\" "

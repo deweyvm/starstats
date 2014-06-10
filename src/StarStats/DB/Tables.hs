@@ -172,9 +172,9 @@ insert (Message time typ name msg) con = do
             \     wordcount=wordcount+?,\
             \     charcount=charcount+?,\
             \     isExclamation=isExclamation+(IF(? LIKE '%!%', 1, 0)),\
-            \     isQuestion=isQuestion+(IF(? LIKE '%?', 1, 0)),\
+            \     isQuestion=isQuestion+(IF(? LIKE '%?%', 1, 0)),\
             \     isAmaze=isAmaze+(IF(? LIKE '%wow%'\
-            \                     AND ? REGEXP '[[:<:]]wow[[:>:]]|really.?$', 1, 0)),\
+            \                     AND ? REGEXP '[[:<:]]wow[[:>:]]|really.?$|huh', 1, 0)),\
             \     isTxt=isTxt+(IF(? REGEXP '[[:<:]](wat|wot|r|u|k|idk|ikr|v)[[:>:]]', 1, 0)),\
             \     isNaysay=isNaysay+(IF(? LIKE '%no%'\
             \                       AND ? REGEXP '[[:<:]]no[[:>:]]', 1, 0)),\

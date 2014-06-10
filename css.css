@@ -122,9 +122,13 @@ html * {
 .myhr-inner {
   color: #6ED899;
   font-size: 1.17em;
-  background-color: #595959!important;
+  background-color: #595959;
   position: relative;
   top: -0.58em;
+
+}
+
+.myhr-desc {
 
 }
 
@@ -137,7 +141,7 @@ html * {
 }
 
 
-/*thanks to leod for this part!*/
+/*thanks to leod for these parts!*/
 .overflowbox {
   position: relative;
 }
@@ -160,6 +164,7 @@ html * {
   word-wrap: break-word;
 }
 
+/* Background alert box with centered symbol */
 .tribox {
   position: absolute;
   background: url('/sign.png') center no-repeat;
@@ -168,7 +173,7 @@ html * {
   margin-top: -172px;
 }
 
-.tritext-empty {
+.tritext {
   position: absolute;
   cursor: default;
   opacity: .1;
@@ -183,45 +188,96 @@ html * {
   z-index: 1;
 }
 
-.tritext-empty:after {
+.empty:after {
   content: "☆";
 }
-
-.tritext-empty::selection {
-  color: #000;
-  background: rgba(0,0,0,0);
-}
-.tritext-empty::-moz-selection {
-  color: #000;
-  background: rgba(0,0,0,0);
-}
-
-.tritext-err {
-  position: absolute;
-  cursor: default;
-  opacity: .1;
-  text-align: center;
-  color: #000;
-  font-size: 160px;
-  font-weight: bold;
-  width: 100%;
-  height: 230px;
-  top: 130px;
-  line-height: 160px;
-  z-index: 1;
-}
-
-.tritext-err:after {
+.err:after {
   content: "☹";
 }
 
-.tritext-err::selection {
+.tritext::selection {
   color: #000;
   background: rgba(0,0,0,0);
 }
-.tritext-err::-moz-selection {
+.tritext::-moz-selection {
   color: #000;
   background: rgba(0,0,0,0);
+}
+
+/* Floating tooltips */
+.htip div {
+  color: #D86EAE;
+  position: relative;
+  display: inline-block;
+  font-size:0.85em;
+}
+
+.htip div .hwrap {
+  color: #A2A4BA;
+  opacity: 0;
+  display: block;
+  overflow: hidden;
+  position: absolute;
+  z-index: 99;
+  text-align: center;
+
+
+  font-size: 0.85em;
+
+  left: -282px;
+  top: 19px;
+  padding: 0;
+  margin: 0;
+  width: 0;
+  height: 0;
+}
+
+.htip div:hover .hwrap {
+  opacity: 1;
+  color: #FFF;
+  width: 600px;
+  height: auto;
+  padding-top: 16px;
+  transition: padding-top linear .1s;
+  -o-transition: padding-top linear .1s;
+  -moz-transition: padding-top linear .1s;
+  -webkit-transition: padding-top linear .1s;
+}
+
+.htip .hbox {
+  display: inline-block;
+  color: #A2A4BA;
+  text-shadow: 0px 1px 0px 0px rgba(0,0,0,.3);
+  background: #4A4A4A;
+  border-radius: 5px;
+  box-shadow: 0px 2px 0px 0px rgba(0,0,0,.3),
+              inset 0px -1px 0px 0px rgba(0,0,0,0.1);
+
+
+  padding: 4px 6px;
+}
+
+/*.htip .hbox:after {
+  position: absolute;
+  position: relative !IE;
+  content: url('arrow.png');
+  top: -5px;  left: 46%;
+  left: calc(50% - 15px);
+}*/
+
+.htip .hbox:after {
+  content: "";
+  display: block;
+  position: absolute;
+  position: relative !IE;
+  top: -5px;  left: 50%;
+  left: calc(50% - 9px);
+
+  border-style: solid;
+  border-width: 0 6px 7px 6px;
+  border-color: transparent transparent #4A4A4A transparent;
+  width: 0; height: 0;
+  -webkit-transform: rotate(360deg);
 }
 
 

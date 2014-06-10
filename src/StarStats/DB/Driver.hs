@@ -60,6 +60,7 @@ generate (ServerInfo driver dbName) con = do
     !friendly  <- timeGet "Q Friendly"         getFriendly
     !idlers     <- timeGet "Q Idlers"           getIdlers
     logInfo "Assembling html"
+    let di = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aliquam cursus tellus eget justo sodales eleifend. Integer vel suscipit orci. Praesent accumsan est eget sem sagittis tristique. Vestibulum tincidunt lorem orci. Nunc quis eleifend quam. Ut vestibulum neque velit, a gravida purus consectetur nec. Ut non commodo nisl."
     let printify = (mapSnd print' <$>)
     let bars = (toTimeBars tups)
     let ucol1 = toColumn (printify users) "Messages" "11%"
@@ -69,127 +70,153 @@ generate (ServerInfo driver dbName) con = do
     let ucol5 = toColumn randTop "Random Message" "59%"
 
     let uus = fst <$> users
-    let urows = formatTable "Top Users" uus "User" "18%" [ucol1, ucol2, ucol3, ucol4, ucol5]
+    let urows = formatTable "Top Users" di uus "User" "18%" [ucol1, ucol2, ucol3, ucol4, ucol5]
 
     let table4 :: (Print a, Print b, Print c)
                => [(String, a, b, c)]
+               -> String
                -> String
                -> (String, String)
                -> (String, String)
                -> (String, String)
                -> (String, String)
                -> Maybe String
-        table4 xs h (h0, w0) (h1, w1) (h2, w2) (h3, w3)=
+        table4 xs h desc (h0, w0) (h1, w1) (h2, w2) (h3, w3)=
             let (col1, col2, col3) = split3 xs in
             let col1' = toColumn (printify col1) h1 w1 in
             let col2' = toColumn (printify col2) h2 w2 in
             let col3' = toColumn (printify col3) h3 w3 in
             let us = fst <$> col1 in
-            formatTable h us h0 w0 [col1', col2', col3']
-    let rsrows = table4 repSimple "Simple Repeated Phrases" ("Message", "50%")
-                                                            ("Times", "10%")
-                                                            ("Last Said By", "11%")
-                                                            ("Last Said On", "19%")
+            formatTable h desc us h0 w0 [col1', col2', col3']
+    let rsrows = table4 repSimple "Simple Repeated Phrases"
+                                  di ("Message", "50%")
+                                     ("Times", "10%")
+                                     ("Last Said By", "11%")
+                                     ("Last Said On", "19%")
 
 
-    let rcrows = table4 repComplex "Complex Repeated Phrases" ("Message", "50%")
-                                                              ("Times", "10%")
-                                                              ("Last Said By", "11%")
-                                                              ("Last Said On", "19%")
-    let urlrows = table4 topUrls "Top URLs" ("URL", "50%")
-                                            ("Times", "10%")
-                                            ("Last Said By", "11%")
-                                            ("Last Said On", "19%")
+    let rcrows = table4 repComplex "Complex Repeated Phrases"
+                                   di ("Message", "50%")
+                                      ("Times", "10%")
+                                      ("Last Said By", "11%")
+                                      ("Last Said On", "19%")
+    let urlrows = table4 topUrls "Top URLs"
+                                 di ("URL", "50%")
+                                    ("Times", "10%")
+                                    ("Last Said By", "11%")
+                                    ("Last Said On", "19%")
 
-    let graphs = [ makeTimeScript "hourly" "Hourly Activity (UTC)" hourly
-                 , makeTimeScript "daily" "Daily Activity" daily
-                 , makeTimeScript "monthly" "Monthly Activity" monthly
-                 , makeTimeScript "users" "Active Users" activet]
+    let graphs = [ makeTimeScript "Hourly Activity (UTC)" di "hourly"  hourly
+                 , makeTimeScript "Daily Activity"        di "daily"   daily
+                 , makeTimeScript "Monthly Activity"      di "monthly" monthly
+                 , makeTimeScript "Active Users"          di "users"   activet
+                 ]
     let tables = [ urows
-                 , headerTable "Random Topics"
+                 , headerTable di
+                               "Random Topics"
                                "Name"
                                "Topic"
                                topics
                  , urlrows
-                 , headerTable "Friendly"
+                 , headerTable di
+                               "Friendly"
                                "Name"
                                "Times"
                                friendly
-                 , headerTable "Champion Idlers"
+                 , headerTable "The number of hours spent in the channel divided by lines spoken"
+                               "Champion Idlers"
                                "Name"
                                "Idle Quotient"
                                idlers
-                 , headerTable "Enthusiastic"
+                 , headerTable "The percentage of messages in ALL CAPS."
+                               "Enthusiastic"
                                "Name"
                                "YELLING (%)"
                                yell
-                 , headerTable "Loquatious"
+                 , headerTable "The percentage of lines this user has written that are very long"
+                               "Loquatious"
                                "Name"
                                "Verbose (%)"
                                loq
-                 , headerTable "Excitable"
+                 , headerTable "The percent of lines containing exclamation points."
+                               "Excitable"
                                "Name"
                                "!!!!!!!!!!!!!! (%)"
                                excite
-                 , headerTable "Amazed"
+                 , headerTable di
+                               "Amazed"
                                "Name"
                                "Lost for Words (%)"
                                amaze
-                 , headerTable "Apostrophe Users"
+                 , headerTable "The percent of line's containing apostrophe's."
+                               "Apostrophe Users"
                                "Name"
                                "Message's (%)"
                                apos
-                 , headerTable "Redefining English"
+                 , headerTable "The percent of lines containing text speak."
+                               "Redefining English"
                                "Name"
                                "Text Speak (%)"
                                text
-                 , headerTable "Well Spoken"
+                 , headerTable "Average words per line + average characters per word."
+                               "Well Spoken"
                                "Name"
                                "Eloquence Quotient"
                                wellspoken
-                 , headerTable "Naysayers"
+                 , headerTable "The percent of lines containing the word 'no'"
+                               "Naysayers"
                                "Name"
-                               "Negativity (%)s"
+                               "Negativity (%)"
                                nay
                  , rsrows
                  , rcrows
-                 , headerTable "Inquisitive"
+                 , headerTable "The percent of messages containing question marks."
+                               "Inquisitive"
                                "Name"
                                "Questions Asked (%)"
                                questions
-                 , headerTable "Sociable"
+                 , headerTable "The number of times this user has mentioned another (recently active) user."
+                               "Sociable"
                                "Name"
                                "Times Mentioning Someone"
                                needy
-                 , headerTable "Popular"
+                 , headerTable "The number of times this user has been mentioned by another (recently active) user."
+                               "Popular"
                                "Name"
                                "Times Mentioned"
                                popular
-                 , headerTable "A Lot to Say"
+                 , headerTable "The number of times this user has spoken many consecutive lines in a row."
+                               "A Lot to Say"
                                "Name"
                                "Times Talking to Self"
                                self
-                 , headerTable "Recently Active Users"
+                 , headerTable "Users who have spoken in the past few days."
+                               "Recently Active Users"
                                "Name"
                                "Messages"
                                unique
-                 , headerTable "Some Random URLs"
+                 , headerTable di
+                               "Some Random URLs"
                                "Name"
                                "URL"
                                urls
-                 , headerTable "Random Messages"
+                 , headerTable di
+                               "Random Messages"
                                "Name"
                                "Message"
                                rand
-                 , headerTable "Most Changed Nicks"
+                 , headerTable di
+                               "Most Changed Nicks"
                                "Name"
                                "Times Changed"
                                nicks
-                 , headerTable "Prolific Kickers"
+                 , headerTable "Those who have kicked many users."
+                               "Prolific Kickers"
                                "Name"
                                "Times Kicking"
                                kickers
-                 , headerTable "Trouble Makers"
+                 , headerTable "Those who have been kicked many times."
+                               "Trouble Makers"
                                "Name"
                                "Times Kicked"
                                kickees
@@ -198,7 +225,7 @@ generate (ServerInfo driver dbName) con = do
     let tableSection = section $ catMaybes tables
     let heading = divId "lead" $ tag "h1" ("#" ++ dbName)
     timeInfo <- getTimeInfo con
-    let error' x =( divClass "tribox" ) (divId "emptyhead" x ++ divClass "tritext-empty" "")
+    let error' x =( divClass "tribox" ) (divId "emptyhead" x ++ divClass "tritext empty" "")
     let bottom = case timeInfo of
                    Just t -> t
                    Nothing -> error' $ ("no data added yet!")
