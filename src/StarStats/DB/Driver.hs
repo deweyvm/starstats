@@ -111,21 +111,21 @@ generate (ServerInfo driver dbName) con = do
                                  ("Last Said By", "11%")
                                  ("Last Said On", "19%")
 
-    let graphs = [ makeTimeScript "Hourly Activity (UTC)"
-                                  "Activity in the channel broken down by hour."
-                                  "hourly"
-                                  hourly
-                 , makeTimeScript "Daily Activity"
-                                  "Activity in the channel broken down by day of the week."
-                                  "daily"
+    let graphs = [ makeDonut "Hourly Activity (UTC)"
+                             "Relative activity in the channel broken down by hour."
+                             "hourly-canvas"
+                             hourly
+                 , makeHalfDonut  "Daily Activity"
+                                  "Relative activity in the channel broken down by day of the week."
+                                  "daily-canvas"
                                   daily
-                 , makeTimeScript "Monthly Activity"
+                 , makeLine "Monthly Activity"
                                   "Activity in the channel broken down by the most recent 12 months."
-                                  "monthly"
+                                  "monthly-canvas"
                                   monthly
-                 , makeTimeScript "Active Users"
+                 , makeLine "Active Users"
                                   "The number of active users broken down by the most recent 12 months."
-                                  "users"
+                                  "users-canvas"
                                   activet
                  ]
     let tables = [ urows
@@ -247,7 +247,7 @@ generate (ServerInfo driver dbName) con = do
                    Just t -> t
                    Nothing -> error' $ ("no data added yet!")
     let content = divId "content" $ linkLinks (graphSection ++ tableSection ++ bottom)
-    putStrLn $ makeFile (heading ++ content) "/css.css" (getTitle dbName) ["/util.js"]
+    putStrLn $ makeFile (heading ++ content) "/css.css" (getTitle dbName) ["/util.js", "http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js", "highcharts.js", "exporting.js"]
     logInfo "Finished"
 
 getTitle :: String -> String

@@ -73,3 +73,152 @@ function drawGraph(canvasName, canvasWidth, ls, xs) {
         context.fillText(percentText, x + (width - pwidth)/2 + xOffset, y - 4);
     }
 }
+function line(canvasName, values, labels) {
+    $(function () {
+        $('#' + canvasName).highcharts({
+            chart: {
+                backgroundColor: '#404040',
+                width:500,
+                marginTop: 50,
+                borderRadius: 10
+            },
+            plotOptions: {
+                series: {
+                    marker : { enabled: false }
+                }
+            },
+            credits: false,
+            exporting: false,
+            title: {
+                style : { color: '#A2A4BA' },
+                text: null,
+                x: -20
+            },
+            xAxis: {
+                labels: { style: { color: '#A2A4BA'} },
+                categories: labels,
+                gridLineWidth: 0,
+                minorGridLineWidth: 0,
+                tickWidth: 0,
+                tickLength: 0,
+                lineWidth: 0
+            },
+            yAxis: {
+                labels: { style: { color: '#A2A4BA'} },
+                title: { text: null },
+                gridLineWidth: 0,
+                minorGridLineWidth: 0,
+                floor: 0
+            },
+            legend: {
+                enabled:false,
+                layout: 'vertical',
+                align: 'right',
+                verticalAlign: 'middle',
+                borderWidth: 0
+            },
+            series: [{
+                color: '#D8CE6E',
+                name: 'Tokyo',
+                data: values
+            }]
+        });
+    });
+
+}
+
+function halfDonut(canvasName, elts) {
+    $(function () {
+        $('#' + canvasName).highcharts({
+            chart: {
+                backgroundColor: '#404040',
+                plotBorderWidth: 0,
+                plotShadow: true,
+                borderRadius: 10
+            },
+            colors : ['#F7977A', '#FDC68A', '#FFF79A', '#A2D39C', '#6ECFF6', '#8493CA', '#A187BE'],
+            credits: false,
+            exporting: false,
+            title: {
+                enabled:false,
+                text:""
+            },
+            tooltip: { enabled: false },
+            plotOptions: {
+                pie: {
+                    animation: false,
+                    states: { hover: { enabled: false } },
+                    borderWidth: 0,
+                    dataLabels: {
+                        enabled: true,
+                        distance: 0,
+                        style: {
+                            fontWeight: 'bold',
+                            color: 'white',
+                            textShadow: '0px 1px 0px rgba(0,0,0,.3)',
+                            color: '#A2A4BA'
+                        }
+                    },
+                    startAngle: -90,
+                    endAngle: 90,
+                    center: ['50%', '75%']
+                }
+            },
+            series: [{
+                type: 'pie',
+                name: 'Hourly Activity',
+                innerSize: '50%',
+                data: elts
+            }]
+        });
+    });
+}
+
+function donut(canvasName, elts) {
+    $(function () {
+        $('#' + canvasName).highcharts({
+            chart: {
+                backgroundColor: '#404040',
+                plotBorderWidth: 0,
+                margin:[0,0,0,0],
+                plotShadow: true,
+                width: 500,
+                borderRadius: 10
+            },
+            colors : ['#7A85EE', '#747FE3', '#6F79D9', '#6972CE', '#636CC3', '#5E66B8', '#B75D93', '#C2639C', '#CD68A5', '#D86EAE', '#E273B6', '#ED79BF', '#EDE279', '#E2D873', '#D8CE6E', '#CDC368', '#C2B963', '#B7AF5D', '#5DB782', '#63C289', '#68CD91', '#6ED899', '#73E2A0', '#79EDA8'],
+            credits: false,
+            exporting: false,
+            title: {
+                enabled:false,
+                text:""
+            },
+            tooltip: { enabled: false },
+            plotOptions: {
+                pie: {
+                    animation: false,
+                    states: { hover: { enabled: false } },
+                    borderWidth:0,
+                    dataLabels: {
+                        enabled: true,
+                        distance: 0,
+                        style: {
+                            fontWeight: 'bold',
+                            color: 'white',
+                            textShadow: '0px 1px 0px rgba(0,0,0,.3)',
+                            color: '#A2A4BA'
+                        }
+                    },
+                    startAngle: 0,
+                    endAngle: 360,
+                    center: ['50%', '50%']
+                }
+            },
+            series: [{
+                type: 'pie',
+                name: 'Hourly Activity',
+                innerSize: '50%',
+                data: elts
+            }]
+        });
+    });
+}

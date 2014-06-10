@@ -125,6 +125,47 @@ makeTimeScript h desc canvasName hours =
     then Nothing
     else Just $ linkHeader Graph h desc  $ canvas ++ (tag "script" $ (makeCall "drawGraph" vals))
 
+showPair :: (String,Double) -> String
+showPair (s, i) = "[" ++ show s ++ "," ++ show i ++ "]"
+
+pairToPercent :: [(a,Int)] -> [(a,Double)]
+pairToPercent xs =
+    let sum' = fromIntegral $ sum $ snd <$> xs :: Double in
+    (\(x, i) -> (x, (fromIntegral $ 100 * i) / sum')) <$> xs
+
+
+makeGraph :: String -> String -> String -> String -> [(String,Int)] -> Maybe String
+makeGraph type' h desc canvasName xs =
+    let hours = pairToPercent xs in
+    let vals = "[" ++ (intercalate ", " $ showPair <$> hours) ++ "]" in
+    let s = makeCall type' [ show canvasName
+                           , vals
+                           ] in
+    let tag' = divId canvasName ""in
+    if length vals == 0
+    then Nothing
+    else Just $ linkHeader Graph h desc $ tag' ++  genTag "script" [("type", "text/javascript")] s
+
+makeDonut = makeGraph "donut"
+
+makeHalfDonut = makeGraph "halfDonut"
+
+showInt :: Int -> String
+showInt 0 = "null"
+showInt x = show x
+
+makeLine :: String -> String -> String -> [(String,Int)] -> Maybe String
+makeLine h desc canvasName xs =
+    let labels = (intercalate ", " $ (show.fst) <$> xs) in
+    let vals = (intercalate ", " $ (showInt.snd) <$> xs) in
+    let s = makeCall "line" [ show canvasName
+                            , "[" ++ vals ++ "]"
+                            , "[" ++ labels ++ "]"
+                            ] in
+    let tag' = divId canvasName ""in
+    if length vals == 0
+    then Nothing
+    else Just $ linkHeader Graph h desc $ tag' ++  genTag "script" [("type", "text/javascript")] s
 
 makeCall :: String -> [String] -> String
 makeCall f args =
@@ -184,10 +225,12 @@ headerTable desc h c1 c2 xs =
 
 makeFile :: String -> String -> String -> [String] -> String
 makeFile x file head' scripts =
-    let favicon = "<link href=\"/favicon.ico?v=1.1\" rel=\"shortcut icon\"/>" in
+    let favicon = voidTag "link" [ ("href", "favicon.ico?v=1.1")
+                                 , ("rel", "shortcut icon")
+                                 ] in
     let scriptSrc src = genTag "script" [ ("language", "javascript")
                                         , ("src", src)] "" in
-    let css = voidTag "link" [ ("href",file)
+    let css = voidTag "link" [ ("href", file)
                              , ("rel", "stylesheet")
                              , ("type", "text/css")
                              ] in
