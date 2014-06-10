@@ -60,7 +60,7 @@ generate (ServerInfo driver dbName) con = do
     !friendly  <- timeGet "Q Friendly"         getFriendly
     !idlers     <- timeGet "Q Idlers"           getIdlers
     logInfo "Assembling html"
-    let di = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aliquam cursus tellus eget justo sodales eleifend. Integer vel suscipit orci. Praesent accumsan est eget sem sagittis tristique. Vestibulum tincidunt lorem orci. Nunc quis eleifend quam. Ut vestibulum neque velit, a gravida purus consectetur nec. Ut non commodo nisl."
+
     let printify = (mapSnd print' <$>)
     let bars = (toTimeBars tups)
     let ucol1 = toColumn (printify users) "Messages" "11%"
@@ -70,7 +70,9 @@ generate (ServerInfo driver dbName) con = do
     let ucol5 = toColumn randTop "Random Message" "59%"
 
     let uus = fst <$> users
-    let urows = formatTable "Top Users" di uus "User" "18%" [ucol1, ucol2, ucol3, ucol4, ucol5]
+    let urows = formatTable "Top Users"
+                            "User ranking by number of lines spoken (all time). This also includes the average words per line (AWL) and average word length (AWL) as well as a breakdown of activity per quarter of the day and a random message."
+                             uus "User" "18%" [ucol1, ucol2, ucol3, ucol4, ucol5]
 
     let table4 :: (Print a, Print b, Print c)
                => [(String, a, b, c)]
@@ -89,41 +91,56 @@ generate (ServerInfo driver dbName) con = do
             let us = fst <$> col1 in
             formatTable h desc us h0 w0 [col1', col2', col3']
     let rsrows = table4 repSimple "Simple Repeated Phrases"
-                                  di ("Message", "50%")
-                                     ("Times", "10%")
-                                     ("Last Said By", "11%")
-                                     ("Last Said On", "19%")
+                                  "Lines ranked by the number of times they have been repeated, ignoring case and punctuation."
+                                  ("Message", "50%")
+                                  ("Times", "10%")
+                                  ("Last Said By", "11%")
+                                  ("Last Said On", "19%")
 
 
     let rcrows = table4 repComplex "Complex Repeated Phrases"
-                                   di ("Message", "50%")
-                                      ("Times", "10%")
-                                      ("Last Said By", "11%")
-                                      ("Last Said On", "19%")
+                                   "Longer lines ranked by the number of times they have been repeated, ignoring case and punctuation."
+                                   ("Message", "50%")
+                                   ("Times", "10%")
+                                   ("Last Said By", "11%")
+                                   ("Last Said On", "19%")
     let urlrows = table4 topUrls "Top URLs"
-                                 di ("URL", "50%")
-                                    ("Times", "10%")
-                                    ("Last Said By", "11%")
-                                    ("Last Said On", "19%")
+                                 "Urls ranked by the number of times they have been posted."
+                                 ("URL", "50%")
+                                 ("Times", "10%")
+                                 ("Last Said By", "11%")
+                                 ("Last Said On", "19%")
 
-    let graphs = [ makeTimeScript "Hourly Activity (UTC)" di "hourly"  hourly
-                 , makeTimeScript "Daily Activity"        di "daily"   daily
-                 , makeTimeScript "Monthly Activity"      di "monthly" monthly
-                 , makeTimeScript "Active Users"          di "users"   activet
+    let graphs = [ makeTimeScript "Hourly Activity (UTC)"
+                                  "Activity in the channel broken down by hour."
+                                  "hourly"
+                                  hourly
+                 , makeTimeScript "Daily Activity"
+                                  "Activity in the channel broken down by day of the week."
+                                  "daily"
+                                  daily
+                 , makeTimeScript "Monthly Activity"
+                                  "Activity in the channel broken down by the most recent 12 months."
+                                  "monthly"
+                                  monthly
+                 , makeTimeScript "Active Users"
+                                  "The number of active users broken down by the most recent 12 months."
+                                  "users"
+                                  activet
                  ]
     let tables = [ urows
-                 , headerTable di
+                 , headerTable "A random selection of channel topics."
                                "Random Topics"
                                "Name"
                                "Topic"
                                topics
                  , urlrows
-                 , headerTable di
+                 , headerTable "The percent of lines matching friendly greetings such as 'welcome'."
                                "Friendly"
                                "Name"
                                "Times"
                                friendly
-                 , headerTable "The number of hours spent in the channel divided by lines spoken"
+                 , headerTable "The number of hours spent in the channel divided by lines spoken."
                                "Champion Idlers"
                                "Name"
                                "Idle Quotient"
@@ -133,7 +150,7 @@ generate (ServerInfo driver dbName) con = do
                                "Name"
                                "YELLING (%)"
                                yell
-                 , headerTable "The percentage of lines this user has written that are very long"
+                 , headerTable "The percentage of lines this user has written that are very long."
                                "Loquatious"
                                "Name"
                                "Verbose (%)"
@@ -143,7 +160,7 @@ generate (ServerInfo driver dbName) con = do
                                "Name"
                                "!!!!!!!!!!!!!! (%)"
                                excite
-                 , headerTable di
+                 , headerTable "The percent of lines matching shocked/surprised words such as 'wow'"
                                "Amazed"
                                "Name"
                                "Lost for Words (%)"
@@ -163,7 +180,7 @@ generate (ServerInfo driver dbName) con = do
                                "Name"
                                "Eloquence Quotient"
                                wellspoken
-                 , headerTable "The percent of lines containing the word 'no'"
+                 , headerTable "The percent of lines containing the word 'no'."
                                "Naysayers"
                                "Name"
                                "Negativity (%)"
@@ -195,17 +212,17 @@ generate (ServerInfo driver dbName) con = do
                                "Name"
                                "Messages"
                                unique
-                 , headerTable di
+                 , headerTable "A random selection of posted URLs."
                                "Some Random URLs"
                                "Name"
                                "URL"
                                urls
-                 , headerTable di
+                 , headerTable "A random selection of spoken lines."
                                "Random Messages"
                                "Name"
                                "Message"
                                rand
-                 , headerTable di
+                 , headerTable "A count of the number of times this user has changed their nick."
                                "Most Changed Nicks"
                                "Name"
                                "Times Changed"
