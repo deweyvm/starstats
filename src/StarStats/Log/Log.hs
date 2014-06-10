@@ -1,9 +1,12 @@
 {-# LANGUAGE DoAndIfThenElse #-}
 module StarStats.Log.Log where
 
+import Control.Applicative
+import Data.IORef
 import System.IO.Unsafe
 import System.IO.UTF8
 import System.IO (stderr, hFlush)
+
 data LogLevel = None
               | Error
               | Warning
@@ -12,8 +15,10 @@ data LogLevel = None
               | All
               deriving (Ord, Eq, Show)
 
+
 logLevel :: LogLevel
 logLevel = Error
+
 
 format :: LogLevel -> String -> String
 format l s = concat ["[", shows l, "]: ", s]

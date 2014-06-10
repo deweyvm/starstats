@@ -1,5 +1,6 @@
 module StarStats.Args where
 
+import Control.Applicative
 import System.Console.GetOpt
 import System.Exit
 import System.Environment
@@ -73,6 +74,12 @@ options =
         "Log file format"
     ]
 
+printUsage :: IO ()
+printUsage = do
+    prog <- getProgName
+    hPutStrLn stderr ("Options for logtype are irssi|xchat" ++ usageInfo prog options)
+
+
 rawToAction :: Options -> IO Action
 rawToAction opts = do
     let action = optMode opts
@@ -83,6 +90,7 @@ rawToAction opts = do
        Just InitializeT -> return Initialize
        Just RepopulateT -> loadRepopulate opts
        Nothing -> do logError "Must specify a mode"
+                     printUsage
                      exitFailure
 
 loadRepopulate :: Options -> IO Action
@@ -90,8 +98,10 @@ loadRepopulate opts = do
     case (optParseType opts, optLog opts) of
         (Just t, Just l) -> return $ Repopulate (getParser t) l
         (_, Nothing) -> do logError "A logtype must be specified for this mode"
+                           printUsage
                            exitFailure
         (Nothing, _) -> do logError "A log must be specified for this mode"
+                           printUsage
                            exitFailure
 
 
@@ -100,8 +110,10 @@ loadRecover opts = do
     case (optParseType opts, optLog opts) of
         (Just t, Just l) -> return $ Recover (getParser t) l
         (_, Nothing) -> do logError "A logtype must be specified for this mode"
+                           printUsage
                            exitFailure
         (Nothing, _) -> do logError "A log must be specified for this mode"
+                           printUsage
                            exitFailure
 
 
@@ -110,6 +122,7 @@ loadRead opts =
     case optParseType opts of
         Just t -> return $ Read $ getParser t
         Nothing -> do logError "Must specify logtype for this option"
+                      printUsage
                       exitFailure
 
 loadParseType :: Maybe String -> IO ParserType
@@ -117,16 +130,9 @@ loadParseType s = do
     case s of
         Just "irssi" -> return $ Irssi
         Just "xchat" -> return $ XChat
-        _       -> do prog <- getProgName
-                      hPutStrLn stderr ("Options for logtype are irssi|xchat" ++ usageInfo prog options)
+        _       -> do logError "Options for logtype are irssi|xchat"
+                      printUsage
                       exitFailure
-
-assertDefined :: String -> Maybe String -> IO String
-assertDefined _ (Just s) = return s
-assertDefined msg Nothing = do
-    prog <- getProgName
-    hPutStrLn stderr ("Failed assertion " ++ msg ++  usageInfo prog options)
-    exitFailure
 
 getOpts :: IO Options
 getOpts = do

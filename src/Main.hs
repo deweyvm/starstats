@@ -15,6 +15,7 @@ main = do
     opts <- getOpts
     mode <- rawToAction opts
 
+
     let sinfo = ServerInfo (optDriverName opts)
                            (optDbName opts)
 

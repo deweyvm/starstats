@@ -55,7 +55,10 @@ parseBad :: Parser DataLine
 parseBad =
     Bad <$> (parseTime *> (try (symbol "* Disconnected (No such device or address)")
                        <|> try (symbol "* ChanServ gives channel operator status to ")
+                       <|> try (symbol "* You are now known as")
                        <|> try (symbol "* Topic for #")
+                       <|> try (symbol "-NickServ- ")
+                       <|> try (parseNick *> symbol "plugin unloaded")
                        <|> symbol "* Now talking on #") *> eatLine)
 
 
