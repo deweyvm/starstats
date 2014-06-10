@@ -230,7 +230,7 @@ getFriendly :: IConnection c => c -> IO [(String, Double)]
 getFriendly con =
     let q = "SELECT name, IFNULL(100*isFriendly/msgcount, 0) AS c\
            \ FROM users\
-           \ WHERE isFriendly > 0 \
+           \ WHERE isFriendly > 0 AND msgcount > 10\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
@@ -250,7 +250,7 @@ getNaysayers con =
     let q = "SELECT m.name, IFNULL(isNaysay/m.msgcount, 0) as c\
            \ FROM users as m\
            \ JOIN uniquenicks as u\
-           \ ON u.name = m.name\
+           \ ON u.name = m.name AND m.msgcount > 10\
            \ WHERE isNaysay \
            \ GROUP BY m.name\
            \ ORDER BY c DESC\
@@ -264,7 +264,7 @@ getPopular con =
            \ FROM users\
            \ JOIN uniquenicks AS u\
            \ ON u.name = users.name\
-           \ WHERE timesMentioned > 0\
+           \ WHERE timesMentioned > 0 AND users.msgcount > 10\
            \ ORDER BY c DESC\
            \ LIMIT 10;"  in
     getAndExtract con [] extractTup q
@@ -274,7 +274,7 @@ getNeedy con =
     let q = "SELECT users.name, timesMentioning AS c\
            \ FROM users\
            \ JOIN uniquenicks AS u\
-           \ ON u.name = users.name\
+           \ ON u.name = users.name AND u.msgcount > 10\
            \ WHERE timesMentioning > 0\
            \ ORDER BY c DESC\
            \ LIMIT 10;"  in
@@ -318,7 +318,7 @@ getTextSpeakers :: IConnection c => c -> IO [(String, Double)]
 getTextSpeakers con =
     let q = "SELECT name, IFNULL(100*isTxt/msgcount, 0) AS c\
            \ FROM users\
-           \ WHERE isTxt > 0\
+           \ WHERE isTxt > 0 AND msgcount > 10\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
@@ -328,7 +328,7 @@ getApostrophes con = do
     let q1 = "SELECT users.name, IFNULL(100*(isApostrophe/users.msgcount), 0) AS c\
             \ FROM users\
             \ JOIN uniquenicks\
-            \ ON uniquenicks.name = users.name AND users.msgcount > 100\
+            \ ON uniquenicks.name = users.name AND users.msgcount > 10\
             \ ORDER BY c;"
 
     let showDouble d = printf "%.2f" (d :: Double)
@@ -346,7 +346,7 @@ getQuestions :: IConnection c => c -> IO [(String, Double)]
 getQuestions con =
     let q = "SELECT name, IFNULL(100*isQuestion/msgcount, 0) AS c\
            \ FROM users\
-           \ WHERE isQuestion > 0\
+           \ WHERE isQuestion > 0 AND msgcount > 10\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
@@ -355,7 +355,7 @@ getAmazed :: IConnection c => c -> IO [(String,Double)]
 getAmazed con =
     let q = "SELECT name, IFNULL(100*isAmaze/msgcount, 0) as c\
            \ FROM users\
-           \ WHERE isAmaze > 0\
+           \ WHERE isAmaze > 0 AND msgcount > 10\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
@@ -364,7 +364,7 @@ getExcited :: IConnection c => c -> IO [(String, Double)]
 getExcited con =
     let q = "SELECT name, IFNULL(100*isExclamation/msgcount, 0) as c\
            \ FROM users\
-           \ WHERE isExclamation > 0\
+           \ WHERE isExclamation > 0 AND msgcount > 10\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
@@ -373,7 +373,7 @@ getYell :: IConnection c => c -> IO [(String, Double)]
 getYell con =
     let q = "SELECT name, IFNULL(100*isCaps/msgcount, 0) AS c\
            \ FROM users\
-           \ WHERE isCaps > 0\
+           \ WHERE isCaps > 0 AND msgcount > 10\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
     getAndExtract con [] extractTup q
@@ -385,7 +385,7 @@ getWellSpoken con =
            \     IFNULL(wordcount/msgcount + charcount/wordcount, 0) as c\
            \ FROM users AS u\
            \ JOIN activeusers AS a\
-           \ ON u.name = a.name\
+           \ ON u.name = a.name AND msgcount > 10\
            \ HAVING c > 0\
            \ ORDER BY c DESC\
            \ LIMIT 10;" in
@@ -396,7 +396,7 @@ getLong con = do
     let q = "SELECT u.name, IFNULL(100*isLong/msgcount, 0) AS c\
            \ FROM users AS u\
            \ JOIN activeusers AS a\
-           \ ON u.name = a.name\
+           \ ON u.name = a.name AND msgcount > 10\
            \ HAVING c > 0\
            \ ORDER BY c DESC\
            \ LIMIT 10;"
