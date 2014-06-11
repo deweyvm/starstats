@@ -64,7 +64,7 @@ extractUrl s =
     let words' = words s in
     case filter isUrl words' of
         (x:_) -> x
-        _ -> "!!Error extracting url!!"
+        _ -> "!!Error extracting url!! (" ++ s ++ ")"
 
 
 replaceChar :: Char -> String -> String -> String
