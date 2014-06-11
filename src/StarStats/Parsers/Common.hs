@@ -32,7 +32,8 @@ data DataLine = Message Time Int Name Contents
               | Mode Time Contents
               | Notice Time String
               | Invite Time String
-              | Day LocalTime
+              | Day (Month,DayOfMonth) Time
+              | Date LocalTime
               | Close LocalTime
               | Open LocalTime
               | Bad Contents

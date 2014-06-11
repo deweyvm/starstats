@@ -9,22 +9,22 @@ import Data.Functor.Identity
 import Data.Time.LocalTime
 import Data.Maybe
 import StarStats.Time
-
+import StarStats.DB.Utils
 import StarStats.Parsers.Common
 
-parseDataLine :: Parser DataLine
+parseDataLine :: Parser [DataLine]
 parseDataLine = try (parseTimeChange) <|> parseChatLine
 
-parseChatLine :: Parser DataLine
+parseChatLine :: Parser [DataLine]
 parseChatLine = try parseStatus
             <|> parseMessage
 
 
-parseTimeChange :: Parser DataLine
-parseTimeChange = try (Close <$> (symbol "**** ENDING LOGGING AT" *> parseDateString))
-              <|> (Open <$> (symbol "**** BEGIN LOGGING AT" *> parseDateString))
+parseTimeChange :: Parser [DataLine]
+parseTimeChange = try (return . Close <$> (symbol "**** ENDING LOGGING AT" *> parseDateString))
+                  <|> (return . Open <$> (symbol "**** BEGIN LOGGING AT" *> parseDateString))
 
-parseStatus :: Parser DataLine
+parseStatus :: Parser [DataLine]
 parseStatus = try parseBad
           <|> try parseQuit
           <|> try parsePart
@@ -35,37 +35,39 @@ parseStatus = try parseBad
           <|> try parseTopic
           <|> parseAction
 
-parseJoin :: Parser DataLine
+parseJoin :: Parser [DataLine]
 parseJoin =
-    Join <$> parseTime
-         <*> (symbol "*" *> parseNick <* symbol "("
-                                      <* many (noneOf ")")
-                                      <* symbol ") has joined")
+    return .: Join <$> parseTime
+                   <*> (symbol "*" *> parseNick <* symbol "("
+                                                <* many (noneOf ")")
+                                                <* symbol ") has joined")
 
-parseQuit :: Parser DataLine
+parseQuit :: Parser [DataLine]
 parseQuit =
-    Quit <$> parseTime
-         <*> (symbol "*" *> parseNick <* symbol "has quit")
-         <*> eatLine
-parsePart :: Parser DataLine
+    return .:: Quit <$> parseTime
+                    <*> (symbol "*" *> parseNick <* symbol "has quit")
+                    <*> eatLine
+parsePart :: Parser [DataLine]
 parsePart =
-    Part <$> parseTime
-         <*> (symbol "*" *> parseNick <* symbol "("
-                                      <* many (noneOf ")")
-                                      <* symbol ") has left")
-         <*> return ""
+    return .:: Part <$> parseTime
+                    <*> (symbol "*" *> parseNick <* symbol "("
+                                                 <* many (noneOf ")")
+                                                 <* symbol ") has left")
+                    <*> return ""
 
 
 
-parseBad :: Parser DataLine
+parseBad :: Parser [DataLine]
 parseBad =
-    Bad <$> (parseTime *> badInner *> eatLine)
+    return . Bad <$> (parseTime *> badInner *> eatLine)
     where specialAction s = (symbol "*" *> parseNick
                                         *> symbol s)
           badInner =
                 (try (symbol "* Disconnected (No such device or address)")
             <|> try (specialAction "gives channel operator status to ")
+            <|> try (specialAction "removes channel operator status from")
             <|> try (specialAction "gives channel half-operator status to")
+            <|> try (specialAction "removes channel half-operator status from")
             <|> try (specialAction "removes voice from")
             <|> try (specialAction "gives voice to")
             <|> try (specialAction "removes ban on")
@@ -76,20 +78,22 @@ parseBad =
             <|> try (parseNick *> symbol "plugin unloaded")
             <|> symbol "* Now talking on #")
 
-parseMode :: Parser DataLine
-parseMode = Mode <$> parseTime
-                 <*> (symbol "*" *> parseNick
-                                 *> symbol "sets mode"
-                                 *> eatLine)
+parseMode :: Parser [DataLine]
+parseMode =
+    return .: Mode <$> parseTime
+                   <*> (symbol "*" *> parseNick
+                                   *> symbol "sets mode"
+                                   *> eatLine)
 
-parseTopic :: Parser DataLine
-parseTopic = Topic <$> parseTime
-                   <*> (symbol "*" *> parseNick)
-                   <*> (symbol "has changed the topic to:" *> eatLine)
+parseTopic :: Parser [DataLine]
+parseTopic =
+    return .:: Topic <$> parseTime
+                     <*> (symbol "*" *> parseNick)
+                     <*> (symbol "has changed the topic to:" *> eatLine)
 
-parseKick :: Parser DataLine
+parseKick :: Parser [DataLine]
 parseKick =
-    let kick t kicker kickee reason = Kick t kickee kicker reason in
+    let kick t kicker kickee reason = [Kick t kickee kicker reason] in
     kick <$> parseTime
          <*> (symbol "*" *> parseNick)
          <*> (symbol "has kicked" *> parseNick *> symbol " from " *> word <* whiteSpace)
@@ -98,22 +102,48 @@ parseKick =
 parseNick :: Parser Name
 parseNick = many (noneOf "# ") <* whiteSpace
 
-parseNickChange :: Parser DataLine
-parseNickChange = Nick <$> parseTime
-                       <*> (symbol "*" *> parseNick)
-                       <*> (symbol "is now known as" *> parseNick)
+parseNickChange :: Parser [DataLine]
+parseNickChange =
+    return .:: Nick <$> parseTime
+                    <*> (symbol "*" *> parseNick)
+                    <*> (symbol "is now known as" *> parseNick)
 
-parseAction :: Parser DataLine
-parseAction = Message <$> parseTime
-                      <*> return 1
-                      <*> (symbol "*" *> parseNick)
-                      <*> eatLine
+parseAction :: Parser [DataLine]
+parseAction =
+    return .::: Message <$> parseTime
+                        <*> return 1
+                        <*> (symbol "*" *> parseNick)
+                        <*> eatLine
 
-parseMessage :: Parser DataLine
-parseMessage = Message <$> parseTime
-                       <*> return 0
-                       <*> (string "<" *> parseName <* symbol ">")
-                       <*> parseContents
+parseDay :: Parser (Month, DayOfMonth, Time)
+parseDay = do
+    month <- parseNick
+    dayOfMonth <- many (noneOf " ") <* whiteSpace
+    hour <- many (noneOf ":") <* symbol ":"
+    minute <- many (noneOf ":") <* symbol ":"
+    second <- many (noneOf " ") <* whiteSpace
+    let s = concat [ month
+                   , " "
+                   , dayOfMonth
+                   , " "
+                   , hour
+                   , ":"
+                   , minute
+                   , ":"
+                   , second
+                   , " 09" --arbitrary, this is ignored anyway.
+                   ]
+    case timeStringToDayHourMinute s of
+        Just (w, x, y, z) -> return (w, x, (y, z))
+        Nothing -> unexpected s
+
+parseMessage :: Parser [DataLine]
+parseMessage = do
+    (month, day, time) <- parseDay
+    type' <- return 0
+    name <-(string "<" *> parseName <* symbol ">")
+    contents <- parseContents
+    return [Day (month, day) time, Message time type' name contents]
 
 
 parseTime :: Parser Time
@@ -140,4 +170,4 @@ parseLine s =
     then Right [Bad ""]
     else case parse parseDataLine "" s of
              Left err -> Left (DbParseError s (show err))
-             Right success -> Right [success]
+             Right success -> Right success

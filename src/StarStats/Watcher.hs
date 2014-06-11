@@ -74,7 +74,7 @@ getRunning f (x : xs) =
 matchDate :: LocalTime -> [(String, DataLine)] -> [(String, DataLine)]
 matchDate t0 ls  =
     getRunning matching ls
-    where matching (_, (Day t)) = localDay t == localDay t0
+    where matching (_, (Date t)) = localDay t == localDay t0
           matching (_, (Open t)) = localDay t == localDay t0
           matching _ = False
 

@@ -228,3 +228,7 @@ split3 xs =
               helper rest ((w, x) : ac1, (w, y) : ac2, (w, z) : ac3)
           helper [] (ac1, ac2, ac3) = (reverse ac1, reverse ac2, reverse ac3)
 
+
+(.:) = (.) . (.)
+(.::) = (.:) . (.)
+(.:::) = (.::) . (.)

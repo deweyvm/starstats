@@ -23,7 +23,7 @@ parseChatLine = try parseAction
 
 
 parseTimeChange :: Parser DataLine
-parseTimeChange = try (Day <$> (symbol "--- Day changed" *> parseDateString))
+parseTimeChange = try (Date <$> (symbol "--- Day changed" *> parseDateString))
               <|> try (Close <$> (symbol "--- Log closed" *> parseDateString))
               <|> (Open <$> (symbol "--- Log opened" *> parseDateString))
 

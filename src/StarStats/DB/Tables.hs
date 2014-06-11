@@ -351,8 +351,11 @@ insert (Part time name _) con = do
     t <- getDate con
     let newT = setHoursMinutes t time
     doQuit con newT name
-insert (Day date) con = do
+insert (Date date) con = do
     updateDate con date
+    return ()
+insert (Day (month, day) time) con = do
+    updateDay con month day time
     return ()
 insert (Open date) con = do
     updateDate con date
@@ -360,24 +363,30 @@ insert (Open date) con = do
 insert  _ _ =
     return ()
 
-doQuit :: IConnection c => c -> LocalTime -> String -> IO ()
-doQuit con time name = do
-    let sqlName = toSql name
-    let sqlTime = toSql time
-    let q = "UPDATE chantime SET\
-           \     hours=hours + (time_to_sec(timediff(?, lastjoin)) / 3600)\
-           \ WHERE name = ?"
-    quickQuery con q [sqlTime, sqlName]
-    return ()
+updateDay :: IConnection c => c -> Month -> DayOfMonth -> Time -> IO ()
+updateDay con month day (hour,min) = do
+    date <- getDate con
+    let newDate = setHoursMinutes (setMonthsDays date (month, day)) (hour, min)
+    updateDate con newDate
 
 updateDate :: IConnection c => c -> LocalTime -> IO ()
-updateDate con date = do
-    let sqlDate = toSql date
+updateDate con newDate = do
+    oldDate <- getDate con
+    let oldYear = getYear oldDate
+    let newYear = getYear newDate
+    let oldMonth = getMonth oldDate
+    let newMonth = getMonth newDate
+    let t = if oldDate /= anyTime && newMonth < oldMonth
+                                  && oldYear >= newYear
+            then setYear newDate (getYear oldDate + 1)
+            else newDate
+    let sqlDate = toSql t
     quickQuery con "INSERT INTO savedate (dummy, date)\
                   \ VALUES (1, ?)\
                   \ ON DUPLICATE KEY UPDATE\
                   \     date=?" [sqlDate, sqlDate]
     return ()
+
 
 getDate :: IConnection c => c -> IO LocalTime
 getDate con = do
@@ -392,6 +401,17 @@ getDate con = do
                 Nothing -> return anyTime
     let result = extract val
     result
+
+doQuit :: IConnection c => c -> LocalTime -> String -> IO ()
+doQuit con time name = do
+    let sqlName = toSql name
+    let sqlTime = toSql time
+    let q = "UPDATE chantime SET\
+           \     hours=hours + (time_to_sec(timediff(?, lastjoin)) / 3600)\
+           \ WHERE name = ?"
+    quickQuery con q [sqlTime, sqlName]
+    return ()
+
 
 updateRep :: IConnection c => c -> String -> IO ()
 updateRep con s = do
