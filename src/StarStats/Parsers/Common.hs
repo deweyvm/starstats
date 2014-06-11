@@ -18,7 +18,7 @@ data DbParseError = DbParseError String -- line attempted to parse
     deriving Show
 
 
-type DLParser = String -> Either DbParseError DataLine
+type DLParser = String -> Either DbParseError [DataLine]
 
 
 

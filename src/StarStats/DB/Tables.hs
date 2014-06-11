@@ -710,8 +710,8 @@ populateStdIn parser con = do
                          commit con
                          {-error-}
                          logError $ show err
-                     Right dl -> do
-                         insertFromStdIn dl con
+                     Right ls -> do
+                         sequence_ $ (\l ->insertFromStdIn l con) <$> ls
                          date <- getDate con
                          insertMessage line date con
                          commit con

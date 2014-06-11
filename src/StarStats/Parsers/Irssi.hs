@@ -11,9 +11,6 @@ import Data.Maybe
 import StarStats.Time
 import StarStats.Parsers.Common
 
-
-
-
 parseDataLine :: Parser DataLine
 parseDataLine = try (parseTimeChange) <|> parseChatLine
 
@@ -126,8 +123,8 @@ get = fromMaybe anyTime
 parseDateString :: Parser LocalTime
 parseDateString = (get . stringToLocalTime) <$> eatLine
 
-parseLine :: String -> Either DbParseError DataLine
+parseLine :: String -> Either DbParseError [DataLine]
 parseLine s =
     case parse parseDataLine "" s of
         Left err -> Left (DbParseError s (show err))
-        Right success -> Right success
+        Right success -> Right [success]

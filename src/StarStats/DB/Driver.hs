@@ -41,7 +41,7 @@ generate (ServerInfo driver dbName) con = do
     !( monthly
      , activet) <- timeGet "Q Monthly activity" getMonthlyActivity
     !unique     <- timeGet "Q Unique nicks"     getUniqueNicks
-    !avgwc      <- timeGet "Q AWC"              getAverageWordCount
+    !avgwc      <- timeGet "Q WPL"              getAverageWordsPerLine
     !avgwl      <- timeGet "Q AWL"              getAverageWordLength
     !self       <- timeGet "Q Consecutive msgs" getSelfTalk
     !popular    <- timeGet "Q Popular"          getPopular
@@ -66,12 +66,12 @@ generate (ServerInfo driver dbName) con = do
     let ucol1 = toColumn (printify users) "Messages" "11%"
     let ucol2 = toColumn (printify bars) "Active" "107"
     let ucol3 = toColumn (printify avgwl) "AWL" "6%"
-    let ucol4 = toColumn (printify avgwc) "AWC" "6%"
+    let ucol4 = toColumn (printify avgwc) "WPL" "6%"
     let ucol5 = toColumn randTop "Random Message" "59%"
 
     let uus = fst <$> users
     let urows = formatTable "Top Users"
-                            "User ranking by number of lines spoken (all time). This also includes the average words per line (AWL) and average word length (AWL) as well as a breakdown of activity per quarter of the day and a random message."
+                            "User ranking by number of lines spoken (all time). This also includes the average words per line (AWL) and average words per line (WPL) as well as a breakdown of activity per quarter of the day and a random message."
                              uus "User" "18%" [ucol1, ucol2, ucol3, ucol4, ucol5]
 
     let table4 :: (Print a, Print b, Print c)
@@ -98,20 +98,7 @@ generate (ServerInfo driver dbName) con = do
                                   ("Last Said On", "25%")
 
     let testScript = "<script>\
-                    \ $(\".testtest\").mouseover(function() {\
-                    \     if (checkOverflow(this)) {\
-                    \         $('.testtest').css('cursor', 'pointer');\
-                    \     } else {\
-                    \         $('.testtest').css('cursor', 'auto');\
-                    \     }\
-                    \ }).click(function() {\
-                    \     $('.testtest').css('cursor', 'auto');\
-                    \     if (checkOverflow(this)) {\
-                    \         $('.testtest').css('cursor', 'pointer');\
-                    \     } else {\
-                    \         $('.testtest').css('cursor', 'auto');\
-                    \     }\
-                    \ });\
+                    \ triggerPointer();\
                     \ </script>"
     let rcrows = table4 repComplex "Complex Repeated Phrases"
                                    "Longer lines ranked by the number of times they have been repeated, ignoring case and punctuation."

@@ -92,7 +92,7 @@ parseGood :: DLParser -> [String] -> [(String, DataLine)]
 parseGood parser (x:xs) =
     case parser x of
         Left l -> parseGood parser xs
-        Right r -> (x, r) : parseGood parser xs
+        Right r -> zip (repeat x) r ++ parseGood parser xs
 parseGood _ [] = []
 
 -- Get latest message and then read backwards until we find it and parse from there
