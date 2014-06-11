@@ -52,10 +52,10 @@ case $1 in
          --recover
 ;;
 "--contrive-repop")
-    $PY3 $SIMUL -l -1 --realtime --stdout | $EXE --driver="$driver" --db="zarathustra" --logtype="$logtype" --read
+    $PY3 $SIMUL -l -1 --realtime --stdout | $EXE --driver="$driver" --db="zarathustra" --logtype="irssi" --read
 ;;
 "--contrive-1-year")
-    $PY3 $SIMUL -a 1200 -d 365 -m --stdout | $EXE --driver="$driver" "--db=zarathustra" --logtype="$logtype" --read
+    $PY3 $SIMUL -a 1200 -d 365 -m --stdout | $EXE --driver="$driver" "--db=zarathustra" --logtype="irssi" --read
 ;;
 "--init")
     $EXE --driver="$driver" \

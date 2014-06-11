@@ -112,18 +112,6 @@ makeRectScript name w x y z =
     let vals = [show (name)] ++ (show <$> [w, x, y, z]) in
     tag "script" $ makeCall "drawBar" vals
 
-makeTimeScript :: String -> String -> String -> [(String,Int)] -> Maybe String
-makeTimeScript h desc canvasName hours =
-    let width = (24*24) in
-    let canvas = makeCanvas canvasName width 140 in
-    let values :: [String]
-        values = (show . snd) <$> hours in
-    let fmt = (intercalate ", " values) in
-    let ls = (intercalate "," (show. fst <$> hours)) in
-    let vals = [show canvasName] ++ [show width] ++ [("[" ++ ls ++ "]")] ++  [("[" ++ fmt ++ "]")] in
-    if length values == 0
-    then Nothing
-    else Just $ linkHeader Graph h desc  $ canvas ++ (tag "script" $ (makeCall "drawGraph" vals))
 
 showPair :: (String,Double) -> String
 showPair (s, i) = "[" ++ show s ++ "," ++ show i ++ "]"
@@ -134,8 +122,8 @@ pairToPercent xs =
     (\(x, i) -> (x, (fromIntegral $ 100 * i) / sum')) <$> xs
 
 
-makeGraph :: String -> String -> String -> String -> [(String,Int)] -> Maybe String
-makeGraph type' h desc canvasName xs =
+makeDonutGraph :: String -> String -> String -> String -> [(String,Int)] -> Maybe String
+makeDonutGraph type' h desc canvasName xs =
     let hours = pairToPercent xs in
     let vals = "[" ++ (intercalate ", " $ showPair <$> hours) ++ "]" in
     let s = makeCall type' [ show canvasName
@@ -144,28 +132,29 @@ makeGraph type' h desc canvasName xs =
     let tag' = divId canvasName ""in
     if length vals == 0
     then Nothing
-    else Just $ linkHeader Graph h desc $ tag' ++  genTag "script" [("type", "text/javascript")] s
+    else Just $ linkHeader DonutGraph h desc $ tag' ++  genTag "script" [("type", "text/javascript")] s
 
-makeDonut = makeGraph "donut"
+makeDonut = makeDonutGraph "donut"
 
-makeHalfDonut = makeGraph "halfDonut"
+makeHalfDonut = makeDonutGraph "halfDonut"
 
 showInt :: Int -> String
 showInt 0 = "null"
 showInt x = show x
 
-makeLine :: String -> String -> String -> [(String,Int)] -> Maybe String
-makeLine h desc canvasName xs =
+makeLine :: String -> String -> String -> String -> [(String,Int)] -> Maybe String
+makeLine h desc canvasName label xs =
     let labels = (intercalate ", " $ (show.fst) <$> xs) in
     let vals = (intercalate ", " $ (showInt.snd) <$> xs) in
     let s = makeCall "line" [ show canvasName
                             , "[" ++ vals ++ "]"
                             , "[" ++ labels ++ "]"
+                            , show label
                             ] in
     let tag' = divId canvasName ""in
     if length vals == 0
     then Nothing
-    else Just $ linkHeader Graph h desc $ tag' ++  genTag "script" [("type", "text/javascript")] s
+    else Just $ linkHeader LineGraph h desc $ tag' ++  genTag "script" [("type", "text/javascript")] s
 
 makeCall :: String -> [String] -> String
 makeCall f args =
@@ -197,11 +186,12 @@ pairMap :: (a -> b) -> (a, a) -> (b, b)
 pairMap f (x, y) = (f x, f y)
 
 
-data Section = Graph | Table
+data Section = DonutGraph | LineGraph | Table
 
 
 sectionString :: Section -> String
-sectionString Graph = "graph-element"
+sectionString DonutGraph = "graph-element-donut"
+sectionString LineGraph = "graph-element-line"
 sectionString Table = "table-element"
 
 linkHeader :: Section -> String -> String -> String -> String
@@ -215,13 +205,21 @@ hoverBox desc = spanClass "htip" (tag "div" ("[?]&nbsp;" ++ (divClass "hwrap" $ 
 
 
 
-headerTable :: Print a => String -> String -> String -> String -> [(String, a)] -> Maybe String
-headerTable desc h c1 c2 xs =
+headerTable :: Print a
+            => String {- | width of the first column -}
+            -> String {- | width of the second column -}
+            -> String {- | description -}
+            -> String {- | table heading -}
+            -> String {- | column 1 heading-}
+            -> String {- | column 2 heading-}
+            -> [(String, a)]
+            -> Maybe String
+headerTable w0 w1 desc h c1 c2 xs =
     if length xs == 0
         then Nothing
         else let p = (c1, c2) in
              let mapped = (second print') <$> xs in
-             Just $ linkHeader Table h desc  $ simpleTable ((pairMap (tag "b") p):mapped)
+             Just $ linkHeader Table h desc  $ simpleTable w0 w1 ((pairMap (tag "b") p):mapped)
 
 makeFile :: String -> String -> String -> [String] -> String
 makeFile x file head' scripts =
@@ -238,9 +236,9 @@ makeFile x file head' scripts =
         s = scriptSrc <$> scripts in
     tag "html" $ tag "head" (css ++ (concat $ s) ++ head' ++ favicon) ++ tag "body" (divId "container" x)
 
-simpleTable :: Print a => [(String,a)] -> String
-simpleTable xs = tag "table" $ concat $ format <$> xs
-    where format (s, y) = tr $ td "50%" s ++ td "50%" (print' y)
+simpleTable :: Print a => String -> String -> [(String,a)] -> String
+simpleTable w0 w1 xs = tag "table" $ concat $ format <$> xs
+    where format (s, y) = tr $ td w0 s ++ td w1 (print' y)
 
 {-# NOINLINE counter #-}
 counter :: IORef Int
@@ -258,7 +256,7 @@ makeExpandBox x = unsafePerformIO $ do
                                    , ("type", "checkbox")
                                    , ("autocomplete", "off")
                                    ]
-    return $ div' (inputTag ++ label' (tag "div" x))
+    return $ div' (inputTag ++ label' (divClass "testtest" x))
 
 td :: String -> (String -> String)
 td width x = (genTag "td" [("width", width)] (makeExpandBox x))

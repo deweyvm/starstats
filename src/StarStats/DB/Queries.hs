@@ -46,7 +46,7 @@ getDailyActivity con = do
     let catted = concat $ extract <$> times
     if length catted < 3
     then return []
-    else return $ zip (["S", "M", "T", "W", "T", "F", "S"]) catted
+    else return $ zip (["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]) catted
 
 getMonthlyActivity :: IConnection c => c -> IO ([(String, Int)], [(String, Int)])
 getMonthlyActivity con = do

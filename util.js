@@ -36,59 +36,35 @@ function drawBar(canvasName, w, x, y, z) {
     }
 }
 
-function drawGraph(canvasName, canvasWidth, ls, xs) {
-    var context = getContext(canvasName);
-    var spacing = 5;
-    var width = 16;
-    var xOffset = (canvasWidth - (width + spacing)*xs.length)/2;
-    var div = Math.ceil(xs.length/util__colors.length);
-    var total = 0;
-    var max = 0;
-    var percents = []
-    for (var i = 0; i < xs.length; i += 1) {
-        total += xs[i];
-        if (xs[i] > max) {
-            max = xs[i];
-        }
-
-    }
-    for (var i = 0; i < xs.length; i += 1) {
-        var x = xs[i];
-        percents[i] = (x / max) * 100;
-    }
-
-    for (var i = 0; i < xs.length; i += 1) {
-        var x = i * (spacing + width);
-        var y = 100 - percents[i] + 20;
-        var color = util__colors[Math.floor(i/div)];
-        var percentText = Math.floor((xs[i]*100/total)).toString() + "%";
-        var labelText = ls[i];
-        var iwidth = context.measureText(labelText).width;
-        var pwidth = context.measureText(percentText).width;
-
-        context.fillStyle = color;
-        context.fillRect(x + xOffset, y, width, percents[i]);
-        context.fillStyle = '#A2A4BA';
-        context.fillText(labelText, x + (width - iwidth)/2 + xOffset, 130);
-        context.fillText(percentText, x + (width - pwidth)/2 + xOffset, y - 4);
-    }
+function formatLine(label) {
+    return function() {
+        return '<b>'+ this.x +'</b>: '+ this.point.y + ' ' + label ;
+    };
 }
-function line(canvasName, values, labels) {
+
+function line(canvasName, values, labels, tooltipLabel) {
     $(function () {
         $('#' + canvasName).highcharts({
             chart: {
                 backgroundColor: '#404040',
-                width:500,
+                width: 500,
+                height: 200,
                 marginTop: 50,
+                paddingRight:0,
                 borderRadius: 10
             },
             plotOptions: {
                 series: {
-                    marker : { enabled: false }
+                    marker : { enabled: true }
+                },
+                line: {
+                    animation: false,
+                    states: { hover: { enabled: false } }
                 }
             },
             credits: false,
             exporting: false,
+            tooltip: formatTooltip(formatLine(tooltipLabel)),
             title: {
                 style : { color: '#A2A4BA' },
                 text: null,
@@ -107,7 +83,8 @@ function line(canvasName, values, labels) {
                 labels: { style: { color: '#A2A4BA'} },
                 title: { text: null },
                 gridLineWidth: 0,
-                minorGridLineWidth: 0,
+                lineWidth: 0,
+                minorGridLineWidth: 1,
                 floor: 0
             },
             legend: {
@@ -127,6 +104,38 @@ function line(canvasName, values, labels) {
 
 }
 
+function checkOverflow(el)
+{
+   var curOverflow = el.style.overflow;
+   if ( !curOverflow || curOverflow === "visible" )
+      el.style.overflow = "hidden";
+
+   var isOverflowing = el.clientWidth < el.scrollWidth
+      || el.clientHeight < el.scrollHeight;
+
+   el.style.overflow = curOverflow;
+
+   return isOverflowing;
+}
+
+function triggerPointer() {
+    var div = ".testtest";
+    $(div).hover(function() {
+        if (checkOverflow(this)) {
+            $(div).css('cursor', 'pointer');
+        } else {
+            $(div).css('cursor', 'default');
+        }
+    }, function() {
+        $(div).css('cursor', 'default');
+    });
+}
+
+function formatWeekDay(label) {
+    var t = this.point.name;
+    return '<b>'+ t +'</b>: '+ this.point.y.toFixed(2) + '%';
+}
+
 function halfDonut(canvasName, elts) {
     $(function () {
         $('#' + canvasName).highcharts({
@@ -134,6 +143,8 @@ function halfDonut(canvasName, elts) {
                 backgroundColor: '#404040',
                 plotBorderWidth: 0,
                 plotShadow: true,
+                width: 500,
+                height: 500,
                 borderRadius: 10
             },
             colors : ['#F7977A', '#FDC68A', '#FFF79A', '#A2D39C', '#6ECFF6', '#8493CA', '#A187BE'],
@@ -143,14 +154,14 @@ function halfDonut(canvasName, elts) {
                 enabled:false,
                 text:""
             },
-            tooltip: { enabled: false },
+            tooltip: formatTooltip(formatWeekDay),
             plotOptions: {
                 pie: {
                     animation: false,
-                    states: { hover: { enabled: false } },
+                    states: { hover: { enabled: true } },
                     borderWidth: 0,
                     dataLabels: {
-                        enabled: true,
+                        enabled: false,
                         distance: 0,
                         style: {
                             fontWeight: 'bold',
@@ -173,6 +184,25 @@ function halfDonut(canvasName, elts) {
         });
     });
 }
+function formatTooltip(format) {
+    return {
+        backgroundColor: '#4A4A4A',
+        formatter: format,
+        borderColor: '#404040',
+        borderRadius: 10,
+        style: {
+            color: '#A2A4BA'
+        }
+
+    };
+
+}
+
+function formatDonut() {
+    var t = (parseInt(this.point.name) % 12) + 1;
+    var m = parseInt(this.point.name) > 12? "pm" : "am";
+    return '<b>'+ t + ' ' + m +'</b>: '+ this.point.y.toFixed(2) + "%";
+}
 
 function donut(canvasName, elts) {
     $(function () {
@@ -183,6 +213,7 @@ function donut(canvasName, elts) {
                 margin:[0,0,0,0],
                 plotShadow: true,
                 width: 500,
+                height: 500,
                 borderRadius: 10
             },
             colors : ['#7A85EE', '#747FE3', '#6F79D9', '#6972CE', '#636CC3', '#5E66B8', '#B75D93', '#C2639C', '#CD68A5', '#D86EAE', '#E273B6', '#ED79BF', '#EDE279', '#E2D873', '#D8CE6E', '#CDC368', '#C2B963', '#B7AF5D', '#5DB782', '#63C289', '#68CD91', '#6ED899', '#73E2A0', '#79EDA8'],
@@ -192,14 +223,14 @@ function donut(canvasName, elts) {
                 enabled:false,
                 text:""
             },
-            tooltip: { enabled: false },
+            tooltip: formatTooltip(formatDonut),
             plotOptions: {
                 pie: {
                     animation: false,
-                    states: { hover: { enabled: false } },
+                    states: { hover: { enabled: true } },
                     borderWidth:0,
                     dataLabels: {
-                        enabled: true,
+                        enabled: false,
                         distance: 0,
                         style: {
                             fontWeight: 'bold',
@@ -215,7 +246,7 @@ function donut(canvasName, elts) {
             },
             series: [{
                 type: 'pie',
-                name: 'Hourly Activity',
+                name: 'Hour',
                 innerSize: '50%',
                 data: elts
             }]

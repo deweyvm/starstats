@@ -12,9 +12,6 @@ import StarStats.Time
 
 import StarStats.Parsers.Common
 
-
-
-
 parseDataLine :: Parser DataLine
 parseDataLine = try (parseTimeChange) <|> parseChatLine
 
@@ -50,6 +47,15 @@ parseQuit =
     Quit <$> parseTime
          <*> (symbol "*" *> parseNick <* symbol "has quit")
          <*> eatLine
+parsePart :: Parser DataLine
+parsePart =
+    Part <$> parseTime
+         <*> (symbol "*" *> parseNick <* symbol "("
+                                      <* many (noneOf ")")
+                                      <* symbol ") has left")
+         <*> return ""
+
+
 
 parseBad :: Parser DataLine
 parseBad =
@@ -63,13 +69,6 @@ parseBad =
                        <|> symbol "* Now talking on #") *> eatLine)
 
 
-parsePart :: Parser DataLine
-parsePart =
-    Part <$> parseTime
-         <*> (symbol "*" *> parseNick <* symbol "("
-                                      <* many (noneOf ")")
-                                      <* symbol ") has left")
-         <*> eatLine
 
 parseMode :: Parser DataLine
 parseMode = Mode <$> parseTime
@@ -91,7 +90,7 @@ parseKick =
          <*> eatLine
 
 parseNick :: Parser Name
-parseNick = many (noneOf " ") <* whiteSpace
+parseNick = many (noneOf "# ") <* whiteSpace
 
 parseNickChange :: Parser DataLine
 parseNickChange = Nick <$> parseTime

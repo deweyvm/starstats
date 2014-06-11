@@ -92,153 +92,174 @@ generate (ServerInfo driver dbName) con = do
             formatTable h desc us h0 w0 [col1', col2', col3']
     let rsrows = table4 repSimple "Simple Repeated Phrases"
                                   "Lines ranked by the number of times they have been repeated, ignoring case and punctuation."
-                                  ("Message", "50%")
+                                  ("Message", "44%")
                                   ("Times", "10%")
                                   ("Last Said By", "11%")
-                                  ("Last Said On", "19%")
+                                  ("Last Said On", "25%")
 
-
+    let testScript = "<script>\
+                    \ $(\".testtest\").mouseover(function() {\
+                    \     if (checkOverflow(this)) {\
+                    \         $('.testtest').css('cursor', 'pointer');\
+                    \     } else {\
+                    \         $('.testtest').css('cursor', 'auto');\
+                    \     }\
+                    \ }).click(function() {\
+                    \     $('.testtest').css('cursor', 'auto');\
+                    \     if (checkOverflow(this)) {\
+                    \         $('.testtest').css('cursor', 'pointer');\
+                    \     } else {\
+                    \         $('.testtest').css('cursor', 'auto');\
+                    \     }\
+                    \ });\
+                    \ </script>"
     let rcrows = table4 repComplex "Complex Repeated Phrases"
                                    "Longer lines ranked by the number of times they have been repeated, ignoring case and punctuation."
-                                   ("Message", "50%")
+                                   ("Message", "44%")
                                    ("Times", "10%")
                                    ("Last Said By", "11%")
-                                   ("Last Said On", "19%")
+                                   ("Last Said On", "25%")
     let urlrows = table4 topUrls "Top URLs"
                                  "Urls ranked by the number of times they have been posted."
-                                 ("URL", "50%")
+                                 ("URL", "44%")
                                  ("Times", "10%")
                                  ("Last Said By", "11%")
-                                 ("Last Said On", "19%")
-
-    let graphs = [ makeDonut "Hourly Activity (UTC)"
-                             "Relative activity in the channel broken down by hour."
-                             "hourly-canvas"
-                             hourly
-                 , makeHalfDonut  "Daily Activity"
-                                  "Relative activity in the channel broken down by day of the week."
-                                  "daily-canvas"
-                                  daily
-                 , makeLine "Monthly Activity"
-                                  "Activity in the channel broken down by the most recent 12 months."
-                                  "monthly-canvas"
-                                  monthly
-                 , makeLine "Active Users"
-                                  "The number of active users broken down by the most recent 12 months."
-                                  "users-canvas"
-                                  activet
+                                 ("Last Said On", "25%")
+    let donutGraphs = [ makeDonut "Hourly Activity"
+                                  "Relative activity in the channel broken down by hour (UTC)."
+                                  "hourly-canvas"
+                                  hourly
+                      , makeHalfDonut "Daily Activity"
+                                      "Relative activity in the channel broken down by day of the week."
+                                       "daily-canvas"
+                                       daily
+                      ]
+    let lineGraphs = [ makeLine "Monthly Activity"
+                                "Activity in the channel broken down by the most recent 12 months."
+                                "monthly-canvas"
+                                "messages"
+                                monthly
+                     , makeLine "Active Users"
+                                "The number of active users broken down by the most recent 12 months."
+                                "users-canvas"
+                                "users"
+                                activet
                  ]
+    let headerTable50 = headerTable "50%" "50%"
+    let headerTable2080 = headerTable "20%" "80%"
+    let shortTable = headerTable "200" "200"
     let tables = [ urows
-                 , headerTable "A random selection of channel topics."
-                               "Random Topics"
-                               "Name"
-                               "Topic"
-                               topics
-                 , urlrows
-                 , headerTable "The percent of lines matching friendly greetings such as 'welcome'."
-                               "Friendly"
-                               "Name"
-                               "Times"
-                               friendly
-                 , headerTable "The number of hours spent in the channel divided by lines spoken."
-                               "Champion Idlers"
-                               "Name"
-                               "Idle Quotient"
-                               idlers
-                 , headerTable "The percentage of messages in ALL CAPS."
-                               "Enthusiastic"
-                               "Name"
-                               "YELLING (%)"
-                               yell
-                 , headerTable "The percentage of lines this user has written that are very long."
-                               "Loquatious"
-                               "Name"
-                               "Verbose (%)"
-                               loq
-                 , headerTable "The percent of lines containing exclamation points."
-                               "Excitable"
-                               "Name"
-                               "!!!!!!!!!!!!!! (%)"
-                               excite
-                 , headerTable "The percent of lines matching shocked/surprised words such as 'wow'"
-                               "Amazed"
-                               "Name"
-                               "Lost for Words (%)"
-                               amaze
-                 , headerTable "The percent of line's containing apostrophe's."
-                               "Apostrophe Users"
-                               "Name"
-                               "Message's (%)"
-                               apos
-                 , headerTable "The percent of lines containing text speak."
-                               "Redefining English"
-                               "Name"
-                               "Text Speak (%)"
-                               text
-                 , headerTable "Average words per line + average characters per word."
-                               "Well Spoken"
-                               "Name"
-                               "Eloquence Quotient"
-                               wellspoken
-                 , headerTable "The percent of lines containing the word 'no'."
-                               "Naysayers"
-                               "Name"
-                               "Negativity (%)"
-                               nay
+                 , headerTable2080 "A random selection of channel topics."
+                                   "Random Topics"
+                                   "Name"
+                                   "Topic"
+                                   topics
+                 , headerTable2080 "A random selection of posted URLs."
+                                   "Some Random URLs"
+                                   "Name"
+                                   "URL"
+                                   urls
+                 , headerTable2080 "A random selection of spoken lines."
+                                   "Random Messages"
+                                   "Name"
+                                   "Message"
+                                   rand
                  , rsrows
                  , rcrows
-                 , headerTable "The percent of messages containing question marks."
-                               "Inquisitive"
-                               "Name"
-                               "Questions Asked (%)"
-                               questions
-                 , headerTable "The number of times this user has mentioned another (recently active) user."
-                               "Sociable"
-                               "Name"
-                               "Times Mentioning Someone"
-                               needy
-                 , headerTable "The number of times this user has been mentioned by another (recently active) user."
-                               "Popular"
-                               "Name"
-                               "Times Mentioned"
-                               popular
-                 , headerTable "The number of times this user has spoken many consecutive lines in a row."
-                               "A Lot to Say"
-                               "Name"
-                               "Times Talking to Self"
-                               self
-                 , headerTable "Users who have spoken in the past few days."
-                               "Recently Active Users"
-                               "Name"
-                               "Messages"
-                               unique
-                 , headerTable "A random selection of posted URLs."
-                               "Some Random URLs"
-                               "Name"
-                               "URL"
-                               urls
-                 , headerTable "A random selection of spoken lines."
-                               "Random Messages"
-                               "Name"
-                               "Message"
-                               rand
-                 , headerTable "A count of the number of times this user has changed their nick."
-                               "Most Changed Nicks"
-                               "Name"
-                               "Times Changed"
-                               nicks
-                 , headerTable "Those who have kicked many users."
-                               "Prolific Kickers"
-                               "Name"
-                               "Times Kicking"
-                               kickers
-                 , headerTable "Those who have been kicked many times."
-                               "Trouble Makers"
-                               "Name"
-                               "Times Kicked"
-                               kickees
+                 , urlrows
+                 , headerTable50 "The percent of lines matching friendly greetings such as 'welcome'."
+                                 "Friendly"
+                                 "Name"
+                                 "Times"
+                                 friendly
+                 , headerTable50 "The number of hours spent in the channel divided by lines spoken."
+                                 "Champion Idlers"
+                                 "Name"
+                                 "Idle Quotient"
+                                 idlers
+                 , headerTable50 "The percentage of messages in ALL CAPS."
+                                 "Enthusiastic"
+                                 "Name"
+                                 "YELLING (%)"
+                                 yell
+                 , headerTable50 "The percentage of lines this user has written that are very long."
+                                 "Loquatious"
+                                 "Name"
+                                 "Verbose (%)"
+                                 loq
+                 , headerTable50 "The percent of lines containing exclamation points."
+                                 "Excitable"
+                                 "Name"
+                                 "!!!!!!!!!!!!!! (%)"
+                                 excite
+                 , headerTable50 "The percent of lines matching shocked/surprised words such as 'wow'"
+                                 "Amazed"
+                                 "Name"
+                                 "Lost for Words (%)"
+                                 amaze
+                 , headerTable50 "The percent of line's containing apostrophe's."
+                                 "Apostrophe Users"
+                                 "Name"
+                                 "Message's (%)"
+                                 apos
+                 , headerTable50 "The percent of lines containing text speak."
+                                 "Redefining English"
+                                 "Name"
+                                 "Text Speak (%)"
+                                 text
+                 , headerTable50 "Average words per line + average characters per word."
+                                 "Well Spoken"
+                                 "Name"
+                                 "Eloquence Quotient"
+                                 wellspoken
+                 , headerTable50 "The percent of lines containing the word 'no'."
+                                 "Naysayers"
+                                 "Name"
+                                 "Negativity (%)"
+                                 nay
+                 , headerTable50 "The percent of messages containing question marks."
+                                 "Inquisitive"
+                                 "Name"
+                                 "Questions Asked (%)"
+                                 questions
+                 , headerTable50 "The number of times this user has mentioned another (recently active) user."
+                                 "Sociable"
+                                 "Name"
+                                 "Times Mentioning Someone"
+                                 needy
+                 , headerTable50 "The number of times this user has been mentioned by another (recently active) user."
+                                 "Popular"
+                                 "Name"
+                                 "Times Mentioned"
+                                 popular
+                 , headerTable50 "The number of times this user has spoken many consecutive lines in a row."
+                                 "A Lot to Say"
+                                 "Name"
+                                 "Times Talking to Self"
+                                 self
+                 , headerTable50 "Users who have spoken in the past few days."
+                                 "Recently Active Users"
+                                 "Name"
+                                 "Messages"
+                                 unique
+                 , headerTable50 "A count of the number of times this user has changed their nick."
+                                 "Most Changed Nicks"
+                                 "Name"
+                                 "Times Changed"
+                                 nicks
+                 , headerTable50 "Those who have kicked many users."
+                                 "Prolific Kickers"
+                                 "Name"
+                                 "Times Kicking"
+                                 kickers
+                 , headerTable50 "Those who have been kicked many times."
+                                 "Trouble Makers"
+                                 "Name"
+                                 "Times Kicked"
+                                 kickees
                  ]
-    let graphSection = section $ catMaybes graphs
+    let donutGraphSection = section $ catMaybes donutGraphs
+    let lineGraphSection = section $ catMaybes lineGraphs
     let tableSection = section $ catMaybes tables
     let heading = divId "lead" $ tag "h1" ("#" ++ dbName)
     timeInfo <- getTimeInfo con
@@ -246,7 +267,7 @@ generate (ServerInfo driver dbName) con = do
     let bottom = case timeInfo of
                    Just t -> t
                    Nothing -> error' $ ("no data added yet!")
-    let content = divId "content" $ linkLinks (graphSection ++ tableSection ++ bottom)
+    let content = divId "content" $ linkLinks (donutGraphSection ++ lineGraphSection ++ tableSection ++ bottom ++ testScript)
     putStrLn $ makeFile (heading ++ content) "/css.css" (getTitle dbName) ["/util.js", "http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js", "highcharts.js", "exporting.js"]
     logInfo "Finished"
 
