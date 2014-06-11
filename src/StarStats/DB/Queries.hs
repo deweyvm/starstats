@@ -139,8 +139,8 @@ getUrls con = do
     getAndExtract con qs (second (extractUrl) <$>extractTup) q
 
 
-getAverageWordCount :: IConnection c => c -> IO [(String, Double)]
-getAverageWordCount con =
+getAverageWordsPerLine :: IConnection c => c -> IO [(String, Double)]
+getAverageWordsPerLine con =
     let q = "SELECT m.name, wc/mc as avg\
            \ FROM top AS t\
            \ JOIN (SELECT\

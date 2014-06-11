@@ -59,16 +59,22 @@ parsePart =
 
 parseBad :: Parser DataLine
 parseBad =
-    Bad <$> (parseTime *> (try (symbol "* Disconnected (No such device or address)")
-                       <|> try (symbol "* ChanServ gives channel operator status to ")
-                       <|> try (symbol "* ChanServ gives channel half-operator status to")
-                       <|> try (symbol "* You are now known as")
-                       <|> try (symbol "* Topic for #")
-                       <|> try (symbol "-NickServ- ")
-                       <|> try (parseNick *> symbol "plugin unloaded")
-                       <|> symbol "* Now talking on #") *> eatLine)
-
-
+    Bad <$> (parseTime *> badInner *> eatLine)
+    where specialAction s = (symbol "*" *> parseNick
+                                        *> symbol s)
+          badInner =
+                (try (symbol "* Disconnected (No such device or address)")
+            <|> try (specialAction "gives channel operator status to ")
+            <|> try (specialAction "gives channel half-operator status to")
+            <|> try (specialAction "removes voice from")
+            <|> try (specialAction "gives voice to")
+            <|> try (specialAction "removes ban on")
+            <|> try (specialAction "sets ban on")
+            <|> try (symbol "* You are now known as")
+            <|> try (symbol "* Topic for #")
+            <|> try (symbol "-NickServ- ")
+            <|> try (parseNick *> symbol "plugin unloaded")
+            <|> symbol "* Now talking on #")
 
 parseMode :: Parser DataLine
 parseMode = Mode <$> parseTime
