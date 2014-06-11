@@ -13,18 +13,18 @@ import StarStats.DB.Utils
 import StarStats.Parsers.Common
 
 parseDataLine :: Parser [DataLine]
-parseDataLine = try (parseTimeChange) <|> parseChatLine
+parseDataLine = try (return <$> parseTimeChange) <|> parseChatLine
 
 parseChatLine :: Parser [DataLine]
-parseChatLine = try parseStatus
+parseChatLine = try (return <$> parseStatus)
             <|> parseMessage
 
 
-parseTimeChange :: Parser [DataLine]
-parseTimeChange = try (return . Close <$> (symbol "**** ENDING LOGGING AT" *> parseDateString))
-                  <|> (return . Open <$> (symbol "**** BEGIN LOGGING AT" *> parseDateString))
+parseTimeChange :: Parser DataLine
+parseTimeChange = try (Close <$> (symbol "**** ENDING LOGGING AT" *> parseDateString))
+                  <|> (Open <$> (symbol "**** BEGIN LOGGING AT" *> parseDateString))
 
-parseStatus :: Parser [DataLine]
+parseStatus :: Parser DataLine
 parseStatus = try parseBad
           <|> try parseQuit
           <|> try parsePart
@@ -35,31 +35,32 @@ parseStatus = try parseBad
           <|> try parseTopic
           <|> parseAction
 
-parseJoin :: Parser [DataLine]
+parseJoin :: Parser DataLine
 parseJoin =
-    return .: Join <$> parseTime
-                   <*> (symbol "*" *> parseNick <* symbol "("
-                                                <* many (noneOf ")")
-                                                <* symbol ") has joined")
+    Join <$> parseTime
+         <*> (symbol "*" *> parseNick <* symbol "("
+                                      <* many (noneOf ")")
+                                      <* symbol ") has joined")
 
-parseQuit :: Parser [DataLine]
+parseQuit :: Parser DataLine
 parseQuit =
-    return .:: Quit <$> parseTime
-                    <*> (symbol "*" *> parseNick <* symbol "has quit")
-                    <*> eatLine
-parsePart :: Parser [DataLine]
+    Quit <$> parseTime
+         <*> (symbol "*" *> parseNick <* symbol "has quit")
+         <*> eatLine
+
+parsePart :: Parser DataLine
 parsePart =
-    return .:: Part <$> parseTime
-                    <*> (symbol "*" *> parseNick <* symbol "("
-                                                 <* many (noneOf ")")
-                                                 <* symbol ") has left")
-                    <*> return ""
+    Part <$> parseTime
+         <*> (symbol "*" *> parseNick <* symbol "("
+                                      <* many (noneOf ")")
+                                      <* symbol ") has left")
+         <*> return ""
 
 
 
-parseBad :: Parser [DataLine]
+parseBad :: Parser DataLine
 parseBad =
-    return . Bad <$> (parseTime *> badInner *> eatLine)
+    Bad <$> (parseTime *> badInner *> eatLine)
     where specialAction s = (symbol "*" *> parseNick
                                         *> symbol s)
           badInner =
@@ -78,22 +79,22 @@ parseBad =
             <|> try (parseNick *> symbol "plugin unloaded")
             <|> symbol "* Now talking on #")
 
-parseMode :: Parser [DataLine]
+parseMode :: Parser DataLine
 parseMode =
-    return .: Mode <$> parseTime
-                   <*> (symbol "*" *> parseNick
-                                   *> symbol "sets mode"
-                                   *> eatLine)
+    Mode <$> parseTime
+         <*> (symbol "*" *> parseNick
+                         *> symbol "sets mode"
+                         *> eatLine)
 
-parseTopic :: Parser [DataLine]
+parseTopic :: Parser DataLine
 parseTopic =
-    return .:: Topic <$> parseTime
-                     <*> (symbol "*" *> parseNick)
-                     <*> (symbol "has changed the topic to:" *> eatLine)
+    Topic <$> parseTime
+          <*> (symbol "*" *> parseNick)
+          <*> (symbol "has changed the topic to:" *> eatLine)
 
-parseKick :: Parser [DataLine]
+parseKick :: Parser DataLine
 parseKick =
-    let kick t kicker kickee reason = [Kick t kickee kicker reason] in
+    let kick t kicker kickee reason = Kick t kickee kicker reason in
     kick <$> parseTime
          <*> (symbol "*" *> parseNick)
          <*> (symbol "has kicked" *> parseNick *> symbol " from " *> word <* whiteSpace)
@@ -102,18 +103,18 @@ parseKick =
 parseNick :: Parser Name
 parseNick = many (noneOf "# ") <* whiteSpace
 
-parseNickChange :: Parser [DataLine]
+parseNickChange :: Parser DataLine
 parseNickChange =
-    return .:: Nick <$> parseTime
-                    <*> (symbol "*" *> parseNick)
-                    <*> (symbol "is now known as" *> parseNick)
+    Nick <$> parseTime
+         <*> (symbol "*" *> parseNick)
+         <*> (symbol "is now known as" *> parseNick)
 
-parseAction :: Parser [DataLine]
+parseAction :: Parser DataLine
 parseAction =
-    return .::: Message <$> parseTime
-                        <*> return 1
-                        <*> (symbol "*" *> parseNick)
-                        <*> eatLine
+    Message <$> parseTime
+            <*> return 1
+            <*> (symbol "*" *> parseNick)
+            <*> eatLine
 
 parseDay :: Parser (Month, DayOfMonth, Time)
 parseDay = do
