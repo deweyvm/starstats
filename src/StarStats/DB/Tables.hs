@@ -445,13 +445,14 @@ populateTop :: IConnection c => c -> IO ()
 populateTop con = do
 
     let top = "CREATE TEMPORARY TABLE top(id INT NOT NULL AUTO_INCREMENT,\
+                                        \ rand INT NOT NULL,\
                                         \ name CHAR(21) NOT NULL,\
                                         \ msgcount INT NOT NULL,\
                                         \ PRIMARY KEY (id))\
              \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     runQuery con top
-    runQuery con "INSERT INTO top (name, msgcount)\
-                 \ (SELECT name, msgcount\
+    runQuery con "INSERT INTO top (name, msgcount, rand)\
+                 \ (SELECT name, msgcount, FLOOR(RAND() * msgcount)\
                  \  FROM users\
                  \  ORDER BY msgcount DESC\
                  \  LIMIT 20);"
@@ -517,7 +518,7 @@ createDbs con = do
                                         \ hash INT UNSIGNED NOT NULL,\
                                         \ PRIMARY KEY (id),\
                                         \ KEY (hash),\
-                                        \ INDEX(userindex))\
+                                        \ INDEX(name, userindex))\
                   \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let seqcount = "CREATE TABLE seqcount(id INT NOT NULL AUTO_INCREMENT,\
                                         \ name CHAR(21) NOT NULL,\

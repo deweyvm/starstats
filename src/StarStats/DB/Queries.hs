@@ -88,11 +88,11 @@ getRandTop con = do
     let q = "SELECT m.name, contents, m.type\
            \ FROM messages AS m\
            \ JOIN (SELECT \
-           \           FLOOR(RAND() * msgcount) AS r, \
+           \           rand, \
            \           name, \
            \           msgcount\
-           \       FROM top) AS t\
-           \ ON m.name = t.name AND m.userindex = r"
+           \       FROM top LIMIT 20) AS t\
+           \ ON m.userindex = t.rand AND m.name = t.name LIMIT 20"
 
     getAndExtract con [] extractAction q
 

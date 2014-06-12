@@ -17,7 +17,6 @@ parseDataLine = try (parseTimeChange) <|> parseChatLine
 parseChatLine :: Parser DataLine
 parseChatLine = try parseAction
             <|> try parseStatus
-            <|> try parseNotice
             <|> try parseInvite
             <|> parseMessage
 
@@ -32,10 +31,11 @@ parseTimeChange = try (Open <$> parseLogDate)
 parseLogDate :: Parser LocalTime
 parseLogDate = do
     time <- parseFullTime <* parsePrefix "log"
-                          <* parseNick --started/ended
+                          <* (parseNick <* whiteSpace)--started/ended
                           <* parseNick --channelname
                           <* symbol "/"
     date <- parseDate
+    error $ show $ makeTime date time
     return $ makeTime date time
 
 
@@ -55,9 +55,6 @@ parseInvite :: Parser DataLine
 parseInvite = Invite <$> parseTime
                      <*> ((symbol "!") *> eatLine)
 
-parseNotice :: Parser DataLine
-parseNotice = Notice <$> parseTime
-                     <*> ((symbol "-") *> eatLine)
 
 parseStatus :: Parser DataLine
 parseStatus = try parseQuit

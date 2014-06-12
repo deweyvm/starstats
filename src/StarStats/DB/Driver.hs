@@ -28,7 +28,7 @@ generate (ServerInfo driver dbName) con = do
     _           <- timeGet "P Commit"           commit
     !users      <- timeGet "Q Message Count"    getMessageCount
     !tups       <- timeGet "Q User activity"    getTimes
-    !randTop    <- timeGet "Q Random top"     getRandTo
+    !randTop    <- timeGet "Q Random top"       getRandTop
     !rand       <- timeGet "Q Random"           getRandMessages
     !nicks      <- timeGet "Q Nick changes"     getNicks
     !kickers    <- timeGet "Q Kickers"          getKickers
