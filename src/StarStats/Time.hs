@@ -38,6 +38,10 @@ timeStringToDayHourMinute s = do
     let minute = todMin time
     return (month, dayOfMonth, hour, minute)
 
+chatZillaParseDate :: String -> Maybe LocalTime
+chatZillaParseDate s =
+    Time.parseTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" s
+
 getYear :: LocalTime -> Integer
 getYear t = getL year t
 

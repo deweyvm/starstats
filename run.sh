@@ -26,6 +26,12 @@ case $1 in
          --db="$db" \
          --read
 ;;
+"--repop-stdin")
+    $EXE --driver="$driver" \
+         --logtype="$logtype" \
+         --db="$db" \
+         --read
+;;
 "--repop-dry-run")
     $EXE --driver="$driver" \
          --db="$db" \

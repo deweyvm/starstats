@@ -5,7 +5,7 @@ import Prelude hiding(putStrLn, putStr, readFile)
 import Control.Applicative
 import Control.Concurrent
 import Control.DeepSeq
-import qualified Data.ByteString.Char8 as C
+import qualified Data.ByteString as C
 import qualified Data.ByteString.UTF8 as U
 import Data.Time.LocalTime
 import System.Posix.Files
@@ -29,6 +29,7 @@ getEnd :: String -> FileOffset -> IO String
 getEnd file bytes = do
     handle <- openBinaryFile file ReadMode
     hSeek handle SeekFromEnd (- (toInteger bytes))
+    return ""
     s <- C.hGet handle (fromIntegral bytes)
     hClose handle
     return $ U.toString s

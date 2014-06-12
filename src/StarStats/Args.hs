@@ -130,7 +130,9 @@ loadParseType s = do
     case s of
         Just "irssi" -> return $ Irssi
         Just "xchat" -> return $ XChat
-        _       -> do logError "Options for logtype are irssi|xchat"
+        Just "chatzilla" -> return $ ChatZilla
+        Just "znc" -> return $ ZNC
+        _       -> do logError "Options for logtype are irssi|xchat|chatzilla|znc"
                       printUsage
                       exitFailure
 
