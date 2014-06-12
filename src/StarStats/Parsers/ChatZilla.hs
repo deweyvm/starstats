@@ -61,13 +61,20 @@ parseBad =
              <|> try (symbol "[ERROR]")
              <|> try (symbol "[WARNING]")
              <|> try (symbol "=-= YOU are now known as")
-             <|> try (symbol "-->| YOU" *> symbol "(" *> many (noneOf ")") *> symbol ") have joined")
-             <|> try (symbol "<--| YOU" *> symbol "(" *> many (noneOf ")") *> symbol ") have left")
-             <|> try (symbol "=-= YOU" *> symbol "(" *> many (noneOf ")") *> symbol ") have been booted")
+             <|> try (symbol "-->| YOU" *> symbol "("
+                                        *> many (noneOf ")")
+                                        *> symbol ") have joined")
+             <|> try (symbol "<--| YOU" *> symbol "("
+                                        *> many (noneOf ")")
+                                        *> symbol ") have left")
+             <|> try (symbol "=-= YOU" *> symbol "("
+                                       *> many (noneOf ")")
+                                       *> symbol ") have been booted")
              <|> try (symbol "=-= Topic for #" *> parseNick
-                                                      *> symbol "is")
+                                               *> symbol "is")
              <|> try (symbol "=-= Topic for #" *> parseNick
-                                                      *> symbol "was set by")
+                                               *> symbol "was set by")
+             <|> try (symbol "=-= Mode for #")
              <|> try (symbol "===")
              <|> try (symbol "---")
              <|> try (symbol ">" *> parseNick *> symbol "<"))
@@ -141,12 +148,6 @@ parseName = manyTill (noneOf "*") (lookAhead (symbol ">"))
 parseContents :: Parser Contents
 parseContents = eatLine
 
-
-get :: Maybe LocalTime -> LocalTime
-get = fromMaybe anyTime
-
-parseDateString :: Parser LocalTime
-parseDateString = (get . stringToLocalTime) <$> eatLine
 
 parseLine :: String -> Either DbParseError [DataLine]
 parseLine s =
