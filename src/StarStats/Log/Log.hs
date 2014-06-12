@@ -17,7 +17,7 @@ data LogLevel = None
 
 
 logLevel :: LogLevel
-logLevel = Warning
+logLevel = All
 
 
 format :: LogLevel -> String -> String

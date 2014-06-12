@@ -21,10 +21,9 @@ data DbParseError = DbParseError String -- line attempted to parse
 type DLParser = String -> Either DbParseError [DataLine]
 
 
-
 data DataLine = Message Time Int Name Contents
               | Nick Time Name Name
-              | Kick Time Name Name Contents
+              | Kick Time Name{-kickee-} Name{-kicker-} Contents
               | Topic Time Name Contents
               | Join Time Name
               | Part Time Name Contents

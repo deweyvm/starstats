@@ -64,6 +64,7 @@ case $1 in
     $PY3 $SIMUL -a 1200 -d 365 -m --stdout | $EXE --driver="$driver" "--db=zarathustra" --logtype="irssi" --read
 ;;
 "--init")
+    echo "create database $db;" | mysql &&\
     $EXE --driver="$driver" \
          --db="$db" \
          --init

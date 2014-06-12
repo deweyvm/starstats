@@ -70,3 +70,7 @@ deleteSeconds t = (setL seconds 0) t
 
 anyTime :: LocalTime
 anyTime = (LocalTime (fromGregorian 0 0 0) (TimeOfDay 0 0 0))
+
+makeTime :: (Integer, Int, Int) -> (Int, Int, Int) -> LocalTime
+makeTime (year, month, day) (h, m, s) =
+    (LocalTime (fromGregorian year month day) (TimeOfDay h m (fromIntegral s)))
