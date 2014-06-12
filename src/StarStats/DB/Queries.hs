@@ -82,8 +82,8 @@ getRandMessages con =
            \ ON m.id = m2;" in
     getAndExtract con qs extractAction q
 
-getRandTopTen :: IConnection c => c -> IO [(String, String)]
-getRandTopTen con = do
+getRandTop :: IConnection c => c -> IO [(String, String)]
+getRandTop con = do
 
     let q = "SELECT m.name, contents, m.type\
            \ FROM messages AS m\
