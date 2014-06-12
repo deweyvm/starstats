@@ -59,6 +59,7 @@ parseBad =
              <|> try (symbol "[INFO]")
              <|> try (symbol "[QUIT]")
              <|> try (symbol "[ERROR]")
+             <|> try (symbol "[WARNING]")
              <|> try (symbol "=-= YOU are now known as")
              <|> try (symbol "-->| YOU" *> symbol "(" *> many (noneOf ")") *> symbol ") have joined")
              <|> try (symbol "<--| YOU" *> symbol "(" *> many (noneOf ")") *> symbol ") have left")
