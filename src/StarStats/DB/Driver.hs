@@ -71,7 +71,7 @@ generate (ServerInfo driver dbName) con = do
 
     let uus = fst <$> users
     let urows = formatTable "Top Users"
-                            "User ranking by number of lines spoken (all time). This also includes the average words per line (AWL) and average words per line (WPL) as well as a breakdown of activity per quarter of the day and a random message."
+                            "User ranking by number of lines spoken (all time). This also includes the average words length (AWL) and average words per line (WPL) as well as a breakdown of activity per quarter of the day and a random message."
                              uus "User" "18%" [ucol1, ucol2, ucol3, ucol4, ucol5]
 
     let table4 :: (Print a, Print b, Print c)
@@ -295,14 +295,17 @@ safeGenerate sinfo con = do
 
 doAction :: Action -> ServerInfo -> IO ()
 doAction action sinfo = do
-    con <- connect sinfo
     case action of
         Read parser -> do
+            con <- connect sinfo
             logInfo "Reading data lines from stdin"
             readDb parser con
+            close con
         Generate -> do
+            con <- connect sinfo
             logInfo "Generating webpage"
             safeGenerate sinfo con
+            close con
         Recover parser file -> do
             logInfo "Recovering from log"
             watch parser file False True sinfo
@@ -310,6 +313,7 @@ doAction action sinfo = do
             logInfo "Repopulating database"
             watch parser file True False sinfo
         Initialize -> do
+            con <- connect sinfo
             logInfo "Initializing databases"
             initDb con
-    close con
+            close con

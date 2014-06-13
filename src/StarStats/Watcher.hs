@@ -5,6 +5,7 @@ import Prelude hiding(putStrLn, putStr, readFile)
 import Control.Applicative
 import Control.Concurrent
 import Control.DeepSeq
+import Control.Exception
 import qualified Data.ByteString as C
 import qualified Data.ByteString.UTF8 as U
 import Data.Time.LocalTime
@@ -52,15 +53,14 @@ watch parser file doRepop doRecover srv = do
 repopulate :: String -> IO ()
 repopulate file = do
     ls <- lines <$> readFile file
-    sequence_ $ (\x -> putStrLn x *> hFlush stdout) <$> ls
+    sequence_ $ safePutLn <$> ls
 
 watchFile :: String -> FileOffset -> IO ()
 watchFile file size = do
     newSize <- getSize file
     if newSize > size
     then do end <- getEnd file (newSize - size)
-            putStr end
-            hFlush stdout
+            safePutStr end
     else return ()
     threadDelay 1000000 --microseconds
     watchFile file newSize
@@ -96,6 +96,21 @@ parseGood parser (x:xs) =
         Right r -> zip (repeat x) r ++ parseGood parser xs
 parseGood _ [] = []
 
+safePutLn :: String -> IO ()
+safePutLn s = do
+    x <- try (putStrLn s) :: IO (Either SomeException ())
+    hFlush stdout
+    case x of
+        Left _ -> return $ error "BAD STRING"
+        Right _ -> return ()
+
+safePutStr :: String -> IO ()
+safePutStr s = do
+    x <- try (putStr s) :: IO (Either SomeException ())
+    hFlush stdout
+    case x of
+        Left _ -> return $ error "BAD STRING"
+        Right _ -> return ()
 -- Get latest message and then read backwards until we find it and parse from there
 recover :: DLParser -> String -> ServerInfo -> IO ()
 recover parser file srv@(ServerInfo _ dbName) = do
@@ -118,7 +133,7 @@ recover parser file srv@(ServerInfo _ dbName) = do
                             then do logWarning "Could not match log"
                                     logWarning "To recover, run a full repop"
                             else logInfo "Found match"
-                            sequence_ $ (\x -> putStrLn x *> hFlush stdout ) <$> ss
+                            sequence_ $ safePutLn <$> ss
                             logInfo "Resuming watch"
     watchFile file size
 

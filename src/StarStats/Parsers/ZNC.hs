@@ -8,6 +8,7 @@ import Text.Parsec.Language (emptyDef)
 import Data.Functor.Identity
 import Data.Time.LocalTime
 import Data.Maybe
+import Data.List(intersperse)
 import StarStats.Time
 import StarStats.Parsers.Common
 
@@ -18,10 +19,12 @@ parseChatLine :: Parser DataLine
 parseChatLine = try parseAction
             <|> try parseStatus
             <|> try parseInvite
-            <|> parseMessage
+            <|> try parseMessage
+            <|> try parseBad
+            <|> parseTopic
 
 parsePrefix :: String -> Parser String
-parsePrefix s = symbol "---" *> symbol s *> symbol ":"
+parsePrefix s = symbol "--- " *> symbol s *> symbol ":"
 
 
 parseTimeChange :: Parser DataLine
@@ -31,14 +34,13 @@ parseTimeChange = try (Open <$> parseLogDate)
 parseLogDate :: Parser LocalTime
 parseLogDate = do
     time <- parseFullTime <* parsePrefix "log"
-                          <* (parseNick <* whiteSpace)--started/ended
-                          <* parseNick --channelname
-                          <* symbol "/"
+                          <* parseNick --started/ended
+                          <* many (noneOf "/") --channelname
+                          <* char '/'
     date <- parseDate
-    error $ show $ makeTime date time
     return $ makeTime date time
 
-
+--- quit: Overflow ("
 
 guessYear :: Int -> Integer
 guessYear year
@@ -62,9 +64,16 @@ parseStatus = try parseQuit
           <|> try parseJoin
           <|> try parseMode
           <|> try parseNickChange
-          <|> try parseKick
-          <|> parseTopic
+          <|> parseKick
 
+parseBad :: Parser DataLine
+parseBad =
+    Bad <$> (parseTime *> badInner *> eatLine)
+    where badInner = try (parsePrefix "topic" *> char '\'' *> return "")
+                 <|> try (parsePrefix "topic" *> symbol "set by ")
+                 <|> try (symbol "***")
+                 <|> try (char '-' *> noneOf "-" *> return "")
+                 <|> parsePrefix "names"
 parseJoin :: Parser DataLine
 parseJoin =
     Join <$> parseTime
@@ -89,12 +98,26 @@ parseMode = Mode <$> parseTime
                  <*> (parsePrefix "mode" *> eatLine)
 
 
---00:00:00 --- topic: set to 'this is the topic' by user
+extractLongestQuote :: String -> (String,String)
+extractLongestQuote xs =
+    (\(x, y) -> (reverse x, y)) $ helper xs []
+    where helper (x:xs) acc =
+            if elem '\'' xs
+            then helper xs (x:acc)
+            else (acc, xs)
 
+stripBy :: String -> String
+stripBy (' ':'b':'y':' ':xs) = xs
+stripBy s = s
+
+--00:00:00 --- topic: set to 'this is the topic' by user
 parseTopic :: Parser DataLine
-parseTopic = Topic <$> parseTime
-                   <*> (parsePrefix "topic")
-                   <*> (symbol "set to '" *> eatLine)
+parseTopic = do
+    time <- parseTime <* parsePrefix "topic" <* symbol "set to"
+    contents <- char '\'' *> eatLine
+    let (topic, rest) = extractLongestQuote contents
+    let name = stripBy rest
+    return $ Topic time name topic
 
 parseKick :: Parser DataLine
 parseKick = Kick <$> parseTime

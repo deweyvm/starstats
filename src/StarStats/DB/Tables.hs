@@ -1,4 +1,4 @@
-{-# LANGUAGE DoAndIfThenElse, BangPatterns #-}
+{-# LANGUAGE DoAndIfThenElse, BangPatterns, NoMonomorphismRestriction #-}
 module StarStats.DB.Tables where
 
 import Prelude hiding (readFile, getLine)
@@ -11,7 +11,9 @@ import Data.Maybe(fromMaybe, isJust)
 import Database.HDBC
 import System.IO.UTF8 hiding (readFile)
 import System.Exit
+import Unsafe.Coerce
 import StarStats.DB.Utils
+import StarStats.DB.Connection
 import StarStats.Parsers.Common
 import StarStats.Time
 import StarStats.Log.Log
@@ -458,8 +460,6 @@ populateTop con = do
                  \  LIMIT 20);"
     return ()
 
--- a nick is "unique" if it has over N messages and doesnt have an oldnick such that
--- numMessages(oldNick) => numMessages(nick)
 populateUnique :: IConnection c => c -> IO ()
 populateUnique con = do
 
@@ -712,15 +712,19 @@ getLatestMessage con dbName = do
                 extract _ = return Nothing
             extract val
 
+handleGetError :: IOError -> IO ()
+handleGetError l = do
+    logInfo "End of input reached"
+    logInfo (show l)
+    exitWith ExitSuccess
+
+
 
 populateStdIn :: IConnection c => DLParser -> c -> IO ()
 populateStdIn parser con = do
     !get' <- try getLine :: IO (Either IOError String)
     case get' of
-        Left l -> do
-            logInfo "End of input reached"
-            logInfo (show l)
-            exitWith ExitSuccess
+        Left l -> handleGetError l
         Right line -> do
             logVerbose $ "Adding line: " ++ line
             if line == "" && False --fixme
@@ -729,8 +733,8 @@ populateStdIn parser con = do
             else case parser line of
                      Left err -> do
                          commit con
-                         {-error-}
                          logError $ show err
+                         exitWith (ExitFailure 1)
                      Right ls -> do
                          sequence_ $ (\l ->insertFromStdIn l con) <$> ls
                          date <- getDate con

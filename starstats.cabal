@@ -15,4 +15,4 @@ executable starstats
   main-is:             Main.hs
   hs-source-dirs:      src
   build-depends:       base >=4.5.0, HDBC, HDBC-odbc, directory, parsec, transformers, time == 1.4.2, old-locale, time-lens, deepseq, convertible, containers, criterion, bytestring, text, unix, utf8-string, random
-  GHC-Options:         -rtsopts -fno-cse
+  GHC-Options:         -rtsopts +RTS -RTS -fno-cse

@@ -24,7 +24,7 @@ case $1 in
     $EXE --driver="$driver" \
          --logtype="$logtype" \
          --db="$db" \
-         --read
+         --read +RTS -sstderr
 ;;
 "--repop-stdin")
     $EXE --driver="$driver" \

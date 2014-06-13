@@ -75,8 +75,11 @@ parseBad =
             <|> try (specialAction "sets ban on")
             <|> try (symbol "* You are now known as")
             <|> try (symbol "* Topic for #")
+            <|> try (symbol "* " *> char '#' *> parseNick *> symbol "Banlist")
+            <|> try (symbol "* " *> char '#' *> parseNick *> symbol ":End of Channel Ban List")
             <|> try (symbol "-NickServ- ")
             <|> try (parseNick *> symbol "plugin unloaded")
+            <|> try (many1 parseNick *> return "")
             <|> symbol "* Now talking on #")
 
 parseMode :: Parser DataLine
@@ -101,7 +104,7 @@ parseKick =
          <*> eatLine
 
 parseNick :: Parser Name
-parseNick = many (noneOf "# ") <* whiteSpace
+parseNick = many1 (noneOf "# <*") <* whiteSpace
 
 parseNickChange :: Parser DataLine
 parseNickChange =
