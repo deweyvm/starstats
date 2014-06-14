@@ -20,51 +20,17 @@ case $1 in
          --db="$db" \
          --logtype="$logtype" \
          --log="$log" \
-         --repopulate | \
-    $EXE --driver="$driver" \
-         --logtype="$logtype" \
-         --db="$db" \
-         --read +RTS -sstderr
+         --insert
 ;;
-"--repop-stdin")
-    $EXE --driver="$driver" \
-         --logtype="$logtype" \
-         --db="$db" \
-         --read
-;;
-"--repop-dry-run")
+"--watch")
     $EXE --driver="$driver" \
          --db="$db" \
          --logtype="$logtype" \
          --log="$log" \
-         --repopulate
-;;
-"--recover")
-    $EXE --driver="$driver" \
-         --db="$db" \
-         --logtype="$logtype" \
-         --log="$log" \
-         --recover | \
-    $EXE --driver="$driver" \
-         --logtype="$logtype" \
-         --db="$db" \
-         --read
-;;
-"--recover-dry-run")
-    $EXE --driver="$driver" \
-         --db="$db" \
-         --logtype="$logtype" \
-         --log="$log" \
-         --recover
-;;
-"--contrive-repop")
-    $PY3 $SIMUL -l -1 --realtime --stdout | $EXE --driver="$driver" --db="zarathustra" --logtype="irssi" --read
-;;
-"--contrive-1-year")
-    $PY3 $SIMUL -a 1200 -d 365 -m --stdout | $EXE --driver="$driver" "--db=zarathustra" --logtype="irssi" --read
+         --watch
 ;;
 "--init")
-    echo "create database $db;" | mysql &&\
+    echo "create database if not exists $db;" | mysql &&\
     $EXE --driver="$driver" \
          --db="$db" \
          --init

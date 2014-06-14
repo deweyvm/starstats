@@ -50,18 +50,14 @@ options =
         (NoArg
             (\opt -> return opt { optMode = Just GenerateT }))
         "(Mode) Generate a webpage"
-    , Option "" ["repopulate"]
+    , Option "" ["insert"]
         (NoArg
-            (\opt -> return opt { optMode = Just RepopulateT }))
-        "(Mode) Repopulate the database"
-    , Option "" ["recover"]
+            (\opt -> return opt { optMode = Just InsertT }))
+        "(Mode) Insert a file's data into the database"
+    , Option "" ["watch"]
         (NoArg
-            (\opt -> return opt { optMode = Just RecoverT }))
-        "(Mode) Recover the database from the last known message"
-    , Option "" ["read"]
-        (NoArg
-            (\opt -> return opt { optMode = Just ReadT }))
-        "(Mode) Read data lines from stdin"
+            (\opt -> return opt { optMode = Just WatchT }))
+        "(Mode) Insert a file's data into the database then watch it for changes"
     , Option "" ["init"]
         (NoArg
             (\opt -> return opt {optMode = Just InitializeT }))
@@ -84,19 +80,18 @@ rawToAction :: Options -> IO Action
 rawToAction opts = do
     let action = optMode opts
     case action of
-       Just ReadT -> loadRead opts
-       Just RecoverT -> loadRecover opts
+       Just WatchT -> loadWatch opts
        Just GenerateT -> return Generate
        Just InitializeT -> return Initialize
-       Just RepopulateT -> loadRepopulate opts
+       Just InsertT -> loadInsert opts
        Nothing -> do logError "Must specify a mode"
                      printUsage
                      exitFailure
 
-loadRepopulate :: Options -> IO Action
-loadRepopulate opts = do
+loadInsert :: Options -> IO Action
+loadInsert opts = do
     case (optParseType opts, optLog opts) of
-        (Just t, Just l) -> return $ Repopulate (getParser t) l
+        (Just t, Just l) -> return $ Insert (getParser t) l
         (_, Nothing) -> do logError "A logtype must be specified for this mode"
                            printUsage
                            exitFailure
@@ -105,10 +100,10 @@ loadRepopulate opts = do
                            exitFailure
 
 
-loadRecover :: Options -> IO Action
-loadRecover opts = do
+loadWatch :: Options -> IO Action
+loadWatch opts = do
     case (optParseType opts, optLog opts) of
-        (Just t, Just l) -> return $ Recover (getParser t) l
+        (Just t, Just l) -> return $ Watch (getParser t) l
         (_, Nothing) -> do logError "A logtype must be specified for this mode"
                            printUsage
                            exitFailure
@@ -116,14 +111,6 @@ loadRecover opts = do
                            printUsage
                            exitFailure
 
-
-loadRead :: Options -> IO Action
-loadRead opts =
-    case optParseType opts of
-        Just t -> return $ Read $ getParser t
-        Nothing -> do logError "Must specify logtype for this option"
-                      printUsage
-                      exitFailure
 
 loadParseType :: Maybe String -> IO ParserType
 loadParseType s = do

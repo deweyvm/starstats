@@ -12,18 +12,15 @@ import System.Directory
 import Text.Printf
 import StarStats.Log.Log
 import StarStats.Parsers.Common
-data ActionType = RecoverT {- Scan the given file for the last message
-                              inserted. Print all subsequent data lines
-                              and then resume watching. -}
-                | RepopulateT {- Repopulate from the beginning of the given
+data ActionType = WatchT {- Insert the contents of a file then watch it
+                            for newly inserted messages. -}
+                | InsertT {- Repopulate from the beginning of the given
                                  file and then resume watching. -}
-                | ReadT {- | Read and insert data lines from stdin. -}
                 | GenerateT {- | Generate html. -}
                 | InitializeT {- | Initialize a blank database -}
 
-data Action = Recover DLParser String
-            | Repopulate DLParser String
-            | Read DLParser
+data Action = Watch DLParser String
+            | Insert DLParser String
             | Generate
             | Initialize
 data ServerInfo = ServerInfo String {- OBDC driver to use -}

@@ -17,6 +17,8 @@ import StarStats.DB.Connection
 import StarStats.Watcher
 import StarStats.Log.Log
 
+import Unsafe.Coerce
+
 
 
 generate :: IConnection c => ServerInfo -> c -> IO ()
@@ -250,7 +252,7 @@ generate (ServerInfo driver dbName) con = do
     let tableSection = section $ catMaybes tables
     let heading = divId "lead" $ tag "h1" ("#" ++ dbName)
     timeInfo <- getTimeInfo con
-    let error' x =( divClass "tribox" ) (divId "emptyhead" x ++ divClass "tritext empty" "")
+    let error' x = (divClass "tribox") (divId "emptyhead" x ++ divClass "tritext empty" "")
     let bottom = case timeInfo of
                    Just t -> t
                    Nothing -> error' $ ("no data added yet!")
@@ -293,27 +295,28 @@ safeGenerate sinfo con = do
                   else logError (show l)
         Right _ -> return ()
 
+withConnection :: ServerInfo -> (ConnWrapper -> IO ()) -> IO ()
+withConnection sinfo f = do
+    con <- connect sinfo
+    let wrapped = ConnWrapper con
+    f wrapped
+    close wrapped
+
 doAction :: Action -> ServerInfo -> IO ()
 doAction action sinfo = do
     case action of
-        Read parser -> do
-            con <- connect sinfo
-            logInfo "Reading data lines from stdin"
-            readDb parser con
-            close con
         Generate -> do
-            con <- connect sinfo
             logInfo "Generating webpage"
-            safeGenerate sinfo con
-            close con
-        Recover parser file -> do
-            logInfo "Recovering from log"
-            watch parser file False True sinfo
-        Repopulate parser file -> do
-            logInfo "Repopulating database"
-            watch parser file True False sinfo
+            withConnection sinfo (safeGenerate sinfo)
+        Watch parser file -> do
+            logInfo "Watch file"
+            withConnection sinfo
+                (watch file . insertData parser)
+            --watch parser file False True sinfo
+        Insert parser file -> do
+            logInfo "Inserting file into the database"
+            withConnection sinfo
+                (populate file . insertData parser)
         Initialize -> do
-            con <- connect sinfo
             logInfo "Initializing databases"
-            initDb con
-            close con
+            withConnection sinfo initDb

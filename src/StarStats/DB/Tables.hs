@@ -720,27 +720,22 @@ handleGetError l = do
 
 
 
-populateStdIn :: IConnection c => DLParser -> c -> IO ()
-populateStdIn parser con = do
-    !get' <- try getLine :: IO (Either IOError String)
-    case get' of
-        Left l -> handleGetError l
-        Right line -> do
-            logVerbose $ "Adding line: " ++ line
-            if line == "" && False --fixme
-            then do logWarning "Got empty line: Exiting"
-                    exitWith ExitSuccess
-            else case parser line of
-                     Left err -> do
-                         commit con
-                         logError $ show err
-                         exitWith (ExitFailure 1)
-                     Right ls -> do
-                         sequence_ $ (\l ->insertFromStdIn l con) <$> ls
-                         date <- getDate con
-                         insertMessage line date con
-                         commit con
-            populateStdIn parser con
+insertData :: IConnection c => DLParser -> c -> String -> IO ()
+insertData parser con line = do
+    logVerbose $ "Adding line: " ++ line
+    if line == "" && False --fixme
+    then do logWarning "Got empty line: Exiting"
+            exitWith ExitSuccess
+    else case parser line of
+             Left err -> do
+                 commit con
+                 logError $ show err
+                 exitWith (ExitFailure 1)
+             Right ls -> do
+                 sequence_ $ (\l -> insertFromStdIn l con) <$> ls
+                 date <- getDate con
+                 insertMessage line date con
+                 commit con
 
 insertFromStdIn :: IConnection c => DataLine -> c -> IO ()
 insertFromStdIn data' con = do
@@ -765,8 +760,3 @@ initDb con = do
     deleteDbs con
     createDbs con
     logInfo "Databases initialized"
-
-readDb :: IConnection c => DLParser -> c -> IO ()
-readDb parser con = do
-    initDb con
-    populateStdIn parser con
