@@ -720,8 +720,8 @@ handleGetError l = do
 
 
 
-insertData :: IConnection c => DLParser -> c -> String -> IO ()
-insertData parser con line = do
+insertLine :: IConnection c => DLParser -> c -> String -> IO ()
+insertLine parser con line = do
     logVerbose $ "Adding line: " ++ line
     if line == "" && False --fixme
     then do logWarning "Got empty line: Exiting"
@@ -737,23 +737,25 @@ insertData parser con line = do
                  insertMessage line date con
                  commit con
 
-insertFromStdIn :: IConnection c => DataLine -> c -> IO ()
-insertFromStdIn data' con = do
+handleSqlError' :: IConnection c => DataLine -> c -> SqlError -> IO ()
+handleSqlError' data' con l = do
+    let err = show l
+    case () of
+      ()| isInfixOf "Data too long" err -> do
+            logWarning "Data too long for row"
+            return ()
+        | isInfixOf "Deadlock" err -> do
+            logWarning "Deadlock encountered, retrying"
+            insertFromStdIn data' con
+        | otherwise -> error err
+
+insertParsed :: IConnection c => DataLine -> c -> IO ()
+insertParsed data' con = do
     logAll (show data')
     e <- try (withTransaction con (insert data')) :: IO (Either SqlError ())
     case e of
-        Left l' -> do
-            let err = show l'
-            case () of
-              ()| isInfixOf "Data too long" err -> do
-                    logWarning "Data too long for row"
-                    return ()
-                | isInfixOf "Deadlock" err -> do
-                    logWarning "Deadlock encountered, retrying"
-                    insertFromStdIn data' con
-                | otherwise -> error err
-        Right _ -> do
-            return ()
+        Left l' -> handleSqlError' data' con l'
+        Right _ -> return ()
 
 initDb :: IConnection c => c -> IO ()
 initDb con = do

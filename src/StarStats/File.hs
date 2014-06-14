@@ -95,6 +95,7 @@ splitLast xs =
     case reverse xs of
         (x:xs) -> (reverse xs, Just x)
         [] -> ([], Nothing)
+
 splitOn :: (Char -> Bool) -> String -> [String]
 splitOn p s =
     case dropWhile p s of
