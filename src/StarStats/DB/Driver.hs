@@ -302,8 +302,11 @@ withConnection sinfo f = do
     f wrapped
     close wrapped
 
-doAction :: Action -> ServerInfo -> IO ()
-doAction action sinfo = do
+doAction :: Bool -> Action -> ServerInfo -> IO ()
+doAction reset action sinfo = do
+    if reset
+    then doAction False Initialize sinfo
+    else return ()
     case action of
         Generate -> do
             logInfo "Generating webpage"
@@ -312,7 +315,6 @@ doAction action sinfo = do
             logInfo "Watch file"
             withConnection sinfo
                 (watch file . insertData parser)
-            --watch parser file False True sinfo
         Insert parser file -> do
             logInfo "Inserting file into the database"
             withConnection sinfo

@@ -18,6 +18,7 @@ data Options = Options { optDbName :: String
                        , optMode :: Maybe ActionType
                        , optParseType :: Maybe ParserType
                        , optLog :: Maybe String
+                       , optReset :: Bool
                        }
 
 startOptions :: Options
@@ -26,6 +27,7 @@ startOptions = Options { optDbName = ""
                        , optMode = Nothing
                        , optParseType = Nothing
                        , optLog = Nothing
+                       , optReset = False
                        }
 
 
@@ -41,6 +43,10 @@ options =
             (\arg opt -> return opt { optDriverName = arg })
             "DRIVER")
         "The ODBC driver to use"
+    , Option "" ["reset"]
+        (NoArg
+            (\opt -> return opt { optReset = True }))
+        "Truncate database before performing the action"
     , Option "" ["log"]
         (OptArg
             (\arg opt -> return opt { optLog = arg })

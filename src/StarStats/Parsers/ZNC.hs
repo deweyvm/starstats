@@ -153,9 +153,8 @@ parseFullTime = (,,) <$> (parseInt <* symbol ":")
                      <*> parseInt
 parseTime :: Parser Time
 parseTime = do
-    (h, m, s) <- parseFullTime
+    (h, m, _) <- parseFullTime
     return (h, m)
-
 
 parseLine :: String -> Either DbParseError [DataLine]
 parseLine s =

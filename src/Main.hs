@@ -14,10 +14,10 @@ main = do
     logInfo "Setting output encoding"
     opts <- getOpts
     mode <- rawToAction opts
-
+    let doReset = optReset opts
 
     let sinfo = ServerInfo (optDriverName opts)
                            (optDbName opts)
 
-    doAction mode sinfo
+    doAction doReset mode sinfo
     logInfo "Shutting down gracefully"
