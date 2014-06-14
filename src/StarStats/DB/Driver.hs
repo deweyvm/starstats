@@ -10,16 +10,13 @@ import Database.HDBC
 import Database.HDBC.ODBC
 import qualified StarStats.Parsers.Irssi as Irssi
 import StarStats.Renderer
+import StarStats.Utils
 import StarStats.DB.Utils
 import StarStats.DB.Tables
 import StarStats.DB.Queries
 import StarStats.DB.Connection
 import StarStats.Watcher
 import StarStats.Log.Log
-
-import Unsafe.Coerce
-
-
 
 generate :: IConnection c => ServerInfo -> c -> IO ()
 generate (ServerInfo driver dbName) con = do

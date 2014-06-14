@@ -9,6 +9,7 @@ import Data.Functor.Identity
 import Data.Time.LocalTime
 
 import StarStats.Time
+import StarStats.Utils
 
 type Name = String
 type Contents = String
@@ -37,6 +38,23 @@ data DataLine = Message Time Int Name Contents
               | Open LocalTime
               | Bad Contents
     deriving (Show)
+
+instance Print DataLine where
+    print' (Message _ _ _ _) = "Message"
+    print' (Nick _ _ _) = "Nick"
+    print' (Kick _ _ _ _) = "Kick"
+    print' (Topic _ _ _) = "Topic"
+    print' (Join _ _) = "Join"
+    print' (Part _ _ _) = "Part"
+    print' (Quit _ _ _) = "Quit"
+    print' (Mode _ _) = "Mode"
+    print' (Notice _ _) = "Notice"
+    print' (Invite _ _) = "Invite"
+    print' (Day _ _) = "Time"
+    print' (Date _) = "Date"
+    print' (Close _) = "Close"
+    print' (Open _) = "Open"
+    print' (Bad _) = "Bad"
 
 lexer :: P.GenTokenParser String a Identity
 lexer = P.makeTokenParser $ emptyDef

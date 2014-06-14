@@ -9,6 +9,7 @@ import qualified Data.Map as M
 import Text.Printf
 import System.Random
 import System.IO.Unsafe
+import StarStats.Utils
 import StarStats.DB.Utils
 import Data.IORef
 data TimeBar = TimeBar String Int Int Int Int

@@ -13,6 +13,7 @@ import System.IO.UTF8 hiding (readFile)
 import System.Exit
 import Unsafe.Coerce
 import StarStats.DB.Utils
+import StarStats.Utils
 import StarStats.DB.Connection
 import StarStats.Parsers.Common
 import StarStats.Time
@@ -722,23 +723,20 @@ handleGetError l = do
 
 insertLine :: IConnection c => DLParser -> c -> String -> IO ()
 insertLine parser con line = do
-    logVerbose $ "Adding line: " ++ line
-    if line == "" && False --fixme
-    then do logWarning "Got empty line: Exiting"
-            exitWith ExitSuccess
-    else case parser line of
-             Left err -> do
-                 commit con
-                 logError $ show err
-                 exitWith (ExitFailure 1)
-             Right ls -> do
-                 sequence_ $ (\l -> insertFromStdIn l con) <$> ls
-                 date <- getDate con
-                 insertMessage line date con
-                 commit con
+    case parser line of
+        Left err -> do
+            commit con
+            logError $ "Error in line: " ++ line
+            logError $ show err
+            exitWith (ExitFailure 1)
+        Right ls -> do
+            sequence_ $ (\l -> insertParsed line l con) <$> ls
+            date <- getDate con
+            insertMessage line date con
+            commit con
 
-handleSqlError' :: IConnection c => DataLine -> c -> SqlError -> IO ()
-handleSqlError' data' con l = do
+handleSqlError' :: IConnection c => String -> DataLine -> c -> SqlError -> IO ()
+handleSqlError' s data' con l = do
     let err = show l
     case () of
       ()| isInfixOf "Data too long" err -> do
@@ -746,15 +744,15 @@ handleSqlError' data' con l = do
             return ()
         | isInfixOf "Deadlock" err -> do
             logWarning "Deadlock encountered, retrying"
-            insertFromStdIn data' con
+            insertParsed s data' con
         | otherwise -> error err
 
-insertParsed :: IConnection c => DataLine -> c -> IO ()
-insertParsed data' con = do
-    logAll (show data')
+insertParsed :: IConnection c => String -> DataLine -> c -> IO ()
+insertParsed s data' con = do
+    logAll $ (print' data') ++ ": " ++ s
     e <- try (withTransaction con (insert data')) :: IO (Either SqlError ())
     case e of
-        Left l' -> handleSqlError' data' con l'
+        Left l' -> handleSqlError' s data' con l'
         Right _ -> return ()
 
 initDb :: IConnection c => c -> IO ()

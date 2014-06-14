@@ -79,7 +79,7 @@ options =
 printUsage :: IO ()
 printUsage = do
     prog <- getProgName
-    hPutStrLn stderr ("Options for logtype are irssi|xchat" ++ usageInfo prog options)
+    hPutStrLn stderr $ usageInfo prog options
 
 
 rawToAction :: Options -> IO Action

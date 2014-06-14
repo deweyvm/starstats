@@ -12,6 +12,7 @@ import System.Directory
 import Text.Printf
 import StarStats.Log.Log
 import StarStats.Parsers.Common
+import StarStats.Utils
 data ActionType = WatchT {- Insert the contents of a file then watch it
                             for newly inserted messages. -}
                 | InsertT {- Repopulate from the beginning of the given
@@ -74,30 +75,6 @@ replaceChar c r s =
               else [x] : helper c xs r
           helper c [] r = [[]]
 
-class Print a where
-    print' :: a -> String
-
-instance Print Int where
-    print' = show
-
-instance Print Double where
-    print' = printf "%.1f"
-
-instance Print String where
-    print' = id
-
-
-class Default a where
-    default' :: a
-
-instance Default Double where
-    default' = 0
-
-instance Default Int where
-    default' = 0
-
-instance Default [Char] where
-    default' = ""
 
 halfList :: [a] -> ([a], [a])
 halfList [] = ([], [])

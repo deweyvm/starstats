@@ -38,7 +38,7 @@ watch fp f = do
             newSize <- File.getSize file
             if (newSize > size)
             then do (ls, newFile) <- File.readEnd file (newSize - size)
-                    sequence_ $ f <$> ls
+                    sequence_ $ (\s -> if length s == 0 then return () else f s) <$> ls
                     helper newFile newSize
             else helper file newSize
 
