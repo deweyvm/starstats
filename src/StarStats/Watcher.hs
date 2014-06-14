@@ -25,7 +25,7 @@ import StarStats.Log.Log
 
 
 
-watch :: FilePath --to populate from
+watch :: FilePath
       -> (String -> IO ())
       -> IO ()
 watch fp f = do
