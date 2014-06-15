@@ -64,6 +64,10 @@ options =
         (NoArg
             (\opt -> return opt { optMode = Just WatchT }))
         "(Mode) Insert a file's data into the database then watch it for changes"
+    , Option "" ["only-watch"]
+        (NoArg
+            (\opt -> return opt { optMode = Just OnlyWatchT }))
+        "(Mode) (Debug) Only watch the given file for changes"
     , Option "" ["init"]
         (NoArg
             (\opt -> return opt {optMode = Just InitializeT }))
@@ -86,7 +90,8 @@ rawToAction :: Options -> IO Action
 rawToAction opts = do
     let action = optMode opts
     case action of
-       Just WatchT -> loadWatch opts
+       Just WatchT -> loadWatch opts Watch
+       Just OnlyWatchT -> loadWatch opts OnlyWatch
        Just GenerateT -> return Generate
        Just InitializeT -> return Initialize
        Just InsertT -> loadInsert opts
@@ -106,10 +111,10 @@ loadInsert opts = do
                            exitFailure
 
 
-loadWatch :: Options -> IO Action
-loadWatch opts = do
+loadWatch :: Options -> (DLParser -> String -> Action) -> IO Action
+loadWatch opts ctor = do
     case (optParseType opts, optLog opts) of
-        (Just t, Just l) -> return $ Watch (getParser t) l
+        (Just t, Just l) -> return $ ctor (getParser t) l
         (_, Nothing) -> do logError "A logtype must be specified for this mode"
                            printUsage
                            exitFailure

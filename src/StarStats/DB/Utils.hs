@@ -13,14 +13,16 @@ import Text.Printf
 import StarStats.Log.Log
 import StarStats.Parsers.Common
 import StarStats.Utils
-data ActionType = WatchT {- Insert the contents of a file then watch it
+data ActionType = OnlyWatchT {- |  Watch the file for newly inserted messages-}
+                | WatchT {- | Insert the contents of a file then watch it
                             for newly inserted messages. -}
-                | InsertT {- Repopulate from the beginning of the given
+                | InsertT {- | Repopulate from the beginning of the given
                                  file and then resume watching. -}
                 | GenerateT {- | Generate html. -}
                 | InitializeT {- | Initialize a blank database -}
 
-data Action = Watch DLParser String
+data Action = OnlyWatch DLParser String
+            | Watch DLParser String
             | Insert DLParser String
             | Generate
             | Initialize

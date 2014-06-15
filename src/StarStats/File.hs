@@ -19,7 +19,7 @@ import System.Posix.Files
 import System.Posix.Types
 import qualified Data.ByteString as C
 import qualified Data.ByteString.UTF8 as U
-
+import Debug.Trace
 import StarStats.Log.Log
 
 data File = File FilePath (Maybe String)
@@ -58,7 +58,11 @@ readEnd f@(File p fmbs) bytes = do
     let us = U.toString s
     let (xs, mbs) = split us
     let (xs', fp') = mergePrev xs f
-    return $ (xs', withBuffer fp' mbs)
+    return $ (filter (/= "") xs', withBuffer fp' (filterEmpty mbs))
+
+filterEmpty :: Maybe String -> Maybe String
+filterEmpty (Just "") = Nothing
+filterEmpty x = x
 
 mergePrev :: [String] -> File -> ([String], File)
 mergePrev (l:ls) f@(File fp (Just x)) = ((x ++ l):ls, remBuffer f)
@@ -90,4 +94,4 @@ splitOn p s =
     case dropWhile p s of
         "" -> []
         s' -> w : splitOn p s''
-              where (w, s'') = break p s
+              where (w, s'') = break p s'

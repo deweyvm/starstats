@@ -312,6 +312,10 @@ doAction reset action sinfo = do
             logInfo "Watch file"
             withConnection sinfo
                 (watch file . insertLine parser)
+        OnlyWatch parser file -> do
+            logInfo "Watch file only"
+            withConnection sinfo
+                (watchFull False file . insertLine parser)
         Insert parser file -> do
             logInfo "Inserting file into the database"
             withConnection sinfo

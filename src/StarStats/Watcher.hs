@@ -1,7 +1,7 @@
 {-# LANGUAGE DoAndIfThenElse, BangPatterns #-}
 module StarStats.Watcher where
 
-import Prelude hiding(putStrLn, putStr, readFile)
+import Prelude hiding(putStrLn, putStr, print, readFile)
 import Control.Applicative
 import Control.Concurrent
 import Control.DeepSeq
@@ -28,20 +28,30 @@ import StarStats.Log.Log
 watch :: FilePath
       -> (String -> IO ())
       -> IO ()
-watch fp f = do
+watch = watchFull True
+
+watchFull :: Bool
+          -> FilePath
+          -> (String -> IO ())
+          -> IO ()
+watchFull repop fp f = do
     let file = File.mkFile fp
     size <- File.getSize file
-    populate fp f
-    helper file size
-    where helper file size = do
-            threadDelay 1000000
-            newSize <- File.getSize file
-            if (newSize > size)
-            then do (ls, newFile) <- File.readEnd file (newSize - size)
-                    sequence_ $ (\s -> if length s == 0 then return () else f s) <$> ls
-                    helper newFile newSize
-            else helper file newSize
+    if repop
+        then populate fp f
+        else return ()
+    watchFile file size f
 
+watchFile :: File.File -> FileOffset -> (String -> IO ()) -> IO ()
+watchFile file size f = do
+    threadDelay 1000000
+    newSize <- File.getSize file
+    newFile <- if (newSize > size)
+    then do (ls, nf) <- File.readEnd file (newSize - size)
+            sequence_ $ f <$> ls
+            return nf
+    else return file
+    watchFile newFile newSize f
 
 populate :: FilePath
          -> (String -> IO ())
