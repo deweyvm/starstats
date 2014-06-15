@@ -67,7 +67,7 @@ filterEmpty x = x
 mergePrev :: [String] -> File -> ([String], File)
 mergePrev (l:ls) f@(File fp (Just x)) = ((x ++ l):ls, remBuffer f)
 mergePrev (l:ls) fp = ((l:ls), fp)
-mergePrev [] fp = undefined --impossible
+mergePrev [] fp = ([], fp) --impossible
 
 remBuffer :: File -> File
 remBuffer (File p _) = File p Nothing
