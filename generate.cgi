@@ -10,6 +10,7 @@ import cgitb, cgi
 import os
 import pwd
 import pyodbc
+import json
 from bs4 import BeautifulSoup
 
 SOCK='/var/run/mysqld/mysqld.sock'
@@ -37,8 +38,27 @@ def getFooter(duration):
     return "<div id=\"footer\"><table><tr><td><center>%s on %s in %s.</center></td></tr></table></div>" % (t, time.ctime(), duration)
 
 def printNotFound(exc, db):
+    def makeDiv(s):
+        pre = "<div class=\"tribox\"><div id=\"emptyhead\">"
+        post = "</div><div class=\"tritext err\"></div></div>"
+        return pre + s + post
+
     print("<html><head><title>starstats</title><link href=\"/css.css\" rel=\"stylesheet\" type=\"text/css\"/><link href=\"/favicon.ico?v=1.1\" rel=\"shortcut icon\"/></head><body>")
-    print("<div class=\"tribox\"><div id=\"emptyhead\">No records for channel '#%s'<br/>(or an error may have occurred)</div><div class=\"tritext err\"></div></div>" % db)
+    headMsg = ""
+
+    #SqlError {seState = "[\"42S02\"]", seNativeError = -1, seErrorMsg = "execute execute: [\"1146: [MySQL][ODBC 5.1 Driver][mysqld-5.5.37-0+wheezy1]Table 'talkhaus.rans' doesn't exist\"]"}
+
+    try:
+        s = re.search('SqlError[ ]*({[^}]*})', str(exc), re.IGNORECASE)
+        g = str(s.groups(1))
+        errorPart = ",".join(g.split(",")[2:])
+        dequoted = errorPart.decode("string-escape").decode("string-escape")
+        print(makeDiv("An error occurred:<br/>" + dequoted))
+    except Exception as x:
+        msg = "No records for channel '#%s'<br/>" % db
+        print(makeDiv(msg))
+
+
     print(getFooter("0s"))
 
 
