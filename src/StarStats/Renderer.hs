@@ -87,7 +87,7 @@ formatTable h desc ns nh nw cs =
     let nameCol = Column (M.fromList $ zip ns ns) nh nw in
     let cs' = nameCol : cs in
     let rows = rowify ns cs' in
-    let formatCell (s, w) = td w s in
+    let formatCell (s, w) = td False w s in
     let formatRow (Row xs) = tr $ concat $ formatCell <$> xs in
     if length rows == 1
     then Nothing
@@ -209,18 +209,19 @@ hoverBox desc = spanClass "htip" (tag "div" ("[?]&nbsp;" ++ (divClass "hwrap" $ 
 headerTable :: Print a
             => String {- | width of the first column -}
             -> String {- | width of the second column -}
+            -> Bool {- | checked by default -}
             -> String {- | description -}
             -> String {- | table heading -}
             -> String {- | column 1 heading-}
             -> String {- | column 2 heading-}
             -> [(String, a)]
             -> Maybe String
-headerTable w0 w1 desc h c1 c2 xs =
+headerTable w0 w1 b desc h c1 c2 xs =
     if length xs == 0
         then Nothing
         else let p = (c1, c2) in
              let mapped = (second print') <$> xs in
-             Just $ linkHeader Table h desc  $ simpleTable w0 w1 ((pairMap (tag "b") p):mapped)
+             Just $ linkHeader Table h desc  $ simpleTable w0 w1 b ((pairMap (tag "b") p):mapped)
 
 makeFile :: String -> String -> String -> [String] -> String
 makeFile x file head' scripts =
@@ -237,30 +238,31 @@ makeFile x file head' scripts =
         s = scriptSrc <$> scripts in
     tag "html" $ tag "head" (css ++ (concat $ s) ++ head' ++ favicon) ++ tag "body" (divId "container" x)
 
-simpleTable :: Print a => String -> String -> [(String,a)] -> String
-simpleTable w0 w1 xs = tag "table" $ concat $ format <$> xs
-    where format (s, y) = tr $ td w0 s ++ td w1 (print' y)
+simpleTable :: Print a => String -> String -> Bool -> [(String,a)] -> String
+simpleTable w0 w1 b xs = tag "table" $ concat $ format <$> xs
+    where format (s, y) = tr $ td b w0 s ++ td b w1 (print' y)
 
 {-# NOINLINE counter #-}
 counter :: IORef Int
 counter = unsafePerformIO $ newIORef 0
 
 {-# NOINLINE makeExpandBox #-}
-makeExpandBox :: String -> String
-makeExpandBox x = unsafePerformIO $ do
+makeExpandBox :: Bool -> String -> String
+makeExpandBox b x = unsafePerformIO $ do
     i <- readIORef counter
     writeIORef counter (i+1)
     let id' = "A" ++ (show i)
     let div' = divClass "overflowbox"
     let label' = genTag "label" [("for", id')]
-    let inputTag = voidTag "input" [ ("id", id')
-                                   , ("type", "checkbox")
-                                   , ("autocomplete", "off")
-                                   ]
+    let tags = [ ("id", id')
+               , ("type", "checkbox")
+               , ("autocomplete", "off")
+               ] ++ if b then [("checked", "")] else []
+    let inputTag = voidTag "input" tags
     return $ div' (inputTag ++ label' (divClass "testtest" x))
 
-td :: String -> (String -> String)
-td width x = (genTag "td" [("width", width)] (makeExpandBox x))
+td :: Bool -> String -> (String -> String)
+td b width x = (genTag "td" [("width", width)] (makeExpandBox b x))
 
 tr :: String -> String
 tr = tag "tr"

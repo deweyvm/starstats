@@ -6,8 +6,8 @@ import Control.Applicative
 import Database.HDBC
 import Data.List (sortBy)
 import Text.Printf
-import StarStats.DB.Utils
 import System.IO
+import StarStats.DB.Utils
 
 getUniqueNicks :: IConnection c => c -> IO [(String,Int)]
 getUniqueNicks con =
@@ -138,6 +138,24 @@ getUrls con = do
            \ ON v.id = r;"
     getAndExtract con qs (second (extractUrl) <$>extractTup) q
 
+getLastSeenTop :: IConnection c => c -> IO [(String,String)]
+getLastSeenTop con = do
+    let q = "SELECT t.name, DATE(l.time)\
+           \ FROM lastseen AS l\
+           \ JOIN top AS t\
+           \ ON l.name = t.name\
+           \ LIMIT 20;"
+    getAndExtract con [] extractTup q
+
+getRandomRant :: IConnection c => c -> IO [(String, String)]
+getRandomRant con = do
+    let qs = ["SET @max = (SELECT MAX(id) FROM rants);"]
+    let q = "SELECT name, contents, time\
+           \ FROM rants\
+           \ JOIN (SELECT ROUND(RAND() * @max) as r FROM DUAL) AS dummy\
+           \ ON r = rants.id\
+           \ LIMIT 1;"
+    getAndExtract con qs extractTup q
 
 getAverageWordsPerLine :: IConnection c => c -> IO [(String, Double)]
 getAverageWordsPerLine con =

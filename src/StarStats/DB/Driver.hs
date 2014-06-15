@@ -28,7 +28,9 @@ generate (ServerInfo driver dbName) con = do
     !users      <- timeGet "Q Message Count"    getMessageCount
     !tups       <- timeGet "Q User activity"    getTimes
     !randTop    <- timeGet "Q Random top"       getRandTop
+    !lastseentop<- timeGet "Q Last Seen Top"    getLastSeenTop
     !rand       <- timeGet "Q Random"           getRandMessages
+    !rant       <- timeGet "Q Rant"             getRandomRant
     !nicks      <- timeGet "Q Nick changes"     getNicks
     !kickers    <- timeGet "Q Kickers"          getKickers
     !kickees    <- timeGet "Q Kickees"          getKickees
@@ -67,11 +69,12 @@ generate (ServerInfo driver dbName) con = do
     let ucol3 = toColumn (printify avgwl) "AWL" "6%"
     let ucol4 = toColumn (printify avgwc) "WPL" "6%"
     let ucol5 = toColumn randTop "Random Message" "59%"
+    let ucol6 = toColumn lastseentop "Last Seen" "160"
 
     let uus = fst <$> users
     let urows = formatTable "Top Users"
-                            "User ranking by number of lines spoken (all time). This also includes the average words length (AWL) and average words per line (WPL) as well as a breakdown of activity per quarter of the day and a random message."
-                             uus "User" "18%" [ucol1, ucol2, ucol3, ucol4, ucol5]
+                            "User ranking by number of lines spoken (all time). This also includes the average words length (AWL) and average words per line (WPL) as well as a breakdown of activity per quarter of the day, a random message, and when the user last spoke."
+                             uus "User" "18%" [ucol1, ucol2, ucol3, ucol4, ucol5, ucol6]
 
     let table4 :: (Print a, Print b, Print c)
                => [(String, a, b, c)]
@@ -131,9 +134,9 @@ generate (ServerInfo driver dbName) con = do
                                 "users"
                                 activet
                  ]
-    let headerTable50 = headerTable "50%" "50%"
-    let headerTable2080 = headerTable "20%" "80%"
-    let shortTable = headerTable "200" "200"
+    let headerTable50 = headerTable "50%" "50%" False
+    let headerTable2080 = headerTable "20%" "80%" False
+    let shortTable = headerTable "200" "200" False
     let tables = [ urows
                  , headerTable2080 "A random selection of channel topics."
                                    "Random Topics"
@@ -150,6 +153,14 @@ generate (ServerInfo driver dbName) con = do
                                    "Name"
                                    "Message"
                                    rand
+                 , headerTable "20%"
+                               "80%"
+                               True
+                               "A random long message from some user."
+                               "Random Rant"
+                               "Name"
+                               "Message"
+                               rant
                  , rsrows
                  , rcrows
                  , urlrows

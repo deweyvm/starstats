@@ -58,6 +58,20 @@ insert (Message time typ name msg) con = do
     let stripped = words $ removeUrls msg
     let charcount = toSql $ sum $ length <$> stripped -- fixme : this could be more precise
 
+    let qseen = "INSERT INTO lastseen (name, time)\
+               \ VALUES (?,?)\
+               \ ON DUPLICATE KEY UPDATE\
+               \     time=?"
+    quickQuery con qseen [sqlName, sqlTime, sqlTime]
+
+
+    let qrant = "INSERT INTO rants (name, contents, time)\
+               \ VALUES (?, ?, ?)"
+    if length msg > 400 --fixme RANT_SIZE
+    then do quickQuery con qrant [sqlName, sqlMsg, sqlTime]
+            return ()
+    else return ()
+
     let qs = "INSERT INTO seqcount (name, num)\
             \ VALUES (?, ?);"
     prevName <- getRepName con
@@ -500,6 +514,8 @@ deleteDbs con = do
                                  , "DROP TABLE IF EXISTS lastmsg;"
                                  , "DROP TABLE IF EXISTS monthly;"
                                  , "DROP TABLE IF EXISTS chantime;"
+                                 , "DROP TABLE IF EXISTS lastseen;"
+                                 , "DROP TABLE IF EXISTS rants;"
                                  ]
     return ()
 
@@ -531,6 +547,9 @@ createDbs con = do
                                         \ time DATETIME NOT NULL,\
                                         \ PRIMARY KEY (id))\
                   \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    let lastseen = "CREATE TABLE lastseen(name CHAR(21) NOT NULL,\
+                                        \ time DATETIME NOT NULL,\
+                                        \ PRIMARY KEY (name));"
     let nickchanges = "CREATE TABLE nickchanges(id INT NOT NULL AUTO_INCREMENT,\
                                               \ oldname CHAR(21) NOT NULL,\
                                               \ newname CHAR(21) NOT NULL,\
@@ -541,6 +560,12 @@ createDbs con = do
                                     \ topic VARCHAR(500) NOT NULL,\
                                     \ time DATETIME NOT NULL,\
                                     \ PRIMARY KEY (id))\
+                \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    let rants = "CREATE TABLE rants(id INT NOT NULL AUTO_INCREMENT,\
+                                  \ name CHAR(21) NOT NULL,\
+                                  \ contents VARCHAR(500) NOT NULL,\
+                                  \ time DATETIME NOT NULL,\
+                                  \ PRIMARY KEY (id))\
                 \ CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
     let kicks = "CREATE TABLE kicks(id INT NOT NULL AUTO_INCREMENT,\
                                   \ kicker CHAR(21) NOT NULL,\
@@ -683,6 +708,8 @@ createDbs con = do
                                  , lastmsg
                                  , monthly
                                  , chanTime
+                                 , lastseen
+                                 , rants
                                  ]
     return ()
 
