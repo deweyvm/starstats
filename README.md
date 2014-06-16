@@ -6,6 +6,8 @@ starstats
 `starstats` can also generate a webpage for viewing the data and supports 
 real time data access for multi-million line data logs.
 
+In addition, a chat log may be watched in order to update the dataset in real time.
+
 Installation
 ============
 
