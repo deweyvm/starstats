@@ -17,6 +17,7 @@ Prerequisites
 Starstats requires the following programs and libraries:
  - Python 3.X along with `pyodbc` and `bs4`.
  - A relatively up to date version of `cabal` and `ghc`, which can be installed via the  `haskell-platform` package.
+ - The `highcharts` graphing library.
  - The `mysql-server` package.
  - The `unixodbc-dev` package.
  - A webserver. I used `apache2` and the installation guide will assume this is the server being used.
