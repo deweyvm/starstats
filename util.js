@@ -200,7 +200,7 @@ function formatTooltip(format) {
 
 function formatDonut() {
     var t = (parseInt(this.point.name) % 12) + 1;
-    var m = parseInt(this.point.name) > 12? "pm" : "am";
+    var m = parseInt(this.point.name) >= 12? "pm" : "am";
     return '<b>'+ t + ' ' + m +'</b>: '+ this.point.y.toFixed(2) + "%";
 }
 

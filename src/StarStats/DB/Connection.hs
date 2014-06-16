@@ -4,13 +4,22 @@ module StarStats.DB.Connection where
 import Database.HDBC
 import Database.HDBC.ODBC
 import StarStats.DB.Utils
+import qualified Data.Text as T
+
+sanitize :: String -> String
+sanitize s =
+    let p = T.pack s in
+    T.unpack $ T.filter (\c -> (not . elem c) "{};\"=") p
+
 connect :: ServerInfo -> IO Connection
 connect (ServerInfo driver dbName) = do
+    let sDriver = sanitize driver
+    let sDbName = sanitize dbName
     let connectionString = "DSN=name32;\
-                          \ Driver={" ++ driver ++ "};\
+                          \ Driver={" ++ sDriver ++ "};\
                           \ Server=localhost;\
                           \ Port=3306;\
-                          \ Database=" ++ dbName ++ ";\
+                          \ Database=" ++ sDbName ++ ";\
                           \ User=root;\
                           \ Password=password;\
                           \ Option=3;"

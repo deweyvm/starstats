@@ -41,6 +41,13 @@ updateMonthCount con t = do
                   \     nummsgs=nummsgs+1;" [toSql t, toSql t, count]
     return ()
 
+initActivity :: IConnection c => c -> IO ()
+initActivity con = do
+    let q = "INSERT INTO activity (dummy,h0,h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11,h12,h13,h14,h15,h16,h17,h18,h19,h20,h21,h22,h23, d0, d1, d2, d3, d4, d5, d6)\
+           \ VALUES (1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0)"
+    quickQuery con q []
+    return ()
+
 insert :: IConnection c
        => DataLine
        -> c
@@ -711,6 +718,7 @@ createDbs con = do
                                  , lastseen
                                  , rants
                                  ]
+    initActivity con
     return ()
 
 
