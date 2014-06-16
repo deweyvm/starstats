@@ -33,7 +33,12 @@ startOptions = Options { optDbName = ""
 
 options :: [ OptDescr (Options -> IO Options) ]
 options =
-    [ Option "" ["db"]
+    [ Option "h?" ["help"]
+        (NoArg
+            (\opt -> do printUsage
+                        exitWith ExitSuccess))
+        "Print this message and exit"
+    , Option "" ["db"]
         (ReqArg
             (\arg opt -> return opt { optDbName = "starstats_" ++ arg })
             "DBNAME")

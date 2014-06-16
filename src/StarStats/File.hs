@@ -50,7 +50,7 @@ processLines file f = do
                                 helper handle
 
 readEnd :: File -> FileOffset -> IO ([String], File)
-readEnd f@(File p fmbs) bytes = do
+readEnd f@(File p _) bytes = do
     handle <- openBinaryFile p IO.ReadMode
     IO.hSeek handle IO.SeekFromEnd (- (toInteger bytes))
     s <- C.hGet handle (fromIntegral bytes)
