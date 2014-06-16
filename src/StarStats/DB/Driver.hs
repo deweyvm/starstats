@@ -8,6 +8,7 @@ import Data.List (concat, isInfixOf)
 import Data.Maybe
 import Database.HDBC
 import Database.HDBC.ODBC
+import qualified Data.Text as T
 import qualified StarStats.Parsers.Irssi as Irssi
 import StarStats.Renderer
 import StarStats.Utils
@@ -18,8 +19,19 @@ import StarStats.DB.Connection
 import StarStats.Watcher
 import StarStats.Log.Log
 
+getChanName :: String -> String
+getChanName n =
+    let s = T.pack n in
+    let usc '_' = True
+        usc _ = False in
+    let l = T.split usc s in
+    concat $ (case T.unpack <$> l of
+        (x:xs) -> xs
+        l -> l)
+
 generate :: IConnection c => ServerInfo -> c -> IO ()
 generate (ServerInfo driver dbName) con = do
+    let chanName = getChanName dbName
     logInfo "Running queries"
     let timeGet s f = time' s $ f con
     _           <- timeGet "P Top"              populateTop
@@ -258,14 +270,14 @@ generate (ServerInfo driver dbName) con = do
     let donutGraphSection = section $ catMaybes donutGraphs
     let lineGraphSection = section $ catMaybes lineGraphs
     let tableSection = section $ catMaybes tables
-    let heading = divId "lead" $ tag "h1" ("#" ++ dbName)
+    let heading = divId "lead" $ tag "h1" ("#" ++ chanName)
     timeInfo <- getTimeInfo con
     let error' x = (divClass "tribox") (divId "emptyhead" x ++ divClass "tritext empty" "")
     let bottom = case timeInfo of
                    Just t -> t
                    Nothing -> error' $ ("no data added yet!")
     let content = divId "content" $ linkLinks (donutGraphSection ++ lineGraphSection ++ tableSection ++ bottom ++ testScript)
-    putStrLn $ makeFile (heading ++ content) "/css.css" (getTitle dbName) ["/util.js", "http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js", "highcharts.js", "exporting.js"]
+    putStrLn $ makeFile (heading ++ content) "/css.css" (getTitle chanName) ["/util.js", "http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js", "highcharts.js", "exporting.js"]
     logInfo "Finished"
 
 getTitle :: String -> String

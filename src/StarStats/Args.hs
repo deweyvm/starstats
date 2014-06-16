@@ -35,7 +35,7 @@ options :: [ OptDescr (Options -> IO Options) ]
 options =
     [ Option "" ["db"]
         (ReqArg
-            (\arg opt -> return opt { optDbName = arg })
+            (\arg opt -> return opt { optDbName = "starstats_" ++ arg })
             "DBNAME")
         "Database name"
     , Option "" ["driver"]

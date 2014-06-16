@@ -67,19 +67,22 @@ def printNotFound(exc, db):
 
 def runProgram(driver, db):
     p = subprocess.Popen(['time ./starstats --driver=\"%s\" --db=%s  --generate' % (driver, db)],
-                     stdout=subprocess.PIPE,
-                     stderr=subprocess.PIPE,
-                     shell=True)
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE,
+                         shell=True)
 
     (out, err) = p.communicate()
     if err is None:
         err = ""
     return (out, err, p.returncode)
 
+def sanitize(s):
+    return filter(lambda c: c not in "{};\"=", s)
+
 def checkOdbc(driver, db):
     try:
         import pyodbc
-        cstr="DSN=name32;Driver={%s};Server=localhost;Port=3306;Database=%s;User=root;Password=password;Option=3;" % (driver, db)
+        cstr="DSN=name32;Driver={%s};Server=localhost;Port=3306;Database=%s;User=root;Password=password;Option=3;" % (sanitize(driver), sanitize("starstats_" + db))
 
         cnxn = pyodbc.connect(cstr)
     except Exception as exc:
