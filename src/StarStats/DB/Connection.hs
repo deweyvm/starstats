@@ -19,6 +19,7 @@ connect (ServerInfo driver dbName) = do
                           \ Driver={" ++ sDriver ++ "};\
                           \ Server=localhost;\
                           \ Port=3306;\
+                          \ Socket=/var/run/mysqld/mysqld.sock;\
                           \ Database=" ++ sDbName ++ ";\
                           \ User=root;\
                           \ Password=password;\
