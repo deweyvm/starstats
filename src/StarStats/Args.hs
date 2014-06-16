@@ -37,7 +37,7 @@ options :: [ OptDescr (Options -> IO Options) ]
 options =
     [ Option "h?" ["help"]
         (NoArg
-            (\opt -> do return opt { optShowHelp = True })
+            (\opt -> return opt { optShowHelp = True }))
         "Print this message and exit"
     , Option "" ["db"]
         (ReqArg

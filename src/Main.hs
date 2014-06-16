@@ -1,6 +1,7 @@
 {-# LANGUAGE DoAndIfThenElse, BangPatterns #-}
 
 import GHC.IO.Encoding
+import System.Exit
 import StarStats.Args
 import StarStats.DB.Driver
 import StarStats.DB.Utils
