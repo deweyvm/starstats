@@ -30,6 +30,28 @@ Setup
 
 todo
 
+
+Operation
+=========
+
+`starstats` has three main modes of operation: insert, watch, and generate.
+
+### Insert
+
+In this mode, a file's contents will be parsed and inserted into the database.
+
+### Watch
+
+In this mode, a file's contents will be parsed and inserted into the database. The given file will be watched for new additions and lines added as they are added to the log.
+
+### Generate
+
+In this mode, a webpage is generated based on information in the database. If one chooses to use the provided CGI script, this is handled automatically.
+
+### Other Usage
+
+For other usage, see the --help option of the main executable.
+
 License
 =======
 This codebase is distributed under the MIT license. It is worth noting however that `highcharts` is only free to use for noncommercial purposes.
