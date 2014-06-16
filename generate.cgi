@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 import subprocess
 import sys
-from imp import reload
-#reload(sys)
-#sys.setdefaultencoding("utf-8")
+import codecs
 import re
 import datetime
 import time
@@ -14,10 +12,9 @@ import pyodbc
 import json
 from bs4 import BeautifulSoup
 
+sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
 SOCK='/var/run/mysqld/mysqld.sock'
 DRIVER="MySql ODBC 5.1 Driver"
-
-
 def init():
     cgitb.enable()
     print("Content-type: text/html\n")
@@ -75,15 +72,15 @@ def runProgram(driver, db):
     (out, err) = p.communicate()
     if err is None:
         err = ""
-    return (out, err, p.returncode)
+    return (out.decode("utf-8", 'ignore'), err.decode("utf-8", 'ignore'), p.returncode)
 
 def sanitize(s):
-    return filter(lambda c: c not in "{};\"=", s)
+    return ''.join(c for c in s if c not in "{};\"=")
 
 def checkOdbc(driver, db):
     try:
         import pyodbc
-        cstr="DSN=name32;Driver={%s};Server=localhost;Port=3306;Database=%s;User=root;Password=password;Option=3;" % (sanitize(driver), sanitize("starstats_" + db))
+        cstr="DSN=starstats;Driver={%s};Server=localhost;Port=3306;Database=%s;User=root;Password=password;Option=3;" % (sanitize(driver), sanitize("starstats_" + db))
 
         cnxn = pyodbc.connect(cstr)
     except Exception as exc:
