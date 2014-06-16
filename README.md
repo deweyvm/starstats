@@ -140,7 +140,6 @@ I made my `enabled-sites/000-default` file look like:
 #### Finally, run the program
     $ bash build.sh
     $ echo "create database starstats_channelname;" | mysql
-    $ export MYSQL_UNIX_PORT=/var/run/mysqld/mysqld.sock
     $ dist/build/starstats/starstats -db=channelname --driver="MySql ODBC 5.3 Driver" --logtype=irssi --log=~/path/to/my.log --watch
 
 
