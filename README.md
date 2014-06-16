@@ -8,6 +8,8 @@ real time data access for multi-million line data logs.
 
 In addition, a chat log may be watched in order to update the dataset in real time.
 
+An example page may be found at [http://olivine.dogue.in/example.html]()
+
 Installation
 ============
 
