@@ -19,6 +19,7 @@ data Options = Options { optDbName :: String
                        , optParseType :: Maybe ParserType
                        , optLog :: Maybe String
                        , optReset :: Bool
+                       , optShowHelp :: Bool
                        }
 
 startOptions :: Options
@@ -28,6 +29,7 @@ startOptions = Options { optDbName = ""
                        , optParseType = Nothing
                        , optLog = Nothing
                        , optReset = False
+                       , optShowHelp = False
                        }
 
 
@@ -35,8 +37,7 @@ options :: [ OptDescr (Options -> IO Options) ]
 options =
     [ Option "h?" ["help"]
         (NoArg
-            (\opt -> do printUsage
-                        exitWith ExitSuccess))
+            (\opt -> do return opt { optShowHelp = True })
         "Print this message and exit"
     , Option "" ["db"]
         (ReqArg

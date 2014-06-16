@@ -18,6 +18,9 @@ main = do
 
     let sinfo = ServerInfo (optDriverName opts)
                            (optDbName opts)
-
+    if (optShowHelp opts)
+    then do printUsage
+            exitWith ExitSuccess
+    else return ()
     doAction doReset mode sinfo
     logInfo "Shutting down gracefully"
