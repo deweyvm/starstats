@@ -27,3 +27,7 @@ Setup
 -----
 
 todo
+
+License
+=======
+This codebase is distributed under the MIT license. It is worth noting however that `highcharts` is only free to use for noncommercial purposes.
