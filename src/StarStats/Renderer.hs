@@ -225,7 +225,7 @@ headerTable w0 w1 b desc h c1 c2 xs =
 
 makeFile :: String -> String -> String -> [String] -> String
 makeFile x file head' scripts =
-    let favicon = voidTag "link" [ ("href", "favicon.ico?v=1.1")
+    let favicon = voidTag "link" [ ("href", "/starstats/favicon.ico?v=1.1")
                                  , ("rel", "shortcut icon")
                                  ] in
     let scriptSrc src = genTag "script" [ ("language", "javascript")
