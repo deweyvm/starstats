@@ -277,7 +277,7 @@ generate (ServerInfo driver dbName) con = do
                    Just t -> t
                    Nothing -> error' $ ("no data added yet!")
     let content = divId "content" $ linkLinks (donutGraphSection ++ lineGraphSection ++ tableSection ++ bottom ++ testScript)
-    putStrLn $ makeFile (heading ++ content) "/css.css" (getTitle chanName) ["/util.js", "http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js", "highcharts.js", "exporting.js"]
+    putStrLn $ makeFile (heading ++ content) "/starstats/css.css" (getTitle chanName) ["/starstats/util.js", "http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js", "/starstats/highcharts.js", "/starstats/exporting.js"]
     logInfo "Finished"
 
 getTitle :: String -> String
