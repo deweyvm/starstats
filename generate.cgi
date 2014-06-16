@@ -1,8 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import subprocess
 import sys
-reload(sys)
-sys.setdefaultencoding("utf-8")
+from imp import reload
+#reload(sys)
+#sys.setdefaultencoding("utf-8")
 import re
 import datetime
 import time

@@ -19,7 +19,7 @@ main = do
 
     let sinfo = ServerInfo (optDriverName opts)
                            (optDbName opts)
-    if (optShowHelp opts)
+    if (optShowHelp opts) && False
     then do printUsage
             exitWith ExitSuccess
     else return ()

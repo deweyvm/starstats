@@ -15,7 +15,7 @@ connect :: ServerInfo -> IO Connection
 connect (ServerInfo driver dbName) = do
     let sDriver = sanitize driver
     let sDbName = sanitize dbName
-    let connectionString = "DSN=name32;\
+    let connectionString = "DSN=starstats;\
                           \ Driver={" ++ sDriver ++ "};\
                           \ Server=localhost;\
                           \ Port=3306;\

@@ -35,7 +35,7 @@ startOptions = Options { optDbName = ""
 
 options :: [ OptDescr (Options -> IO Options) ]
 options =
-    [ Option "h?" ["help"]
+    [ Option "h" ["help"]
         (NoArg
             (\opt -> return opt { optShowHelp = True }))
         "Print this message and exit"
