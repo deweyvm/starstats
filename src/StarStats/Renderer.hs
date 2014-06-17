@@ -38,11 +38,12 @@ data Column = Column (M.Map Name String) Heading Width
 data Row = Row [(String, Width)]
 
 toColumn :: [(String, String)] -> Heading -> Width -> Column
-toColumn xs h w = Column (M.fromList xs) h w
+toColumn xs h w = Column (M.fromList (mapFst lower <$> xs)) h w
 
 --may be possible to pass width directly
 getHeadingWidth :: Column -> (Heading, Width)
 getHeadingWidth = (,) <$> getHeading <*> getWidth
+
 
 toRow :: [(Name, [String], Width)] -> [Row]
 toRow xs = (Row . doMap) <$> xs
@@ -70,7 +71,7 @@ rowify us cs =
     let hr = makeHeadingRow cs in
     let maps = getMap <$> cs in
     let ws = getWidth <$> cs in
-    let find' u m = print' $ fromMaybe default' (M.lookup u m) in
+    let find' u m = print' $ fromMaybe "~~~There was an error finding that message~~~" (M.lookup u m) in
     let assemble' :: Name -> [(String, Width)]
         assemble' u = zip (find' u <$> maps) ws in
     let rows = Row . assemble' <$> us in
@@ -84,9 +85,10 @@ formatTable :: Heading
             -> [Column]
             -> Maybe String
 formatTable h desc ns nh nw cs =
-    let nameCol = Column (M.fromList $ zip ns ns) nh nw in
+    let ns' = (lower <$> ns) in
+    let nameCol = toColumn (zip ns' ns) nh nw in
     let cs' = nameCol : cs in
-    let rows = rowify ns cs' in
+    let rows = rowify ns' cs' in
     let formatCell (s, w) = td False w s in
     let formatRow (Row xs) = tr $ concat $ formatCell <$> xs in
     if length rows == 1

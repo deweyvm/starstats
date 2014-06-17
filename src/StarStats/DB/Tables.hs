@@ -357,7 +357,7 @@ insert (Join time name) con = do
     let qjt = "INSERT INTO chantime (name, lastjoin, hours)\
              \ VALUES (?, ?, 0)\
              \ ON DUPLICATE KEY UPDATE\
-             \     lastJoin=?"
+             \     lastjoin=?"
     quickQuery con qjt [sqlName, sqlTime, sqlTime]
 
     prepared <- prepare con "INSERT INTO joins (name, num)\

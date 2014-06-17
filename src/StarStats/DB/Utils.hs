@@ -7,6 +7,7 @@ import Criterion.Measurement
 import Data.Convertible
 import Data.List
 import Data.Maybe
+import Data.Char (toLower)
 import qualified Data.Text as T
 import Database.HDBC
 import System.Directory
@@ -230,6 +231,9 @@ split3 xs =
               helper rest ((w, x) : ac1, (w, y) : ac2, (w, z) : ac3)
           helper [] (ac1, ac2, ac3) = (reverse ac1, reverse ac2, reverse ac3)
 
+
+lower :: String -> String
+lower = (<$>) toLower
 
 (.:) = (.) . (.)
 (.::) = (.:) . (.)

@@ -8,6 +8,7 @@ import Data.List (sortBy)
 import Text.Printf
 import System.IO
 import StarStats.DB.Utils
+import StarStats.Log.Log
 
 getUniqueNicks :: IConnection c => c -> IO [(String,Int)]
 getUniqueNicks con =
@@ -85,16 +86,18 @@ getRandMessages con =
 getRandTop :: IConnection c => c -> IO [(String, String)]
 getRandTop con = do
 
-    let q = "SELECT m.name, contents, m.type\
+    let q = "SELECT m.name, m.contents, m.type\
            \ FROM messages AS m\
            \ JOIN (SELECT \
            \           rand, \
            \           name, \
            \           msgcount\
-           \       FROM top LIMIT 20) AS t\
+           \       FROM top) AS t\
            \ ON m.userindex = t.rand AND m.name = t.name LIMIT 20"
 
-    getAndExtract con [] extractAction q
+    val <- getAndExtract con [] extractAction q
+    logError $ show val
+    return val
 
 getKickers :: IConnection c => c -> IO [(String, Int)]
 getKickers con =
