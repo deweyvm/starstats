@@ -18,7 +18,7 @@ Prerequisites
 
 At least ~1GB of memory is needed for compiling the binary. If this is an issue, simply compile it on another machine and copy it over.
 
-Starstats requires the following programs and libraries:
+`starstats` requires the following programs and libraries:
  - Python 3.X along with `pyodbc` and `bs4`.
  - A relatively up to date version of `cabal` and `ghc`, which can be installed via the  `haskell-platform` package.
  - The `highcharts` graphing library.
