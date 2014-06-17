@@ -253,3 +253,12 @@ function donut(canvasName, elts) {
         });
     });
 }
+
+function linkify() {
+    $('div.testtest').linkify();
+    /*$('body')
+      .contents()
+      .filter(function() {
+        return this.nodeType === 3; //Node.TEXT_NODE
+    }).linkify();*/
+}

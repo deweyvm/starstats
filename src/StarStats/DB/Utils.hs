@@ -7,6 +7,7 @@ import Criterion.Measurement
 import Data.Convertible
 import Data.List
 import Data.Maybe
+import qualified Data.Text as T
 import Database.HDBC
 import System.Directory
 import Text.Printf
@@ -31,6 +32,14 @@ data ServerInfo = ServerInfo String {- OBDC driver to use -}
                                        MySQL db name. Used to access the page
                                        through the cgi script-}
 
+
+splitOn :: (Char -> Bool) -> String -> [String]
+splitOn p s =
+    case dropWhile p s of
+        "" -> []
+        s' -> w : splitOn p s''
+              where (w, s'') = break p s'
+
 stripPunctuation :: String -> String
 stripPunctuation = filter (\x -> not (elem x "\"';:.,?!"))
 
@@ -51,13 +60,30 @@ isUrl ('h':'t':'t':'p':':':'/':'/':_) = True
 isUrl ('h':'t':'t':'p':'s':':':'/':'/':_) = True
 isUrl _ = False
 
+
+split :: Char -> String -> [String]
+split c s = T.unpack <$> (T.split (== c) (T.pack s))
+
+splitAny :: String -> String -> [String]
+splitAny cs s = T.unpack <$> (T.split (\x -> (not . elem x) cs) (T.pack s))
+
+splitMap :: Char -> (String -> String) -> String -> String
+splitMap c f s =
+    let words' = split c s in
+    intercalate [c] $ f <$> words'
+
 replaceUrls :: String -> (String -> String) -> String
 replaceUrls s f =
-    let words' = words s in
-    unwords $ (\x -> (if isUrl x then f else id) x) <$> words'
+    splitMap ' ' inner s
+    where inner :: String -> String
+          inner =
+              splitMap '"' (\x -> (if isUrl x then f else id) x)
 
 hasUrl :: String -> Bool
-hasUrl s = length (filter isUrl (words s)) > 0
+hasUrl s =
+    let words' = split ' ' s in
+    let words'' = split '"' <$> words' in
+    any (/= []) $ (filter isUrl) <$> words''
 
 extractUrl :: String -> String
 extractUrl s =

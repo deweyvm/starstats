@@ -78,9 +78,9 @@ generate (ServerInfo driver dbName) con = do
     let bars = (toTimeBars tups)
     let ucol1 = toColumn (printify users) "Messages" "11%"
     let ucol2 = toColumn (printify bars) "Active" "107"
-    let ucol3 = toColumn (printify avgwl) "AWL" "6%"
-    let ucol4 = toColumn (printify avgwc) "WPL" "6%"
-    let ucol5 = toColumn randTop "Random Message" "59%"
+    let ucol3 = toColumn (printify avgwl) "AWL" "7%"
+    let ucol4 = toColumn (printify avgwc) "WPL" "7%"
+    let ucol5 = toColumn randTop "Random Message" "57%"
     let ucol6 = toColumn lastseentop "Last Seen" "160"
 
     let uus = fst <$> users
@@ -111,9 +111,10 @@ generate (ServerInfo driver dbName) con = do
                                   ("Last Said By", "11%")
                                   ("Last Said On", "25%")
 
-    let testScript = "<script>\
-                    \ triggerPointer();\
-                    \ </script>"
+    let manualJs = "<script>\
+                  \ triggerPointer();\
+                  \ linkify();\
+                  \ </script>"
     let rcrows = table4 repComplex "Complex Repeated Phrases"
                                    "Longer lines ranked by the number of times they have been repeated, ignoring case and punctuation."
                                    ("Message", "44%")
@@ -276,8 +277,8 @@ generate (ServerInfo driver dbName) con = do
     let bottom = case timeInfo of
                    Just t -> t
                    Nothing -> error' $ ("no data added yet!")
-    let content = divId "content" $ linkLinks (donutGraphSection ++ lineGraphSection ++ tableSection ++ bottom ++ testScript)
-    putStrLn $ makeFile (heading ++ content) "/starstats/css.css" (getTitle chanName) ["/starstats/util.js", "http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js", "/starstats/highcharts.js", "/starstats/exporting.js"]
+    let content = divId "content" $ (donutGraphSection ++ lineGraphSection ++ tableSection ++ bottom ++ manualJs)
+    putStrLn $ makeFile (heading ++ content) "/starstats/css.css" (getTitle chanName) ["http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js", "/starstats/jquery.linkify.min.js", "/starstats/util.js", "/starstats/highcharts.js", "/starstats/exporting.js"]
     logInfo "Finished"
 
 getTitle :: String -> String

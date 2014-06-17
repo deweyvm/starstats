@@ -5,6 +5,7 @@ import System.Exit
 import StarStats.Args
 import StarStats.DB.Driver
 import StarStats.DB.Utils
+import StarStats.Renderer
 import StarStats.Log.Log
 
 main :: IO ()
@@ -16,7 +17,6 @@ main = do
     opts <- getOpts
     mode <- rawToAction opts
     let doReset = optReset opts
-
     let sinfo = ServerInfo (optDriverName opts)
                            (optDbName opts)
     if (optShowHelp opts) && False

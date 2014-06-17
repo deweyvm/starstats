@@ -291,7 +291,3 @@ voidTag t props =
 
 tag :: String -> String -> String
 tag s c = genTag s [] c
-
-
-linkLinks :: String -> String
-linkLinks s = replaceUrls s (\x -> genTag "a" [("href", x)] x)

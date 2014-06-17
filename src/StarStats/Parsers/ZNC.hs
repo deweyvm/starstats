@@ -110,7 +110,6 @@ stripBy :: String -> String
 stripBy (' ':'b':'y':' ':xs) = xs
 stripBy s = s
 
---00:00:00 --- topic: set to 'this is the topic' by user
 parseTopic :: Parser DataLine
 parseTopic = do
     time <- parseTime <* parsePrefix "topic" <* symbol "set to"
