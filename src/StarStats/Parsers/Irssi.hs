@@ -19,8 +19,12 @@ parseChatLine = try parseAction
             <|> try parseStatus
             <|> try parseNotice
             <|> try parseInvite
-            <|> parseMessage
+            <|> try parseMessage
+            <|> parseBad
 
+
+parseBad :: Parser DataLine
+parseBad = Bad <$> (parseTime *> symbol "-!-" *> eatLine)
 
 parseTimeChange :: Parser DataLine
 parseTimeChange = try (Date <$> (symbol "--- Day changed" *> parseDateString))
@@ -33,7 +37,7 @@ parseInvite = Invite <$> parseTime
 
 parseNotice :: Parser DataLine
 parseNotice = Notice <$> parseTime
-                     <*> ((symbol "-") *> eatLine)
+                     <*> (between (symbol "[") (symbol "]") (many (noneOf "]")) *> eatLine)
 
 parseStatus :: Parser DataLine
 parseStatus = try parseQuit
