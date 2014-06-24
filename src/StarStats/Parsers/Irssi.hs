@@ -24,8 +24,9 @@ parseChatLine = try parseAction
 
 
 parseBad :: Parser DataLine
-parseBad = Bad <$> (parseTime *> symbol "-!-" *> eatLine)
-
+parseBad = Bad <$> (try (parseTime *> symbol "-!-" *> eatLine)
+                    <|> (parseTime *> symbol "-" *> eatLine)
+                   )
 parseTimeChange :: Parser DataLine
 parseTimeChange = try (Date <$> (symbol "--- Day changed" *> parseDateString))
               <|> try (Close <$> (symbol "--- Log closed" *> parseDateString))
