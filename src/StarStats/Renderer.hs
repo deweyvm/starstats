@@ -83,13 +83,14 @@ formatTable :: Heading
             -> Heading
             -> Width
             -> [Column]
+            -> Bool
             -> Maybe String
-formatTable h desc ns nh nw cs =
+formatTable h desc ns nh nw cs b =
     let ns' = (lower <$> ns) in
     let nameCol = toColumn (zip ns' ns) nh nw in
     let cs' = nameCol : cs in
     let rows = rowify ns' cs' in
-    let formatCell (s, w) = td False w s in
+    let formatCell (s, w) = td b w s in
     let formatRow (Row xs) = tr $ concat $ formatCell <$> xs in
     if length rows == 1
     then Nothing
@@ -205,25 +206,6 @@ linkHeader sec h desc s =
 
 hoverBox :: String -> String
 hoverBox desc = spanClass "htip" (tag "div" ("[?]&nbsp;" ++ (divClass "hwrap" $ divClass "hbox" desc)))
-
-
-
-headerTable :: Print a
-            => String {- | width of the first column -}
-            -> String {- | width of the second column -}
-            -> Bool {- | checked by default -}
-            -> String {- | description -}
-            -> String {- | table heading -}
-            -> String {- | column 1 heading-}
-            -> String {- | column 2 heading-}
-            -> [(String, a)]
-            -> Maybe String
-headerTable w0 w1 b desc h c1 c2 xs =
-    if length xs == 0
-        then Nothing
-        else let p = (c1, c2) in
-             let mapped = (second print') <$> xs in
-             Just $ linkHeader Table h desc  $ simpleTable w0 w1 b ((pairMap (tag "b") p):mapped)
 
 makeFile :: String -> String -> String -> [String] -> String
 makeFile x file head' scripts =

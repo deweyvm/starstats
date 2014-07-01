@@ -86,7 +86,21 @@ generate (ServerInfo driver dbName) con = do
     let uus = fst <$> users
     let urows = formatTable "Top Users"
                             "User ranking by number of lines spoken (all time). This also includes the average words length (AWL) and average words per line (WPL) as well as a breakdown of activity per quarter of the day, a random message, and when the user last spoke."
-                             uus "User" "18%" [ucol1, ucol2, ucol3, ucol4, ucol5, ucol6]
+                             uus "User" "18%" [ucol1, ucol2, ucol3, ucol4, ucol5, ucol6] False
+
+    let table2 :: (Print a)
+               => [(String, a)]
+               -> String
+               -> String
+               -> (String, String)
+               -> (String, String)
+               -> Bool
+               -> Maybe String
+        table2 xs h desc (h0, w0) (h1, w1) b =
+            let (col1, _) = unzip xs in
+            let col1' = toColumn (printify xs) h1 w1 in
+            let us = col1 in
+            formatTable h desc us h0 w0 [col1'] b
 
     let table4 :: (Print a, Print b, Print c)
                => [(String, a, b, c)]
@@ -103,7 +117,7 @@ generate (ServerInfo driver dbName) con = do
             let col2' = toColumn (printify col2) h2 w2 in
             let col3' = toColumn (printify col3) h3 w3 in
             let us = fst <$> col1 in
-            formatTable h desc us h0 w0 [col1', col2', col3']
+            formatTable h desc us h0 w0 [col1', col2', col3'] False
     let rsrows = table4 repSimple "Simple Repeated Phrases"
                                   "Lines ranked by the number of times they have been repeated, ignoring case and punctuation."
                                   ("Message", "44%")
@@ -147,10 +161,19 @@ generate (ServerInfo driver dbName) con = do
                                 "users"
                                 activet
                  ]
+    let headerTable w0 w1 b desc h h0 h1 xs =
+            table2 xs h desc (h0, w0) (h1, w1) b
     let headerTable50 = headerTable "50%" "50%" False
-    let headerTable2080 = headerTable "20%" "80%" False
-    let shortTable = headerTable "200" "200" False
-    let tables = [ urows
+    let headerTable2080 :: Print a
+                        => String
+                        -> String
+                        -> String
+                        -> String
+                        -> [(String, a)]
+                        -> Maybe String
+        headerTable2080 = headerTable "20%" "80%" False
+    let tables :: [Maybe String]
+        tables = [ urows
                  , headerTable2080 "A random selection of channel topics."
                                    "Random Topics"
                                    "Name"
