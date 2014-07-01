@@ -71,7 +71,7 @@ rowify us cs =
     let hr = makeHeadingRow cs in
     let maps = getMap <$> cs in
     let ws = getWidth <$> cs in
-    let find' u m = print' $ fromMaybe "~~~There was an error finding that message~~~" (M.lookup u m) in
+    let find' u m = fromMaybe "~~~There was an error finding that message~~~" (M.lookup u m) in
     let assemble' :: Name -> [(String, Width)]
         assemble' u = zip (find' u <$> maps) ws in
     let rows = Row . assemble' <$> us in
